@@ -1,0 +1,100 @@
+name: Audi RED Tookit
+
+on:
+  workflow_call:
+    inputs:
+        source_file:
+            description: 'Source file from the origin directory'
+            required: true
+            type: string
+        destination_repo:
+            description: 'Destination repository'
+            type: string
+            required: false
+            default: 'RED-Internal-Development/audi-red-documentation'
+        destination_folder:
+            description: 'Directory to push the file to'
+            type: string
+            required: false
+        user_email:
+            description: 'Email for the git commit'
+            type: string
+            required: true
+        user_name:
+            description: 'GitHub username for the commit'
+            type: string
+            required: true
+        user_actor:
+            description: 'GitHub username that trigged the pipeline'
+            type: string
+            required: true
+        destination_branch:
+            description: 'branch to push file to, defaults to main'
+            type: string
+            required: false
+        destination_branch_create:
+            description: 'Destination branch to create for this commit'
+            type: string
+            required: false
+        commit_message:
+            description: 'A custom message for the commit'
+            type: string
+            required: false
+        rename:
+            description: 'Rename the destination file'
+            type: string
+            required: false
+        use_rsync:
+            description: 'Copy files/directories using rsync instead of cp. Experimental feature, please know your use case'
+            type: string
+            required: false
+        git_server:
+            description: 'Git server host, default github.com'
+            type: string
+            required: false
+            default: github.com
+        DOC_SYNC_KEY:
+            required: false
+            type: string
+            description: 'Team key used to copy files to audired'
+        SCANOSS_KEY:
+            required: false
+            type: string
+            description: 'Key used to authenticate to scanoss for open source checks'
+
+jobs:
+    doc_sync:
+        if: ${{ inputs.DOC_SYNC_KEY }} != null && ${{ inputs.DOC_SYNC_KEY }} != ''
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v2
+
+        - name: Pushes files from Feature App to Audi RED Portal for syndication
+          uses: RED-Internal-Development/audred_docsync_action@main
+          with:
+            source_file: ${{ inputs.source_file }}
+            destination_repo: ${{ inputs.destination_repo }}
+            destination_folder: ${{ inputs.destination_folder }}
+            destination_branch: ${{ inputs.destination_branch }}
+            user_email: ${{ inputs.user_email }}
+            user_name: ${{ inputs.user_name }}
+            user_actor: ${{ github.actor }}
+            API_TOKEN_GITHUB: ${{ inputs.DOC_SYNC_KEY }}
+
+    scanoss:
+        if: ${{ inputs.SCANOSS_KEY }} != null && ${{ inputs.SCANOSS_KEY }} != ''
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Run SCANOSS Code Scan
+          id: scanoss-code-scan-step
+          uses: scanoss/gha-code-scan@v0.2.0
+          with:
+            api.key: ${{ inputs.SCANOSS_KEY }}
+            api.url: https://api.scanoss.com/scan/direct
+            dependencies.enabled: true
+            policies.halt_on_failure: false
+            policies: copyleft, undeclared
