@@ -1,4 +1,4 @@
-name: Audi RED Tookit
+name: Audi RED Toolkit
 
 on:
   workflow_call:
