@@ -79,6 +79,8 @@ jobs:
 
         - name: Pushes files from Feature App to Audi RED Portal for syndication
           uses: RED-Internal-Development/audred_docsync_action@main
+          env:
+            API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
           with:
             source_file: ${{ inputs.source_file }}
             destination_repo: ${{ inputs.destination_repo }}
@@ -87,7 +89,6 @@ jobs:
             user_email: ${{ inputs.user_email }}
             user_name: ${{ inputs.user_name }}
             user_actor: ${{ github.actor }}
-            API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
 
     scanoss:
         runs-on: ubuntu-latest
