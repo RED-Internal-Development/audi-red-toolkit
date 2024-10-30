@@ -53,19 +53,26 @@ on:
             type: string
             required: false
             default: github.com
+        enable_doc_sync:
+            description: 'Enable doc sync step, DOC_SYNC_KEY is required in secrets'
+            type: boolean
+            required: true
+        enable_scanoss:
+            description: 'Enable scanoss step, SCANOSS_KEY is required in secrets'
+            type: boolean
+            required: true
+    secrets:
         DOC_SYNC_KEY:
             required: false
-            type: string
             description: 'Team key used to copy files to audired'
         SCANOSS_KEY:
             required: false
-            type: string
             description: 'Key used to authenticate to scanoss for open source checks'
 
 jobs:
     doc_sync:
-        if: ${{ inputs.DOC_SYNC_KEY }} != null && ${{ inputs.DOC_SYNC_KEY }} != ''
         runs-on: ubuntu-latest
+        if: ${{ inputs.enable_doc_sync }}
         steps:
         - name: Checkout
           uses: actions/checkout@v2
@@ -80,11 +87,13 @@ jobs:
             user_email: ${{ inputs.user_email }}
             user_name: ${{ inputs.user_name }}
             user_actor: ${{ github.actor }}
-            API_TOKEN_GITHUB: ${{ inputs.DOC_SYNC_KEY }}
+            API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
 
     scanoss:
-        if: ${{ inputs.SCANOSS_KEY }} != null && ${{ inputs.SCANOSS_KEY }} != ''
         runs-on: ubuntu-latest
+        if: ${{ inputs.enable_scanoss }}
+        env:
+            SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
         steps:
         - name: Checkout
           uses: actions/checkout@v4
@@ -93,7 +102,7 @@ jobs:
           id: scanoss-code-scan-step
           uses: scanoss/gha-code-scan@v0.2.0
           with:
-            api.key: ${{ inputs.SCANOSS_KEY }}
+            api.key: ${{ secrets.SCANOSS_KEY }}
             api.url: https://api.scanoss.com/scan/direct
             dependencies.enabled: true
             policies.halt_on_failure: false
