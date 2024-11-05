@@ -76,6 +76,7 @@ jobs:
         steps:
         - name: Check if branch exists
           id: check_branch
+          shell: bash
           run: |
             BRANCH_NAME="${{ inputs.destination_branch }}"
             DESTINATION_REPO="${{ inputs.destination_repo }}"
@@ -117,7 +118,7 @@ jobs:
         - name: Checkout
           uses: actions/checkout@v4
 
-        - name: Run SCANOSS Code Scan
+        - name: Run SCANOSS Code Scan (test)
           id: scanoss-code-scan-step
           uses: scanoss/gha-code-scan@v0.2.0
           with:
