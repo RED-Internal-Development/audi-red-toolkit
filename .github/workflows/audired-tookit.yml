@@ -97,7 +97,7 @@ jobs:
           uses: actions/checkout@v2
 
         - name: Pushes files from Feature App to Audi RED Portal for syndication
-          uses: RED-Internal-Development/audred_docsync_action@scanoss-poc
+          uses: RED-Internal-Development/audred_docsync_action@main
           env:
             API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
           with:
