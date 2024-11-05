@@ -74,6 +74,24 @@ jobs:
         runs-on: ubuntu-latest
         if: ${{ inputs.enable_doc_sync }}
         steps:
+        - name: Check if branch exists
+          id: check_branch
+          run: |
+            BRANCH_NAME="${{ inputs.destination_branch }}"
+            DESTINATION_REPO="${{ inputs.destination_repo }}"
+            API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
+
+            # Query the GitHub API
+            response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
+
+            if [ "$response" -eq 200 ]; then
+                echo "Branch '${BRANCH_NAME}' exists."
+                echo "::set-output name=branch_exists::true"
+            else
+                echo "Branch '${BRANCH_NAME}' does not exist."
+                echo "::set-output name=branch_exists::false"
+            fi
+
         - name: Checkout
           uses: actions/checkout@v2
 
