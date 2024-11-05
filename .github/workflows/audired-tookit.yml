@@ -87,10 +87,10 @@ jobs:
 
             if [ "$response" -eq 200 ]; then
                 echo "Branch '${BRANCH_NAME}' exists."
-                echo "::set-output name=branch_exists::true"
+                echo "branch_exists=true" >> $GITHUB_OUTPUT
             else
                 echo "Branch '${BRANCH_NAME}' does not exist."
-                echo "::set-output name=branch_exists::false"
+                echo "branch_exists=false" >> $GITHUB_OUTPUT
             fi
 
         - name: Checkout
@@ -108,6 +108,7 @@ jobs:
             user_email: ${{ inputs.user_email }}
             user_name: ${{ inputs.user_name }}
             user_actor: ${{ github.actor }}
+            destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
 
     scanoss:
         runs-on: ubuntu-latest
