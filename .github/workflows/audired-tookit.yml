@@ -74,6 +74,25 @@ jobs:
         runs-on: ubuntu-latest
         if: ${{ inputs.enable_doc_sync }}
         steps:
+        - name: Check if branch exists
+          id: check_branch
+          shell: bash
+          run: |
+            BRANCH_NAME="${{ inputs.destination_branch }}"
+            DESTINATION_REPO="${{ inputs.destination_repo }}"
+            API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
+
+            # Query the GitHub API
+            response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
+
+            if [ "$response" -eq 200 ]; then
+                echo "Branch '${BRANCH_NAME}' exists."
+                echo "branch_exists=true" >> $GITHUB_OUTPUT
+            else
+                echo "Branch '${BRANCH_NAME}' does not exist."
+                echo "branch_exists=false" >> $GITHUB_OUTPUT
+            fi
+
         - name: Checkout
           uses: actions/checkout@v2
 
@@ -89,6 +108,7 @@ jobs:
             user_email: ${{ inputs.user_email }}
             user_name: ${{ inputs.user_name }}
             user_actor: ${{ github.actor }}
+            destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
 
     scanoss:
         runs-on: ubuntu-latest
