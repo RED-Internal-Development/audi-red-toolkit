@@ -149,8 +149,8 @@ jobs:
                 # Read current report.json into a variable
                 report_json=$(cat dependency_report/report.json)
 
-                dependencies_parsed=$(echo "$dependencies" | jq .)
-                dev_dependencies_parsed=$(echo "$devDependencies" | jq .)
+                dependencies_parsed=$(echo "$dependencies" | jq '.')
+                dev_dependencies_parsed=$(echo "$devDependencies" | jq '.')
 
                 echo "TESTING: $dependencies"
                 echo "TESTING PARSED: $dependencies_parsed"
