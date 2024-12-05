@@ -158,11 +158,11 @@ jobs:
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson "dependencies" "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies '$dependencies_parsed' --argjson devDependencies '$dev_dependencies_parsed' \
                         '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies }')
                 else
                     # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies '$dependencies_parsed' --argjson devDependencies '$dev_dependencies_parsed' \
                         '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies }}')
                 fi
     
