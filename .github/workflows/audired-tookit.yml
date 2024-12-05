@@ -113,6 +113,65 @@ jobs:
             user_actor: ${{ github.actor }}
             destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
 
+     
+    dependency_sync:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository A
+              uses: actions/checkout@v3
+
+            - name: Extract dependencies from package.json of repository A
+              id: extract-deps
+              run: |
+                repo_name=$(jq -r '.name' package.json)
+                dependencies=$(jq '.dependencies' package.json)
+                echo "repo_name=$repo_name" >> $GITHUB_ENV
+                echo "dependencies=$dependencies" >> $GITHUB_ENV
+
+            - name: Checkout AudiRed Doc Sync repository 
+              uses: actions/checkout@v3
+              with:
+                repository: ${{ inputs.destination_repo }}
+                token: ${{ secrets.DOC_SYNC_KEY }}
+                ref: main
+
+            - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
+              run: |
+                # Check if the dependency_report folder exists; if not, create it
+                mkdir -p dependency_report
+    
+                # Check if report.json exists inside the dependency_report folder; if not, create it
+                if [ ! -f dependency_report/report.json ]; then
+                echo "{}" > dependency_report/report.json
+                fi
+    
+                # Read current report.json into a variable
+                report_json=$(cat dependency_report/report.json)
+    
+                # Check if the repository name is already in the report, if so update the dependencies
+                if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
+                # Update the dependencies for the specific repository name
+                updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" \
+                    '.[$repo_name].dependencies = $dependencies')
+                else
+                # Add a new entry for the repository in report.json
+                updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" \
+                    '. + {($repo_name): { "dependencies": $dependencies }}')
+                fi
+    
+                # Write the updated report back to the file inside the dependency_report folder
+                echo "$updated_report" > dependency_report/report.json
+
+            - name: Commit and push changes
+              run: |
+                git config --global user.email ${{ inputs.user_email }}
+                git config --global user.name ${{ inputs.user_name }}
+                git add dependency_report/report.json
+                git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
+                git push
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     scanoss:
         runs-on: ubuntu-latest
         if: ${{ inputs.enable_scanoss }}
