@@ -171,26 +171,25 @@ jobs:
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add dependency_report/report.json
-                git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
-                git push
+                git diff --cached --exit-code || (git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}" && git push)
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # scanoss:
-        # runs-on: ubuntu-latest
-        # if: ${{ inputs.enable_scanoss }}
-        # env:
-        #     SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
-        # steps:
-        # - name: Checkout
-        #   uses: actions/checkout@v4
+    #     runs-on: ubuntu-latest
+    #     if: ${{ inputs.enable_scanoss }}
+    #     env:
+    #         SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
+    #     steps:
+    #     - name: Checkout
+    #       uses: actions/checkout@v4
 
-        # - name: Run SCANOSS Code Scan
-        #   id: scanoss-code-scan-step
-        #   uses: scanoss/gha-code-scan@v0.2.0
-        #   with:
-        #     api.key: ${{ secrets.SCANOSS_KEY }}
-        #     api.url: https://api.scanoss.com/scan/direct
-        #     dependencies.enabled: true
-        #     policies.halt_on_failure: false
-        #     policies: copyleft, undeclared
+    #     - name: Run SCANOSS Code Scan
+    #       id: scanoss-code-scan-step
+    #       uses: scanoss/gha-code-scan@v0.2.0
+    #       with:
+    #         api.key: ${{ secrets.SCANOSS_KEY }}
+    #         api.url: https://api.scanoss.com/scan/direct
+    #         dependencies.enabled: true
+    #         policies.halt_on_failure: false
+    #         policies: copyleft, undeclared
