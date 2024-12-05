@@ -134,7 +134,7 @@ jobs:
               with:
                 repository: ${{ inputs.destination_repo }}
                 token: ${{ secrets.DOC_SYNC_KEY }}
-                ref: main
+                ref: doc-sync-queue
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               run: |
@@ -149,14 +149,8 @@ jobs:
                 # Read current report.json into a variable
                 report_json=$(cat dependency_report/report.json)
 
-                dependencies_parsed=$(echo "$dependencies" | jq '.')
-                dev_dependencies_parsed=$(echo "$devDependencies" | jq '.')
-
-                echo "TESTING: $dependencies"
-                echo "TESTING PARSED: $dependencies_parsed"
-
-                echo "TESTING: $devDependencies"
-                echo "TESTING PARSED: $dev_dependencies_parsed"
+                dependencies_parsed=$(echo "$dependencies" | jq fromjson)
+                dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
@@ -170,6 +164,7 @@ jobs:
                 fi
     
                 # Write the updated report back to the file inside the dependency_report folder
+                cat updated_report | jq -r '.items[] | "\(.name) \(.id)"'
                 echo "$updated_report" > dependency_report/report.json
 
             - name: Commit and push changes
