@@ -151,6 +151,8 @@ jobs:
 
                 dependencies_parsed=$(echo "$dependencies" | jq .)
                 dev_dependencies_parsed=$(echo "$dev_dependencies" | jq .)
+
+                echo "TESTING: $dependencies_parsed"
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
