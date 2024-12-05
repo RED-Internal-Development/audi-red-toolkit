@@ -123,8 +123,8 @@ jobs:
               id: extract-deps
               run: |
                 repo_name=$(jq -r '.name' package.json)
-                dependencies=$(jq '.dependencies' package.json)
-                devDependencies=$(jq '.devDependencies' package.json)
+                dependencies=$(jq '.dependencies' package.json | jq tostring)
+                devDependencies=$(jq '.devDependencies' package.json | jq tostring)
                 echo "repo_name=$repo_name" >> $GITHUB_ENV
                 echo "dependencies=$dependencies" >> $GITHUB_ENV
                 echo "devDependencies=$devDependencies" >> $GITHUB_ENV
@@ -148,15 +148,18 @@ jobs:
     
                 # Read current report.json into a variable
                 report_json=$(cat dependency_report/report.json)
+
+                dependencies_parsed=$(echo "$dependencies" | jq .)
+                dev_dependencies_parsed=$(echo "$dev_dependencies" | jq .)
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" --argjson devDependencies "$devDependencies" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
                         '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies }')
                 else
                     # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" --argjson devDependencies "$devDependencies" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
                         '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies }}')
                 fi
     
