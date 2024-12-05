@@ -125,9 +125,9 @@ jobs:
                 repo_name=$(jq -r '.name' package.json)
                 dependencies=$(jq '.dependencies' package.json)
                 devDependencies=$(jq '.devDependencies' package.json)
-                echo "::set-output name=repo_name::$repo_name"
-                echo "::set-output name=dependencies::$dependencies"
-                echo "::set-output name=devDependencies::$devDependencies"
+                echo "repo_name=$repo_name" >> $GITHUB_ENV
+                echo "dependencies=$dependencies" >> $GITHUB_ENV
+                echo "devDependencies=$devDependencies" >> $GITHUB_ENV
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
@@ -145,10 +145,6 @@ jobs:
                 if [ ! -f dependency_report/report.json ]; then
                     echo "{}" > dependency_report/report.json
                 fi
-
-                repo_name="${{ steps.extract-deps.outputs.repo_name }}"
-                dependencies="${{ steps.extract-deps.outputs.dependencies }}"
-                devDependencies="${{ steps.extract-deps.outputs.devDependencies }}"
     
                 # Read current report.json into a variable
                 report_json=$(cat dependency_report/report.json)
