@@ -123,14 +123,11 @@ jobs:
               id: extract-deps
               run: |
                 repo_name=$(jq -r '.name' package.json)
-                dependencies=$(jq '.dependencies' package.json)
-                devDependencies=$(jq '.devDependencies' package.json)
-
-                # Create a file with the necessary data
-                echo "{\"repo_name\": \"$repo_name\", \"dependencies\": $dependencies, \"devDependencies\": $devDependencies}" > temp_report.json
-
-                # Make the temp_report.json available for the next step
-                echo "temp_report_path=temp_report.json" >> $GITHUB_ENV
+                dependencies=$(jq '.dependencies' package.json | jq tostring)
+                devDependencies=$(jq '.devDependencies' package.json | jq tostring)
+                echo "repo_name=$repo_name" >> $GITHUB_ENV
+                echo "dependencies=$dependencies" >> $GITHUB_ENV
+                echo "devDependencies=$devDependencies" >> $GITHUB_ENV
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
@@ -141,11 +138,10 @@ jobs:
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               run: |
-                # Read the temp_report.json file created earlier
-                temp_report_path=${{ env.temp_report_path }}
-                report_data=$(cat $temp_report_path)
-
-                # Read the current report.json and update it
+                # Check if the dependency_report folder exists; if not, create it
+                mkdir -p dependency_report
+    
+                # Check if report.json exists inside the dependency_report folder; if not, create it
                 if [ ! -f dependency_report/report.json ]; then
                     echo "{}" > dependency_report/report.json
                 fi
@@ -153,16 +149,25 @@ jobs:
                 # Read current report.json into a variable
                 report_json=$(cat dependency_report/report.json)
 
-                # Extract data from the temp_report.json
-                repo_name=$(echo "$report_data" | jq -r '.repo_name')
-                dependencies=$(echo "$report_data" | jq '.dependencies')
-                devDependencies=$(echo "$report_data" | jq '.devDependencies')
+                dependencies_parsed=$(echo "$dependencies" | jq .)
+                dev_dependencies_parsed=$(echo "$devDependencies" | jq .)
 
                 echo "TESTING: $dependencies"
+                echo "TESTING PARSED: $dependencies_parsed"
+
+                echo "TESTING: $devDependencies"
+                echo "TESTING PARSED: $dev_dependencies_parsed"
     
-                # Check if the repository name is already in the report, if so update the dependencies and devDependencies
-                updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" --argjson devDependencies "$devDependencies" \
-                '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies }}')
+                # Check if the repository name is already in the report, if so update the dependencies
+                if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
+                    # Update the dependencies for the specific repository name
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
+                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies }')
+                else
+                    # Add a new entry for the repository in report.json
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
+                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies }}')
+                fi
     
                 # Write the updated report back to the file inside the dependency_report folder
                 echo "$updated_report" > dependency_report/report.json
