@@ -125,8 +125,10 @@ jobs:
               run: |
                 repo_name=$(jq -r '.name' package.json)
                 dependencies=$(jq '.dependencies' package.json)
+                devDependencies=$(jq '.devDependencies' package.json)
                 echo "repo_name=$repo_name" >> $GITHUB_ENV
                 echo "dependencies=$dependencies" >> $GITHUB_ENV
+                echo "devDependencies=$devDependencies" >> $GITHUB_ENV
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
@@ -150,13 +152,13 @@ jobs:
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
-                # Update the dependencies for the specific repository name
-                updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" \
-                    '.[$repo_name].dependencies = $dependencies')
+                    # Update the dependencies for the specific repository name
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" \
+                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies }')
                 else
-                # Add a new entry for the repository in report.json
-                updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" \
-                    '. + {($repo_name): { "dependencies": $dependencies }}')
+                    # Add a new entry for the repository in report.json
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies" \
+                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies }}')
                 fi
     
                 # Write the updated report back to the file inside the dependency_report folder
