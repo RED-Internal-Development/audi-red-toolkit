@@ -125,7 +125,7 @@ jobs:
                 repo_name=$(jq -r '.name' package.json)
                 dependencies=$(jq '.dependencies' package.json)
                 devDependencies=$(jq '.devDependencies' package.json)
-                echo "repo_name=$repo_name" >> $GITHUB_ENV
+                echo "::set-output name=repo_name::$repo_name"
                 echo "::set-output name=dependencies::$dependencies"
                 echo "::set-output name=devDependencies::$devDependencies"
 
@@ -146,6 +146,7 @@ jobs:
                     echo "{}" > dependency_report/report.json
                 fi
 
+                repo_name="${{ steps.extract-deps.outputs.repo_name }}"
                 dependencies="${{ steps.extract-deps.outputs.dependencies }}"
                 devDependencies="${{ steps.extract-deps.outputs.devDependencies }}"
     
