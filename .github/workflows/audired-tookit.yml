@@ -159,11 +159,11 @@ jobs:
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
                     updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
-                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies }')
+                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository }')
                 else
                     # Add a new entry for the repository in report.json
                     updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
-                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies }}')
+                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository }}')
                 fi
     
                 # Write the updated report back to the file inside the dependency_report folder
@@ -174,8 +174,13 @@ jobs:
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add dependency_report/report.json
-                git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
-                git push || (echo "No changes to commit" && true)
+                if ! git diff-index --quiet HEAD; then
+                    echo "commiting changes"
+                    git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
+                    git push
+                else
+                    echo "No changes to push"
+                fi
 
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
