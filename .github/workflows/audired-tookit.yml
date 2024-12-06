@@ -116,18 +116,20 @@ jobs:
     dependency_sync:
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout repository A
+            - name: Checkout repository 
               uses: actions/checkout@v3
 
-            - name: Extract dependencies from package.json of repository A
+            - name: Extract dependencies from package.json of local repository
               id: extract-deps
               run: |
                 repo_name=$(jq -r '.name' package.json)
                 dependencies=$(jq '.dependencies' package.json | jq tostring)
                 devDependencies=$(jq '.devDependencies' package.json | jq tostring)
+                repository=$(jq '.repository' package.json | jq tostring)
                 echo "repo_name=$repo_name" >> $GITHUB_ENV
                 echo "dependencies=$dependencies" >> $GITHUB_ENV
                 echo "devDependencies=$devDependencies" >> $GITHUB_ENV
+                echo "repository=$repository" >> $GITHUB_ENV
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
@@ -151,15 +153,16 @@ jobs:
 
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
+                repository_parsed=$(echo "$repository" | jq fromjson)
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
                         '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies }')
                 else
                     # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
                         '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies }}')
                 fi
     
