@@ -175,10 +175,13 @@ jobs:
                 git config --global user.name ${{ inputs.user_name }}
                 git add dependency_report/report.json
                 if [ $(git status --porcelain | wc -l) -eq "0" ]; then
+                    echo "No changes to commit"
+                    exit 0
+                else
                     git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
                     git push
-                else
-                    echo "No changes to commit"
+                fi
+
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
