@@ -70,48 +70,48 @@ on:
             description: 'Key used to authenticate to scanoss for open source checks'
 
 jobs:
-    # doc_sync:
-    #     runs-on: ubuntu-latest
-    #     if: ${{ inputs.enable_doc_sync }}
-    #     steps:
-    #     - name: Check if branch exists
-    #       id: check_branch
-    #       shell: bash
-    #       run: |
-    #         BRANCH_NAME="${{ inputs.destination_branch }}"
-    #         DESTINATION_REPO="${{ inputs.destination_repo }}"
-    #         API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
+    doc_sync:
+        runs-on: ubuntu-latest
+        if: ${{ inputs.enable_doc_sync }}
+        steps:
+        - name: Check if branch exists
+          id: check_branch
+          shell: bash
+          run: |
+            BRANCH_NAME="${{ inputs.destination_branch }}"
+            DESTINATION_REPO="${{ inputs.destination_repo }}"
+            API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
 
-    #         # Query the GitHub API
-    #         response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
+            # Query the GitHub API
+            response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
 
-    #         if [ "$response" -eq 200 ]; then
-    #             echo "Branch '${BRANCH_NAME}' exists."
-    #             echo "branch_exists=true" >> $GITHUB_OUTPUT
-    #         else
-    #             echo "Branch '${BRANCH_NAME}' does not exist."
-    #             echo "branch_exists=false" >> $GITHUB_OUTPUT
-    #         fi
+            if [ "$response" -eq 200 ]; then
+                echo "Branch '${BRANCH_NAME}' exists."
+                echo "branch_exists=true" >> $GITHUB_OUTPUT
+            else
+                echo "Branch '${BRANCH_NAME}' does not exist."
+                echo "branch_exists=false" >> $GITHUB_OUTPUT
+            fi
 
-    #     - name: Checkout
-    #       uses: actions/checkout@v2
+        - name: Checkout
+          uses: actions/checkout@v2
         
-    #     - name: Eslint check for Docusaurus build compatibility
-    #       run: npx docusaurus-mdx-checker
+        - name: Eslint check for Docusaurus build compatibility
+          run: npx docusaurus-mdx-checker
 
-    #     - name: Pushes files from Feature App to Audi RED Portal for syndication
-    #       uses: RED-Internal-Development/audred_docsync_action@main
-    #       env:
-    #         API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
-    #       with:
-    #         source_file: ${{ inputs.source_file }}
-    #         destination_repo: ${{ inputs.destination_repo }}
-    #         destination_folder: ${{ inputs.destination_folder }}
-    #         destination_branch: ${{ inputs.destination_branch }}
-    #         user_email: ${{ inputs.user_email }}
-    #         user_name: ${{ inputs.user_name }}
-    #         user_actor: ${{ github.actor }}
-    #         destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
+        - name: Pushes files from Feature App to Audi RED Portal for syndication
+          uses: RED-Internal-Development/audred_docsync_action@main
+          env:
+            API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
+          with:
+            source_file: ${{ inputs.source_file }}
+            destination_repo: ${{ inputs.destination_repo }}
+            destination_folder: ${{ inputs.destination_folder }}
+            destination_branch: ${{ inputs.destination_branch }}
+            user_email: ${{ inputs.user_email }}
+            user_name: ${{ inputs.user_name }}
+            user_actor: ${{ github.actor }}
+            destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
    
     dependency_sync:
         runs-on: ubuntu-latest
@@ -185,21 +185,21 @@ jobs:
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # scanoss:
-    #     runs-on: ubuntu-latest
-    #     if: ${{ inputs.enable_scanoss }}
-    #     env:
-    #         SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
-    #     steps:
-    #     - name: Checkout
-    #       uses: actions/checkout@v4
+    scanoss:
+        runs-on: ubuntu-latest
+        if: ${{ inputs.enable_scanoss }}
+        env:
+            SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v4
 
-    #     - name: Run SCANOSS Code Scan
-    #       id: scanoss-code-scan-step
-    #       uses: scanoss/gha-code-scan@v0.2.0
-    #       with:
-    #         api.key: ${{ secrets.SCANOSS_KEY }}
-    #         api.url: https://api.scanoss.com/scan/direct
-    #         dependencies.enabled: true
-    #         policies.halt_on_failure: false
-    #         policies: copyleft, undeclared
+        - name: Run SCANOSS Code Scan
+          id: scanoss-code-scan-step
+          uses: scanoss/gha-code-scan@v0.2.0
+          with:
+            api.key: ${{ secrets.SCANOSS_KEY }}
+            api.url: https://api.scanoss.com/scan/direct
+            dependencies.enabled: true
+            policies.halt_on_failure: false
+            policies: copyleft, undeclared
