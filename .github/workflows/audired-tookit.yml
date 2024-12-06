@@ -174,7 +174,13 @@ jobs:
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add dependency_report/report.json
-                git diff-index --quiet HEAD || (git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}" && git push)
+                if ! git diff-index --quiet HEAD; then
+                    echo "commiting changes"
+                    git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
+                    git push
+                else
+                    echo "No changes to push"
+                fi
 
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
