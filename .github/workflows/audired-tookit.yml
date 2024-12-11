@@ -257,4 +257,4 @@ jobs:
             api.url: https://api.scanoss.com/scan/direct
             dependencies.enabled: true
             policies.halt_on_failure: false
-        #     policies: copyleft, undeclared
+            policies: copyleft, undeclared
