@@ -132,11 +132,12 @@ jobs:
                 cache: yarn
                 registry-url: https://npm.pkg.github.com
                 always-auth: true
-              env:
-                NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         
             - name: Install dependencies
-              run: npm install
+              run: |
+                yarn install --frozen-lockfile
+              env:
+                NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         
             - name: Run Jest tests with coverage
               run: npx jest --coverage --coverageReporters="json-summary"
