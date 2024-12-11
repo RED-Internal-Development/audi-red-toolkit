@@ -136,11 +136,12 @@ jobs:
             - name: Install dependencies
               run: |
                 yarn install --frozen-lockfile
+                yarn install --frozen-lockfile --cwd src/api
               env:
                 NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         
             - name: Run Jest tests with coverage
-              run: npx jest --coverage --coverageReporters="json-summary"
+              run: npx jest --coverage --coverageReporters="json-summary" --config=jest.config.js
         
             - name: Check coverage percentage
               run: |
