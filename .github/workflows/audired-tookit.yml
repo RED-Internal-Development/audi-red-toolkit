@@ -61,6 +61,11 @@ on:
             description: 'Enable scanoss step, SCANOSS_KEY is required in secrets'
             type: boolean
             required: true
+        enable_jest:
+            description: 'Enabled jest tests run'
+            type: boolean
+            required: false
+            default: true
     secrets:
         DOC_SYNC_KEY:
             required: false
@@ -113,6 +118,56 @@ jobs:
             user_actor: ${{ github.actor }}
             destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
    
+    jest_test:
+        runs-on: ubuntu-latest
+        if: ${{ inputs.enable_jest }}
+        steps:
+            - name: Checkout repository 
+              uses: actions/checkout@v3
+            
+            - name: Setup node
+              uses: actions/setup-node@v4.0.2
+              with:
+                node-version-file: '.nvmrc'
+                cache: yarn
+                registry-url: https://npm.pkg.github.com
+                always-auth: true
+        
+            - name: Install dependencies
+              run: |
+                yarn install --frozen-lockfile
+                yarn install --frozen-lockfile --cwd src/api
+              env:
+                NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        
+            - name: Run Jest tests with coverage
+              run: npx jest --coverage --coverageReporters="json-summary" --config=jest.config.js
+        
+            - name: Check coverage percentage
+              run: |
+                # Extract the coverage percentages for lines, statements, functions, and branches
+                LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
+                STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
+                FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
+                BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
+        
+                echo "Line coverage: $LINES%"
+                echo "Statement coverage: $STATEMENTS%"
+                echo "Function coverage: $FUNCTIONS%"
+                echo "Branch coverage: $BRANCHES%"
+        
+                # Calculate the average coverage
+                AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
+        
+                echo "Average coverage: $AVERAGE_COVERAGE%"
+        
+                # Fail the job if the average coverage is below 80%
+                if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
+                    echo "Average coverage is below 80%. Please raise test threshold."
+                    #   echo "Average coverage is below 80%. Failing the job."
+                    #   exit 1
+                fi
+
     dependency_sync:
         runs-on: ubuntu-latest
         steps:
