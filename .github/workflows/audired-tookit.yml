@@ -212,7 +212,7 @@ jobs:
         if: always()
         needs: scanoss
         env:
-            SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
+            SCANOSS_RESULTS: ${{ fromJSON(needs.scanoss.outputs.scan_results) }}
         steps:
             - name: Checkout repository 
               uses: actions/checkout@v3
