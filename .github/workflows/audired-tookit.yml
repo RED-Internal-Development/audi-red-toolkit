@@ -168,8 +168,44 @@ jobs:
                     #   exit 1
                 fi
 
+    scanoss:
+        runs-on: ubuntu-latest
+        if: ${{ inputs.enable_scanoss }}
+        env:
+            SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Run SCANOSS Code Scan
+          id: scanoss-code-scan-step
+          uses: scanoss/gha-code-scan@v0.2.0
+          with:
+            api.key: ${{ secrets.SCANOSS_KEY }}
+            api.url: https://api.scanoss.com/scan/direct
+            dependencies.enabled: true
+            policies.halt_on_failure: false
+            policies: copyleft, undeclared
+        
+        - name: Add results to github environment variable
+          run: |
+            # Read the results.json file
+            result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
+            
+            # Parse the JSON and extract the dependencies from the first package.json entry
+            dependencies=$(jq '.package.json.[0].dependencies' "$result_file")
+
+            # Trim the result to ensure no extra spaces are included
+            dependencies=$(echo "$dependencies" | jq -r '.')
+
+            # Set the dependencies as a GitHub environment variable
+            echo "scan_results=$dependencies" >> $GITHUB_OUTPUT
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     dependency_sync:
         runs-on: ubuntu-latest
+        needs: scanoss
         steps:
             - name: Checkout repository 
               uses: actions/checkout@v3
@@ -185,6 +221,10 @@ jobs:
                 echo "dependencies=$dependencies" >> $GITHUB_ENV
                 echo "devDependencies=$devDependencies" >> $GITHUB_ENV
                 echo "repository=$repository" >> $GITHUB_ENV
+            
+            - name: Get scanoss results for report
+              run: |
+                echo "Results are: ${{needs.scanoss.outputs.scan_results}}"
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
@@ -236,25 +276,3 @@ jobs:
                 else
                     echo "No changes to push"
                 fi
-
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    scanoss:
-        runs-on: ubuntu-latest
-        if: ${{ inputs.enable_scanoss }}
-        env:
-            SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
-        steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-
-        - name: Run SCANOSS Code Scan
-          id: scanoss-code-scan-step
-          uses: scanoss/gha-code-scan@v0.2.0
-          with:
-            api.key: ${{ secrets.SCANOSS_KEY }}
-            api.url: https://api.scanoss.com/scan/direct
-            dependencies.enabled: true
-            policies.halt_on_failure: false
-            policies: copyleft, undeclared
