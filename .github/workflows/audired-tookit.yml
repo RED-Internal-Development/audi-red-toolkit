@@ -209,9 +209,10 @@ jobs:
 
     dependency_sync:
         runs-on: ubuntu-latest
+        if: always()
         needs: scanoss
         env:
-            TEST: ${{ needs.scanoss.outputs.scan_results }}
+            SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
             - name: Checkout repository 
               uses: actions/checkout@v3
@@ -229,9 +230,10 @@ jobs:
                 echo "repository=$repository" >> $GITHUB_ENV
             
             - name: Get scanoss results for report
+              if: ${{ env.SCANOSS_RESULTS }}
               run: |
-                echo "Results TEST are: ${{ env.TEST }}"
-                echo "Results are: ${{ needs.scanoss.outputs.scan_results }}"
+                echo "Results TEST are: ${{ env.SCANOSS_RESULTS }}"
+
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
@@ -256,16 +258,23 @@ jobs:
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
+                scan_results_parsed={}
+
+                if [ -z "${SCANOSS_RESULTS}" ]; then
+                    echo "No scanoss results to include"
+                else
+                    scan_results_parsed=$(echo "${{ env.SCANOSS_RESULTS }}" | jq fromjson)
+                fi
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
-                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository }')
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" \
+                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results }')
                 else
                     # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
-                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository }}')
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" \
+                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results }}')
                 fi
     
                 # Write the updated report back to the file inside the dependency_report folder
