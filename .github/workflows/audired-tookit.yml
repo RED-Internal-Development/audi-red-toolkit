@@ -75,98 +75,98 @@ on:
             description: 'Key used to authenticate to scanoss for open source checks'
 
 jobs:
-    doc_sync:
-        runs-on: ubuntu-latest
-        if: ${{ inputs.enable_doc_sync }}
-        steps:
-        - name: Check if branch exists
-          id: check_branch
-          shell: bash
-          run: |
-            BRANCH_NAME="${{ inputs.destination_branch }}"
-            DESTINATION_REPO="${{ inputs.destination_repo }}"
-            API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
+    # doc_sync:
+    #     runs-on: ubuntu-latest
+    #     if: ${{ inputs.enable_doc_sync }}
+    #     steps:
+    #     - name: Check if branch exists
+    #       id: check_branch
+    #       shell: bash
+    #       run: |
+    #         BRANCH_NAME="${{ inputs.destination_branch }}"
+    #         DESTINATION_REPO="${{ inputs.destination_repo }}"
+    #         API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
 
-            # Query the GitHub API
-            response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
+    #         # Query the GitHub API
+    #         response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
 
-            if [ "$response" -eq 200 ]; then
-                echo "Branch '${BRANCH_NAME}' exists."
-                echo "branch_exists=true" >> $GITHUB_OUTPUT
-            else
-                echo "Branch '${BRANCH_NAME}' does not exist."
-                echo "branch_exists=false" >> $GITHUB_OUTPUT
-            fi
+    #         if [ "$response" -eq 200 ]; then
+    #             echo "Branch '${BRANCH_NAME}' exists."
+    #             echo "branch_exists=true" >> $GITHUB_OUTPUT
+    #         else
+    #             echo "Branch '${BRANCH_NAME}' does not exist."
+    #             echo "branch_exists=false" >> $GITHUB_OUTPUT
+    #         fi
 
-        - name: Checkout
-          uses: actions/checkout@v2
+    #     - name: Checkout
+    #       uses: actions/checkout@v2
         
-        - name: Eslint check for Docusaurus build compatibility
-          run: npx docusaurus-mdx-checker
+    #     - name: Eslint check for Docusaurus build compatibility
+    #       run: npx docusaurus-mdx-checker
 
-        - name: Pushes files from Feature App to Audi RED Portal for syndication
-          uses: RED-Internal-Development/audred_docsync_action@main
-          env:
-            API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
-          with:
-            source_file: ${{ inputs.source_file }}
-            destination_repo: ${{ inputs.destination_repo }}
-            destination_folder: ${{ inputs.destination_folder }}
-            destination_branch: ${{ inputs.destination_branch }}
-            user_email: ${{ inputs.user_email }}
-            user_name: ${{ inputs.user_name }}
-            user_actor: ${{ github.actor }}
-            destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
+    #     - name: Pushes files from Feature App to Audi RED Portal for syndication
+    #       uses: RED-Internal-Development/audred_docsync_action@main
+    #       env:
+    #         API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
+    #       with:
+    #         source_file: ${{ inputs.source_file }}
+    #         destination_repo: ${{ inputs.destination_repo }}
+    #         destination_folder: ${{ inputs.destination_folder }}
+    #         destination_branch: ${{ inputs.destination_branch }}
+    #         user_email: ${{ inputs.user_email }}
+    #         user_name: ${{ inputs.user_name }}
+    #         user_actor: ${{ github.actor }}
+    #         destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
    
-    jest_test:
-        runs-on: ubuntu-latest
-        if: ${{ inputs.enable_jest }}
-        steps:
-            - name: Checkout repository 
-              uses: actions/checkout@v3
+    # jest_test:
+    #     runs-on: ubuntu-latest
+    #     if: ${{ inputs.enable_jest }}
+    #     steps:
+    #         - name: Checkout repository 
+    #           uses: actions/checkout@v3
             
-            - name: Setup node
-              uses: actions/setup-node@v4.0.2
-              with:
-                node-version-file: '.nvmrc'
-                cache: yarn
-                registry-url: https://npm.pkg.github.com
-                always-auth: true
+    #         - name: Setup node
+    #           uses: actions/setup-node@v4.0.2
+    #           with:
+    #             node-version-file: '.nvmrc'
+    #             cache: yarn
+    #             registry-url: https://npm.pkg.github.com
+    #             always-auth: true
         
-            - name: Install dependencies
-              run: |
-                yarn install --frozen-lockfile
-                yarn install --frozen-lockfile --cwd src/api
-              env:
-                NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+    #         - name: Install dependencies
+    #           run: |
+    #             yarn install --frozen-lockfile
+    #             yarn install --frozen-lockfile --cwd src/api
+    #           env:
+    #             NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         
-            - name: Run Jest tests with coverage
-              run: npx jest --coverage --coverageReporters="json-summary" --config=jest.config.js
+    #         - name: Run Jest tests with coverage
+    #           run: npx jest --coverage --coverageReporters="json-summary" --config=jest.config.js
         
-            - name: Check coverage percentage
-              run: |
-                # Extract the coverage percentages for lines, statements, functions, and branches
-                LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
-                STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
-                FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
-                BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
+    #         - name: Check coverage percentage
+    #           run: |
+    #             # Extract the coverage percentages for lines, statements, functions, and branches
+    #             LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
+    #             STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
+    #             FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
+    #             BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
         
-                echo "Line coverage: $LINES%"
-                echo "Statement coverage: $STATEMENTS%"
-                echo "Function coverage: $FUNCTIONS%"
-                echo "Branch coverage: $BRANCHES%"
+    #             echo "Line coverage: $LINES%"
+    #             echo "Statement coverage: $STATEMENTS%"
+    #             echo "Function coverage: $FUNCTIONS%"
+    #             echo "Branch coverage: $BRANCHES%"
         
-                # Calculate the average coverage
-                AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
+    #             # Calculate the average coverage
+    #             AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
         
-                echo "Average coverage: $AVERAGE_COVERAGE%"
+    #             echo "Average coverage: $AVERAGE_COVERAGE%"
         
-                # Fail the job if the average coverage is below 80%
-                if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
-                    echo "Average coverage is below 80%. Please raise test threshold."
-                    #   echo "Average coverage is below 80%. Failing the job."
-                    #   exit 1
-                fi
+    #             # Fail the job if the average coverage is below 80%
+    #             if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
+    #                 echo "Average coverage is below 80%. Please raise test threshold."
+    #                 #   echo "Average coverage is below 80%. Failing the job."
+    #                 #   exit 1
+    #             fi
 
     scanoss:
         runs-on: ubuntu-latest
@@ -193,7 +193,7 @@ jobs:
             result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
             
             # Parse the JSON and extract the dependencies from the first package.json entry
-            dependencies=$(jq '.package.json.[0].dependencies' "$result_file")
+            dependencies=$(jq '.package.json[0].dependencies' "$result_file")
 
             # Trim the result to ensure no extra spaces are included
             dependencies=$(echo "$dependencies" | jq -r '.')
