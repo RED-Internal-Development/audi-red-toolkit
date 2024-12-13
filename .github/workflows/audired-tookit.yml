@@ -196,13 +196,9 @@ jobs:
             result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
             
             # Parse the JSON and extract the dependencies from the first package.json entry
-            dependencies=$(jq '."package.json"[0].dependencies' "$result_file" | jq tostring)
-
-            # Trim the result to ensure no extra spaces are included
-            dependencies=$(echo "$dependencies" | jq -r '.')
+            dependencies=$(jq '."package.json"[0].dependencies' "$result_file")
 
             # Set the dependencies as a GitHub environment output
-            echo "dependencies: $dependencies"
             echo "scan_results=$dependencies" >> $GITHUB_OUTPUT
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -212,7 +208,7 @@ jobs:
         if: always()
         needs: scanoss
         env:
-            SCANOSS_RESULTS: ${{ fromJSON(needs.scanoss.outputs.scan_results) }}
+            SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
             - name: Checkout repository 
               uses: actions/checkout@v3
