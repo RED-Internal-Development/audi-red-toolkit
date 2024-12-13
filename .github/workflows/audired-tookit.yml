@@ -196,7 +196,7 @@ jobs:
             result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
             
             # Parse the JSON and extract the dependencies from the first package.json entry
-            dependencies=$(jq '."package.json"[0].dependencies' "$result_file")
+            dependencies=$(jq '."package.json"[0].dependencies' "$result_file" | jq tostring)
 
             # Set the dependencies as a GitHub environment output
             echo "scan_results=$dependencies" >> $GITHUB_OUTPUT
@@ -259,7 +259,9 @@ jobs:
                 if [ -z "${{ env.SCANOSS_RESULTS }}" ]; then
                     echo "No scanoss results to include"
                 else
-                    scan_results_parsed="${{ env.SCANOSS_RESULTS }}"
+                    echo "About to parse!"
+                    scan_results_parsed=$(echo ${{ env.SCANOSS_RESULTS }} | jq fromjson)
+                    echo "parsed: $scan_results_parsed"
                 fi
     
                 # Check if the repository name is already in the report, if so update the dependencies
