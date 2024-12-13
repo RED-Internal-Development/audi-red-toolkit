@@ -224,12 +224,6 @@ jobs:
                 echo "dependencies=$dependencies" >> $GITHUB_ENV
                 echo "devDependencies=$devDependencies" >> $GITHUB_ENV
                 echo "repository=$repository" >> $GITHUB_ENV
-            
-            - name: Get scanoss results for report
-              if: ${{ env.SCANOSS_RESULTS }}
-              run: |
-                echo "Results TEST are: ${{ env.SCANOSS_RESULTS }}"
-
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
