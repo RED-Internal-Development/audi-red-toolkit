@@ -258,12 +258,12 @@ jobs:
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
-                scan_results_parsed={}
+                scan_results_parsed=[]
 
                 if [ -z "${{ env.SCANOSS_RESULTS }}" ]; then
                     echo "No scanoss results to include"
                 else
-                    scan_results_parsed=$(echo "${{ env.SCANOSS_RESULTS }}" | jq fromjson)
+                    scan_results_parsed="${{ env.SCANOSS_RESULTS }}"
                 fi
     
                 # Check if the repository name is already in the report, if so update the dependencies
