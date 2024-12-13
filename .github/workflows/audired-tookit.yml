@@ -254,7 +254,7 @@ jobs:
                     echo "No scanoss results to include"
                 else
                     echo "About to parse!"
-                    scan_results_parsed=$(echo ${{ env.SCANOSS_RESULTS }} | jq fromjson)
+                    scan_results_parsed=$(echo "${{ env.SCANOSS_RESULTS }}" | jq fromjson)
                     echo "parsed: $scan_results_parsed"
                 fi
     
