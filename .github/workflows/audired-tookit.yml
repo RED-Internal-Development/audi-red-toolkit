@@ -196,12 +196,12 @@ jobs:
             result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
             
             # Parse the JSON and extract the dependencies from the first package.json entry
-            dependencies=$(jq '."package.json"[0].dependencies' "$result_file")
+            dependencies=$(jq '."package.json"[0].dependencies' "$result_file" | jq tostring)
 
             # Trim the result to ensure no extra spaces are included
             dependencies=$(echo "$dependencies" | jq -r '.')
 
-            # Set the dependencies as a GitHub environment variable
+            # Set the dependencies as a GitHub environment output
             echo "dependencies: $dependencies"
             echo "scan_results=$dependencies" >> $GITHUB_OUTPUT
           env:
