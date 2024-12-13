@@ -171,6 +171,8 @@ jobs:
     scanoss:
         runs-on: ubuntu-latest
         if: ${{ inputs.enable_scanoss }}
+        outputs:
+            scan_results: ${{ steps.set-scan-results-output.outputs.scan_results }}
         env:
             SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
         steps:
@@ -188,6 +190,7 @@ jobs:
             policies: copyleft, undeclared
         
         - name: Add results to github environment variable
+          id: set-scan-results-output
           run: |
             # Read the results.json file
             result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
@@ -199,6 +202,7 @@ jobs:
             dependencies=$(echo "$dependencies" | jq -r '.')
 
             # Set the dependencies as a GitHub environment variable
+            echo "dependencies: $dependencies"
             echo "scan_results=$dependencies" >> $GITHUB_OUTPUT
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -206,6 +210,8 @@ jobs:
     dependency_sync:
         runs-on: ubuntu-latest
         needs: scanoss
+        env:
+            TEST: ${{ needs.scanoss.outputs.scan_results }}
         steps:
             - name: Checkout repository 
               uses: actions/checkout@v3
@@ -224,7 +230,8 @@ jobs:
             
             - name: Get scanoss results for report
               run: |
-                echo "Results are: ${{needs.scanoss.outputs.scan_results}}"
+                echo "Results TEST are: ${{ env.TEST }}"
+                echo "Results are: ${{ needs.scanoss.outputs.scan_results }}"
 
             - name: Checkout AudiRed Doc Sync repository 
               uses: actions/checkout@v3
