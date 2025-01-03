@@ -168,8 +168,47 @@ jobs:
                     #   exit 1
                 fi
 
+    scanoss:
+        runs-on: ubuntu-latest
+        if: ${{ inputs.enable_scanoss }}
+        outputs:
+            scan_results: ${{ steps.set-scan-results-output.outputs.scan_results }}
+        env:
+            SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Run SCANOSS Code Scan
+          id: scanoss-code-scan-step
+          uses: scanoss/gha-code-scan@v0.2.0
+          with:
+            api.key: ${{ secrets.SCANOSS_KEY }}
+            api.url: https://api.scanoss.com/scan/direct
+            dependencies.enabled: true
+            policies.halt_on_failure: false
+            policies: copyleft, undeclared
+        
+        - name: Add results to github environment variable
+          id: set-scan-results-output
+          run: |
+            # Read the results.json file
+            result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
+            
+            # Parse the JSON and extract the dependencies from the first package.json entry
+            dependencies=$(jq '."package.json"[0].dependencies' "$result_file" | jq tostring)
+
+            # Set the dependencies as a GitHub environment output
+            echo "scan_results=$dependencies" >> $GITHUB_OUTPUT
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     dependency_sync:
         runs-on: ubuntu-latest
+        if: always()
+        needs: scanoss
+        env:
+            SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
             - name: Checkout repository 
               uses: actions/checkout@v3
@@ -209,16 +248,23 @@ jobs:
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
+                scan_results_parsed=[]
+
+                if [ -z "$SCANOSS_RESULTS" ]; then
+                    echo "No scanoss results to include"
+                else
+                    scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
+                fi
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
-                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository }')
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" \
+                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results }')
                 else
                     # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" \
-                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository }}')
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" \
+                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results }}')
                 fi
     
                 # Write the updated report back to the file inside the dependency_report folder
@@ -236,25 +282,3 @@ jobs:
                 else
                     echo "No changes to push"
                 fi
-
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    scanoss:
-        runs-on: ubuntu-latest
-        if: ${{ inputs.enable_scanoss }}
-        env:
-            SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
-        steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-
-        - name: Run SCANOSS Code Scan
-          id: scanoss-code-scan-step
-          uses: scanoss/gha-code-scan@v0.2.0
-          with:
-            api.key: ${{ secrets.SCANOSS_KEY }}
-            api.url: https://api.scanoss.com/scan/direct
-            dependencies.enabled: true
-            policies.halt_on_failure: false
-            policies: copyleft, undeclared
