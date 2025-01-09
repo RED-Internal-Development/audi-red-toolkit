@@ -102,7 +102,9 @@ jobs:
           uses: actions/checkout@v2
         
         - name: Eslint check for Docusaurus build compatibility
-          run: npx docusaurus-mdx-checker
+          run: |
+            cd ${{ inputs.source_file }}
+            npx docusaurus-mdx-checker
 
         - name: Pushes files from Feature App to Audi RED Portal for syndication
           uses: RED-Internal-Development/audred_docsync_action@main
