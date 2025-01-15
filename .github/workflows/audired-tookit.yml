@@ -230,7 +230,7 @@ jobs:
                   while IFS= read -r line; do
                     dependabot_array+=("$line")
                   done <<< "$PRS"
-                  echo "dependabot_array=${dependabot_array[*]}" >> $GITHUB_ENV
+                  echo "dependabot_array=${dependabot_array[@]}" >> $GITHUB_ENV
                 fi
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
