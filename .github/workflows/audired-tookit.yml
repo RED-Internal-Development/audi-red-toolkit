@@ -227,9 +227,9 @@ jobs:
                   echo "$PRS"
 
                   dependabot_array=()
-                  while IFS= read -r PRS; do
-                    dependabot_array+=("$PRS")
-                  done <<< "$dependabot_prs"
+                  while IFS= read -r line; do
+                    dependabot_array+=("$line")
+                  done <<< "$PRS"
                   echo "dependabot_array=${dependabot_array[@]}" >> $GITHUB_ENV
                 fi
               env:
