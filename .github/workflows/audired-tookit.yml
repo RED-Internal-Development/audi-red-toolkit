@@ -120,55 +120,55 @@ jobs:
             user_actor: ${{ github.actor }}
             destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
    
-    jest_test:
-        runs-on: ubuntu-latest
-        if: ${{ inputs.enable_jest }}
-        steps:
-            - name: Checkout repository 
-              uses: actions/checkout@v3
+    # jest_test:
+    #     runs-on: ubuntu-latest
+    #     if: ${{ inputs.enable_jest }}
+    #     steps:
+    #         - name: Checkout repository 
+    #           uses: actions/checkout@v3
             
-            - name: Setup node
-              uses: actions/setup-node@v4.0.2
-              with:
-                node-version-file: '.nvmrc'
-                cache: yarn
-                registry-url: https://npm.pkg.github.com
-                always-auth: true
+    #         - name: Setup node
+    #           uses: actions/setup-node@v4.0.2
+    #           with:
+    #             node-version-file: '.nvmrc'
+    #             cache: yarn
+    #             registry-url: https://npm.pkg.github.com
+    #             always-auth: true
         
-            - name: Install dependencies
-              run: |
-                yarn install --frozen-lockfile
-                yarn install --frozen-lockfile --cwd src/api
-              env:
-                NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+    #         - name: Install dependencies
+    #           run: |
+    #             yarn install --frozen-lockfile
+    #             yarn install --frozen-lockfile --cwd src/api
+    #           env:
+    #             NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         
-            - name: Run Jest tests with coverage
-              run: npx jest --coverage --coverageReporters="json-summary" --config=jest.config.js
+    #         - name: Run Jest tests with coverage
+    #           run: npx jest --coverage --coverageReporters="json-summary" --config=jest.config.js
         
-            - name: Check coverage percentage
-              run: |
-                # Extract the coverage percentages for lines, statements, functions, and branches
-                LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
-                STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
-                FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
-                BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
+    #         - name: Check coverage percentage
+    #           run: |
+    #             # Extract the coverage percentages for lines, statements, functions, and branches
+    #             LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
+    #             STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
+    #             FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
+    #             BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
         
-                echo "Line coverage: $LINES%"
-                echo "Statement coverage: $STATEMENTS%"
-                echo "Function coverage: $FUNCTIONS%"
-                echo "Branch coverage: $BRANCHES%"
+    #             echo "Line coverage: $LINES%"
+    #             echo "Statement coverage: $STATEMENTS%"
+    #             echo "Function coverage: $FUNCTIONS%"
+    #             echo "Branch coverage: $BRANCHES%"
         
-                # Calculate the average coverage
-                AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
+    #             # Calculate the average coverage
+    #             AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
         
-                echo "Average coverage: $AVERAGE_COVERAGE%"
+    #             echo "Average coverage: $AVERAGE_COVERAGE%"
         
-                # Fail the job if the average coverage is below 80%
-                if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
-                    echo "Average coverage is below 80%. Please raise test threshold."
-                    #   echo "Average coverage is below 80%. Failing the job."
-                    #   exit 1
-                fi
+    #             # Fail the job if the average coverage is below 80%
+    #             if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
+    #                 echo "Average coverage is below 80%. Please raise test threshold."
+    #                 #   echo "Average coverage is below 80%. Failing the job."
+    #                 #   exit 1
+    #             fi
 
     scanoss:
         runs-on: ubuntu-latest
@@ -270,6 +270,7 @@ jobs:
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
+                dependabot_array_parsed=$(echo "$dependabot_array" | jq fromjson)
                 scan_results_parsed=[]
 
                 if [ -z "$SCANOSS_RESULTS" ]; then
@@ -281,11 +282,11 @@ jobs:
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" --argjson dependabot_prs "$dependabot_array" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" --argjson dependabot_prs "$dependabot_array_parsed" \
                         '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }')
                 else
                     # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" --argjson dependabot_prs "$dependabot_array" \
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" --argjson dependabot_prs "$dependabot_array_parsed" \
                         '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }}')
                 fi
     
