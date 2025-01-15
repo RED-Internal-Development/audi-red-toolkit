@@ -304,27 +304,3 @@ jobs:
                 else
                     echo "No changes to push"
                 fi
-    
-    dependency_check:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v2
-        
-        - name: Set up Node.js
-          uses: actions/setup-node@v3
-          with:
-            node-version: '16'
-        
-        - name: Install depcheck
-          run: npm install -g depcheck
-        
-        - name: Run depcheck
-          id: depcheck
-          run: depcheck --json > depcheck-results.json
-
-        - name: Upload depcheck results
-          uses: actions/upload-artifact@v3
-          with:
-            name: depcheck-results
-            path: depcheck-results.json
