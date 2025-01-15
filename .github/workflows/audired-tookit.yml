@@ -271,6 +271,8 @@ jobs:
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
                 echo "dependabot_array: $dependabot_array"
+                dependabot_array_json=$(echo "[\"${dependabot_array// /\",\"}\"]")
+                echo "dependabot_array_json: $dependabot_array_json"
                 scan_results_parsed=[]
 
                 if [ -z "$SCANOSS_RESULTS" ]; then
@@ -287,7 +289,7 @@ jobs:
                         --argjson devDependencies "$dev_dependencies_parsed" \
                         --argjson repository "$repository_parsed" \
                         --argjson scan_results "$scan_results_parsed" \
-                        --argjson dependabot_prs "$dependabot_array" \
+                        --argjson dependabot_prs "$dependabot_array_json" \
                         '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }')
                 else
                     # Add a new entry for the repository in report.json
@@ -296,7 +298,7 @@ jobs:
                         --argjson devDependencies "$dev_dependencies_parsed" \
                         --argjson repository "$repository_parsed" \
                         --argjson scan_results "$scan_results_parsed" \
-                        --argjson dependabot_prs "$dependabot_array" \
+                        --argjson dependabot_prs "$dependabot_array_json" \
                         '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }}')
                 fi
     
