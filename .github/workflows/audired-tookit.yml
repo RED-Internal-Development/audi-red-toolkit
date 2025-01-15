@@ -271,7 +271,7 @@ jobs:
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
                 echo "dependabot_array: $dependabot_array"
-                dependabot_array_json=$(echo "${dependabot_array}" | jq -R -s 'split(" ") | map(select(length > 0))')
+                dependabot_array_json=$(echo "${dependabot_array}" | jq -R -s 'split("\n") | map(select(length > 0))')
                 echo "dependabot_array_json: $dependabot_array_json"
                 scan_results_parsed=[]
 
