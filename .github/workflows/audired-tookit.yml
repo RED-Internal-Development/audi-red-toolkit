@@ -230,7 +230,7 @@ jobs:
                   while IFS= read -r line; do
                     dependabot_array+=("$line")
                   done <<< "$PRS"
-                  echo "dependabot_array=${dependabot_array[@]}" >> $GITHUB_ENV
+                  echo "dependabot_array=${dependabot_array[*]}" >> $GITHUB_ENV
                 fi
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -271,7 +271,7 @@ jobs:
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
                 echo "dependabot_array: $dependabot_array"
-                dependabot_array_json=$(echo "[\"${dependabot_array// /\",\"}\"]")
+                dependabot_array_json=$(echo "[\"${dependabot_array"\]")
                 echo "dependabot_array_json: $dependabot_array_json"
                 scan_results_parsed=[]
 
