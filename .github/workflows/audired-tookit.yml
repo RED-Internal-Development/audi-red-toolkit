@@ -228,9 +228,10 @@ jobs:
 
                   dependabot_array=()
                   while IFS= read -r line; do
-                    dependabot_array+=("$line")
+                    dependabot_array+=("\"$line\"")
                   done <<< "$PRS"
-                  echo "dependabot_array=${dependabot_array[@]}" >> $GITHUB_ENV
+                  DEPENDABOT_PRS=$(IFS=,; echo "${dependabot_array[*]}")
+                  echo "DEPENDABOT_PRS=[${DEPENDABOT_PRS}]" >> $GITHUB_ENV
                 fi
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -270,8 +271,8 @@ jobs:
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
-                echo "dependabot_array: $dependabot_array"
-                dependabot_array_json=$(echo "${dependabot_array}" | jq -R -s 'split("\n") | map(select(length > 0))')
+                echo "dependabot_array: $DEPENDABOT_PRS"
+                dependabot_array_json="${DEPENDABOT_PRS}"
                 echo "dependabot_array_json: $dependabot_array_json"
                 scan_results_parsed=[]
 
