@@ -214,6 +214,27 @@ jobs:
         steps:
             - name: Checkout repository 
               uses: actions/checkout@v3
+      
+            - name: Get all open PRs created by Dependabot
+              run: |
+                PRS=$(gh pr list --author dependabot[bot] --state open --json title,url,createdAt --jq '.[] | "\(.title) - \(.url) - Created at: \(.createdAt)"')
+                
+                if [ -z "$PRS" ]; then
+                  echo "No open Dependabot PRs found."
+                  exit 0
+                else
+                  echo "Open Dependabot PRs:"
+                  echo "$PRS"
+
+                  dependabot_array=()
+                  while IFS= read -r line; do
+                    dependabot_array+=("\"$line\"")
+                  done <<< "$PRS"
+                  DEPENDABOT_PRS=$(IFS=,; echo "${dependabot_array[*]}")
+                  echo "DEPENDABOT_PRS=[${DEPENDABOT_PRS}]" >> $GITHUB_ENV
+                fi
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Extract dependencies from package.json of local repository
               id: extract-deps
@@ -250,6 +271,7 @@ jobs:
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
+                dependabot_array_json=[]
                 scan_results_parsed=[]
 
                 if [ -z "$SCANOSS_RESULTS" ]; then
@@ -257,16 +279,32 @@ jobs:
                 else
                     scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
                 fi
+
+                if [ -z "$DEPENDABOT_PRS" ]; then
+                    echo "No dependabot PR data to include"
+                else
+                    dependabot_array_json="${DEPENDABOT_PRS}"
+                fi
     
                 # Check if the repository name is already in the report, if so update the dependencies
                 if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
                     # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" \
-                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results }')
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
+                        --argjson dependencies "$dependencies_parsed" \
+                        --argjson devDependencies "$dev_dependencies_parsed" \
+                        --argjson repository "$repository_parsed" \
+                        --argjson scan_results "$scan_results_parsed" \
+                        --argjson dependabot_prs "$dependabot_array_json" \
+                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }')
                 else
                     # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" --argjson dependencies "$dependencies_parsed" --argjson devDependencies "$dev_dependencies_parsed" --argjson repository "$repository_parsed" --argjson scan_results "$scan_results_parsed" \
-                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results }}')
+                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
+                        --argjson dependencies "$dependencies_parsed" \
+                        --argjson devDependencies "$dev_dependencies_parsed" \
+                        --argjson repository "$repository_parsed" \
+                        --argjson scan_results "$scan_results_parsed" \
+                        --argjson dependabot_prs "$dependabot_array_json" \
+                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }}')
                 fi
     
                 # Write the updated report back to the file inside the dependency_report folder
