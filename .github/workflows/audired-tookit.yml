@@ -271,15 +271,19 @@ jobs:
                 dependencies_parsed=$(echo "$dependencies" | jq fromjson)
                 dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
                 repository_parsed=$(echo "$repository" | jq fromjson)
-                echo "dependabot_array: $DEPENDABOT_PRS"
-                dependabot_array_json="${DEPENDABOT_PRS}"
-                echo "dependabot_array_json: $dependabot_array_json"
+                dependabot_array_json=[]
                 scan_results_parsed=[]
 
                 if [ -z "$SCANOSS_RESULTS" ]; then
                     echo "No scanoss results to include"
                 else
                     scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
+                fi
+
+                if [ -z "$DEPENDABOT_PRS" ]; then
+                    echo "No dependabot PR data to include"
+                else
+                    dependabot_array_json="${DEPENDABOT_PRS}"
                 fi
     
                 # Check if the repository name is already in the report, if so update the dependencies
