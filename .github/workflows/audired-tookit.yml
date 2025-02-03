@@ -100,7 +100,7 @@ jobs:
           run: npx docusaurus-mdx-checker
 
         - name: Pushes files from Feature App to Audi RED Portal for syndication
-          uses: RED-Internal-Development/audred_docsync_action@main
+          uses: RED-Internal-Development/audred_docsync_action@fixes
           env:
             API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
           with:
