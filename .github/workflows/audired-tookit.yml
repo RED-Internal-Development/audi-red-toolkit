@@ -118,6 +118,7 @@ jobs:
             user_email: ${{ inputs.user_email }}
             user_name: ${{ inputs.user_name }}
             user_actor: ${{ github.actor }}
+            use_rsync: true
             destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
    
     jest_test:
