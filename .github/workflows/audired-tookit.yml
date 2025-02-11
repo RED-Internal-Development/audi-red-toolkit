@@ -111,7 +111,6 @@ jobs:
             find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
                   echo "Checking file: $md_file"
                   
-                  # Extract image links from the markdown file using regex
                   grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
                       image=$(echo "$image" | sed 's/[?#].*$//')
 
@@ -126,7 +125,6 @@ jobs:
   
                       IMAGE_PATH=$(realpath "$IMAGE_PATH")
   
-                      # Check if the image exists in the repository
                       if [[ ! -f "$IMAGE_PATH" ]]; then
                           echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
                           exit 1
