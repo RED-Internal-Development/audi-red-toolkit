@@ -114,8 +114,11 @@ jobs:
                   # Extract image links from the markdown file using regex
                   grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
                       image=$(echo "$image" | sed 's/[?#].*$//')
-  
-                      if [[ "$image" =~ ^/ ]]; then
+
+                      if [[ "$image" =~ ^https?:// ]]; then
+                          echo "Skipping external image: $image"
+                          continue
+                      elif [[ "$image" =~ ^/ ]]; then
                           IMAGE_PATH="$GITHUB_WORKSPACE$image"
                       else
                           IMAGE_PATH="$(dirname "$md_file")/$image"
