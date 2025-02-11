@@ -122,6 +122,7 @@ jobs:
                       fi
   
                       IMAGE_PATH=$(realpath "$IMAGE_PATH")
+                      echo "$IMAGE_PATH"
   
                       # Check if the image exists in the repository
                       if [[ ! -f "$IMAGE_PATH" ]]; then
