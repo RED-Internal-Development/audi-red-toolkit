@@ -108,7 +108,7 @@ jobs:
         
         - name: Check if referenced images exist
           run: |
-              for md_file in **/*.md; do
+            find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
                   echo "Checking file: $md_file"
                   
                   # Extract image links from the markdown file using regex
