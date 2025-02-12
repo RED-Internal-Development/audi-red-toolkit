@@ -17,6 +17,10 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                 name: ${{ inputs.jest_coverage_artifact }}
+                path: coverage
+                github-token: ${{ github.token }}
+                repository: ${{ github.repository }}
+                run-id: ${{ github.event.workflow_run.id }}
 
             - name: Check Jest coverage percentage
               run: |
