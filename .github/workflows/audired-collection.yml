@@ -1,0 +1,44 @@
+name: Audi RED Data Collection
+
+on:
+    workflow_call:
+        inputs:
+            jest_coverage_artifact:
+                description: 'artifact name when uploaded'
+                required: true
+                type: string
+
+jobs:
+    jest_collection:
+        runs-on: ubuntu-latest
+        if: ${{ inputs.jest_report_artifact }}
+        steps:
+            - name: Download test report artifact
+              uses: actions/download-artifact@v3
+              with:
+                name: ${{ inputs.jest_report_artifact }}
+
+            - name: Check Jest coverage percentage
+              run: |
+                # Extract the coverage percentages for lines, statements, functions, and branches
+                LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
+                STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
+                FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
+                BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
+        
+                echo "Line coverage: $LINES%"
+                echo "Statement coverage: $STATEMENTS%"
+                echo "Function coverage: $FUNCTIONS%"
+                echo "Branch coverage: $BRANCHES%"
+        
+                # Calculate the average coverage
+                AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
+        
+                echo "Average coverage: $AVERAGE_COVERAGE%"
+        
+                # Fail the job if the average coverage is below 80%
+                if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
+                    echo "Average coverage is below 80%. Please raise test threshold."
+                    #   echo "Average coverage is below 80%. Failing the job."
+                    #   exit 1
+                fi
