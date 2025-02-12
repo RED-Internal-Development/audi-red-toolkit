@@ -14,7 +14,7 @@ jobs:
         if: ${{ inputs.jest_coverage_artifact }}
         steps:
             - name: Download test report artifact
-              uses: actions/download-artifact@v3
+              uses: actions/download-artifact@v4
               with:
                 name: ${{ inputs.jest_coverage_artifact }}
 
