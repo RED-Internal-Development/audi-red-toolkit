@@ -105,6 +105,34 @@ jobs:
           run: |
             cd ${{ inputs.source_file }}
             npx docusaurus-mdx-checker
+        
+        - name: Check if referenced images exist
+          run: |
+            find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
+                  echo "Checking file: $md_file"
+                  
+                  grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
+                      image=$(echo "$image" | sed 's/[?#].*$//')
+
+                      if [[ "$image" =~ ^https?:// ]]; then
+                          echo "Skipping external image: $image"
+                          continue
+                      elif [[ "$image" =~ ^/ ]]; then
+                          IMAGE_PATH="$GITHUB_WORKSPACE$image"
+                      else
+                          IMAGE_PATH="$(dirname "$md_file")/$image"
+                      fi
+  
+                      IMAGE_PATH=$(realpath "$IMAGE_PATH")
+  
+                      if [[ ! -f "$IMAGE_PATH" ]]; then
+                          echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
+                          exit 1
+                      fi
+                  done
+              done
+  
+              echo "All images are properly referenced and exist!"
 
         - name: Pushes files from Feature App to Audi RED Portal for syndication
           uses: RED-Internal-Development/audred_docsync_action@main
