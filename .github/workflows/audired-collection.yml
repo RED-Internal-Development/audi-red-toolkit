@@ -11,12 +11,12 @@ on:
 jobs:
     jest_collection:
         runs-on: ubuntu-latest
-        if: ${{ inputs.jest_report_artifact }}
+        if: ${{ inputs.jest_coverage_artifact }}
         steps:
             - name: Download test report artifact
               uses: actions/download-artifact@v3
               with:
-                name: ${{ inputs.jest_report_artifact }}
+                name: ${{ inputs.jest_coverage_artifact }}
 
             - name: Check Jest coverage percentage
               run: |
