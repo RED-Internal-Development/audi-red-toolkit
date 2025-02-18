@@ -16,6 +16,7 @@ jobs:
     jest_collection:
         runs-on: ubuntu-latest
         if: ${{ inputs.jest_coverage_artifact }}
+        continue-on-error: true
         steps:
             - name: Download test report artifact
               uses: actions/download-artifact@v4
