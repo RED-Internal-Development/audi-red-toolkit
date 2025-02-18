@@ -4,7 +4,11 @@ on:
     workflow_call:
         inputs:
             jest_coverage_artifact:
-                description: 'artifact name when uploaded'
+                description: 'jest artifact name when uploaded'
+                required: true
+                type: string
+            lighthouse_coverage_artifact:
+                description: 'lighthouse artifact name when uploaded'
                 required: true
                 type: string
 
@@ -24,7 +28,6 @@ jobs:
 
             - name: Check Jest coverage percentage
               run: |
-                # Extract the coverage percentages for lines, statements, functions, and branches
                 LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
                 STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
                 FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
@@ -35,7 +38,6 @@ jobs:
                 echo "Function coverage: $FUNCTIONS%"
                 echo "Branch coverage: $BRANCHES%"
         
-                # Calculate the average coverage
                 AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
         
                 echo "Average coverage: $AVERAGE_COVERAGE%"
@@ -46,3 +48,26 @@ jobs:
                     #   echo "Average coverage is below 80%. Failing the job."
                     #   exit 1
                 fi
+            
+            - name: Download lighthouse report artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: ${{ inputs.lighthouse_coverage_artifact }}
+                path: lighthouse-report
+                github-token: ${{ github.token }}
+                repository: ${{ github.repository }}
+                run-id: ${{ github.event.workflow_run.id }}
+            
+            - name: Check lighthouse coverage percentage
+              run: |
+                # Extract the coverage percentages for lines, statements, functions, and branches
+                RESULTS_ACTUAL=$(jq '.[0].actual' < ./lighthouse-report/assertion-results.json)
+        
+                echo "Results actual: $RESULTS_ACTUAL%"
+        
+                # Fail the job if the average coverage is below 80%
+                # if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
+                #     echo "Average coverage is below 80%. Please raise test threshold."
+                #     #   echo "Average coverage is below 80%. Failing the job."
+                #     #   exit 1
+                # fi
