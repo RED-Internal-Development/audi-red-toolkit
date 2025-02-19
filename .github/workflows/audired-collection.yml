@@ -54,7 +54,7 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                 name: ${{ inputs.lighthouse_coverage_artifact }}
-                path: lighthouse-report
+                path: lighthouse
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
                 run-id: ${{ github.event.workflow_run.id }}
@@ -62,9 +62,11 @@ jobs:
             - name: Check lighthouse coverage percentage
               run: |
                 # Extract the coverage percentages for lines, statements, functions, and branches
-                RESULTS_ACTUAL=$(jq '.[0].actual' < ./lighthouse-report/assertion-results.json)
+                RESULTS_ACTUAL=$(jq '.[0].actual' < ./lighthouse/lighthouse-report/assertion-results.json)
+                RESULTS_ACTUAL_2=$(jq '.[0].actual' < ./lighthouse/assertion-results.json)
         
                 echo "Results actual: $RESULTS_ACTUAL%"
+                echo "Results actual: $RESULTS_ACTUAL_2%"
         
                 # Fail the job if the average coverage is below 80%
                 # if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
