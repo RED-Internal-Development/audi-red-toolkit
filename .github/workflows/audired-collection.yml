@@ -17,6 +17,10 @@ jobs:
         runs-on: ubuntu-latest
         if: ${{ inputs.jest_coverage_artifact }}
         steps:
+            - name: Test
+              run: |
+                echo "TEST ===================="
+
             - name: Download test report artifact
               uses: actions/download-artifact@v4
               with:
