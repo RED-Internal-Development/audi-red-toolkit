@@ -3,26 +3,35 @@ name: Audi RED Data Collection
 on:
     workflow_call:
         inputs:
-            jest_artifact_path:
+            jest_coverage_artifact:
                 description: 'jest artifact name when uploaded'
                 required: false
                 type: string
-            lighthouse_artifact_path:
+            lighthouse_coverage_artifact:
                 description: 'lighthouse artifact name when uploaded'
                 required: false
                 type: string
 
 jobs:
-    audired_collection:
+    jest_collection:
         runs-on: ubuntu-latest
+        if: ${{ inputs.jest_coverage_artifact }}
         steps:
+            - name: Download test report artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: ${{ inputs.jest_coverage_artifact }}
+                path: coverage
+                github-token: ${{ github.token }}
+                repository: ${{ github.repository }}
+                run-id: ${{ github.event.workflow_run.id }}
+
             - name: Check Jest coverage percentage
-              if: ${{ inputs.jest_artifact_path }}
               run: |
-                LINES=$(jq '.total.lines.pct' < ${{ inputs.jest_artifact_path }})
-                STATEMENTS=$(jq '.total.statements.pct' < ${{ inputs.jest_artifact_path }})
-                FUNCTIONS=$(jq '.total.functions.pct' < ${{ inputs.jest_artifact_path }})
-                BRANCHES=$(jq '.total.branches.pct' < ${{ inputs.jest_artifact_path }})
+                LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
+                STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
+                FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
+                BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
         
                 echo "Line coverage: $LINES%"
                 echo "Statement coverage: $STATEMENTS%"
@@ -41,12 +50,24 @@ jobs:
                 else
                     echo "Results actual needs to be higher. Assigning bronze badge."
                 fi
+    
+    lighthouse_collection:
+        runs-on: ubuntu-latest
+        if: ${{ inputs.lighthouse_coverage_artifact }}
+        steps:
+            - name: Download lighthouse report artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: ${{ inputs.lighthouse_coverage_artifact }}
+                path: lighthouse-report
+                github-token: ${{ github.token }}
+                repository: ${{ github.repository }}
+                run-id: ${{ github.event.workflow_run.id }}
             
             - name: Check lighthouse coverage percentage
-              if: ${{ inputs.lighthouse_artifact_path }}
               run: |
                 # Extract the coverage percentages for lines, statements, functions, and branches
-                RESULTS_ACTUAL=$(jq '.[0].actual' < ${{inputs.lighthouse_artifact_path}})
+                RESULTS_ACTUAL=$(jq '.[0].actual' < ./lighthouse-report/assertion-results.json)
 
                 if [ -z  "$RESULTS_ACTUAL" ]; then
                     echo "No lighthouse data available"
