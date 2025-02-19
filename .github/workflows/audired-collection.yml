@@ -3,36 +3,26 @@ name: Audi RED Data Collection
 on:
     workflow_call:
         inputs:
-            jest_coverage_artifact:
+            jest_artifact_path:
                 description: 'jest artifact name when uploaded'
-                required: true
+                required: false
                 type: string
-            lighthouse_coverage_artifact:
+            lighthouse_artifact_path:
                 description: 'lighthouse artifact name when uploaded'
-                required: true
+                required: false
                 type: string
 
 jobs:
-    jest_collection:
+    audired_collection:
         runs-on: ubuntu-latest
-        if: ${{ inputs.jest_coverage_artifact }}
-        continue-on-error: true
         steps:
-            - name: Download test report artifact
-              uses: actions/download-artifact@v4
-              with:
-                name: ${{ inputs.jest_coverage_artifact }}
-                path: coverage
-                github-token: ${{ github.token }}
-                repository: ${{ github.repository }}
-                run-id: ${{ github.event.workflow_run.id }}
-
             - name: Check Jest coverage percentage
+              if: ${{ inputs.jest_artifact_path }}
               run: |
-                LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
-                STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
-                FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
-                BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
+                LINES=$(jq '.total.lines.pct' < ${{ inputs.jest_artifact_path }})
+                STATEMENTS=$(jq '.total.statements.pct' < ${{ inputs.jest_artifact_path }})
+                FUNCTIONS=$(jq '.total.functions.pct' < ${{ inputs.jest_artifact_path }})
+                BRANCHES=$(jq '.total.branches.pct' < ${{ inputs.jest_artifact_path }})
         
                 echo "Line coverage: $LINES%"
                 echo "Statement coverage: $STATEMENTS%"
@@ -44,33 +34,29 @@ jobs:
                 echo "Average coverage: $AVERAGE_COVERAGE%"
         
                 # Fail the job if the average coverage is below 80%
-                if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
-                    echo "Average coverage is below 80%. Please raise test threshold."
-                    #   echo "Average coverage is below 80%. Failing the job."
-                    #   exit 1
+                if (( $(echo "$AVERAGE_COVERAGE > 80" | bc -l) )); then
+                    echo "Wahoo! Average jest test coverage is above 80%. Assigning gold badge"
+                elif (( $(echo "$AVERAGE_COVERAGE > 60" | bc -l) )); then
+                    echo "Good job! Results actual is above 60%. Assigning silver badge"
+                else
+                    echo "Results actual needs to be higher. Assigning bronze badge."
                 fi
             
-            - name: Download lighthouse report artifact
-              uses: actions/download-artifact@v4
-              with:
-                name: ${{ inputs.lighthouse_coverage_artifact }}
-                path: lighthouse
-                github-token: ${{ github.token }}
-                repository: ${{ github.repository }}
-                run-id: ${{ github.event.workflow_run.id }}
-            
             - name: Check lighthouse coverage percentage
+              if: ${{ inputs.lighthouse_artifact_path }}
               run: |
                 # Extract the coverage percentages for lines, statements, functions, and branches
-                RESULTS_ACTUAL=$(jq '.[0].actual' < ./lighthouse/lighthouse-report/assertion-results.json)
-                RESULTS_ACTUAL_2=$(jq '.[0].actual' < ./lighthouse/assertion-results.json)
-        
-                echo "Results actual: $RESULTS_ACTUAL%"
-                echo "Results actual: $RESULTS_ACTUAL_2%"
-        
-                # Fail the job if the average coverage is below 80%
-                # if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
-                #     echo "Average coverage is below 80%. Please raise test threshold."
-                #     #   echo "Average coverage is below 80%. Failing the job."
-                #     #   exit 1
-                # fi
+                RESULTS_ACTUAL=$(jq '.[0].actual' < ${{inputs.lighthouse_artifact_path}})
+
+                if [ -z  "$RESULTS_ACTUAL" ]; then
+                    echo "No lighthouse data available"
+                else
+                    echo "Results actual found: $RESULTS_ACTUAL%"
+                    if (( $(echo "$RESULTS_ACTUAL > 80" | bc -l) )); then
+                        echo "Results actual is above 80%. Assigning gold badge"
+                    elif (( $(echo "$RESULTS_ACTUAL > 60" | bc -l) )); then
+                        echo "Results actual is above 60%. Assigning silver badge"
+                    else
+                        echo "Results actual needs to be higher. Assigning bronze badge."
+                    fi
+                fi
