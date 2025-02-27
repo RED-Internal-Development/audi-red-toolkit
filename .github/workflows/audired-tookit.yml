@@ -162,7 +162,7 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                 name: audired-collection-report
-                path: collection-report
+                path: collection-report.json
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
                 # run-id: ${{ github.event.workflow_run.id }}
@@ -177,7 +177,7 @@ jobs:
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               run: |
                 # Artifact update
-                report_artifact_json=$(cat collection-report/report.json)
+                report_artifact_json=$(cat collection-report.json)
                 repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
                 echo "repo_name: $repo_name"
 
