@@ -210,9 +210,18 @@ jobs:
                     echo "{}" > dependency_report/report_test.json
                 fi
 
+                echo "$report_artifact_json: $report_artifact_json"
+
                 jq --argjson new_report "$report_artifact_json" \
-                  '. * $new_report' dependency_report/report_test.json > tmp_report.json && mv tmp_report.json dependency_report/report_test.json
-                # jq '. as $new_data | . * $new_data' collection-report/report.json dependency_report/report_test.json > dependency_report/report_test.json
+                  '. * $new_report' dependency_report/report_test.json > tmp_report.json
+
+                echo "tmp_report.json: "
+                cat tmp_report.json
+                
+                mv tmp_report.json dependency_report/report_test.json
+
+                echo "dependency_report/report_test.json: "
+                cat dependency_report/report_test.json
 
             - name: Commit and push changes
               run: |
