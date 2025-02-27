@@ -158,6 +158,18 @@ jobs:
         env:
             SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
+            # - name: Create github environment variable for report data
+            #   run: |
+            #     report_artifact_json=$(cat collection-report/report.json)
+            #     echo "report_artifact_json=$report_artifact_json" >> $GITHUB_ENV
+
+            - name: Checkout AudiRed Doc Sync repository
+              uses: actions/checkout@v3
+              with:
+                repository: ${{ inputs.destination_repo }}
+                token: ${{ secrets.DOC_SYNC_KEY }}
+                ref: doc-sync-queue
+            
             - name: Download lighthouse report artifact
               uses: actions/download-artifact@v4
               with:
@@ -166,22 +178,11 @@ jobs:
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
                 # run-id: ${{ github.event.workflow_run.id }}
-            
-            - name: Create github environment variable for report data
-              run: |
-                report_artifact_json=$(cat collection-report/report.json)
-                echo "report_artifact_json=$report_artifact_json" >> $GITHUB_ENV
-
-            - name: Checkout AudiRed Doc Sync repository
-              uses: actions/checkout@v3
-              with:
-                repository: ${{ inputs.destination_repo }}
-                token: ${{ secrets.DOC_SYNC_KEY }}
-                ref: doc-sync-queue
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               run: |
                 # Artifact update
+                report_artifact_json=$(cat collection-report/report.json)
                 repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
                 echo "repo_name: $repo_name"
 
