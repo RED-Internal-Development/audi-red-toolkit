@@ -193,6 +193,7 @@ jobs:
                     scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
                     updated_report_artifact_json=$(echo $report_artifact_json | jq --arg repo_name "$repo_name" --argjson scan_results "$scan_results_parsed" \
                       '.[$repo_name].scan_results = $scan_results')
+                    echo "$updated_report_artifact_json" > collection-report/report.json
                 fi
 
                 # Push artifact report to existing report.json
