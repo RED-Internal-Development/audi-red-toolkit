@@ -206,8 +206,8 @@ jobs:
                     echo "{}" > dependency_report/report_test.json
                 fi
                 
-                echo "Merging artifact json into current report data!"
-                jq --argjson new_report "$report_artifact_json" \
+                echo "Merging artifact json into current report data! $report_artifact_json"
+                echo "$report_artifact_json" | jq --argjson new_report "$report_artifact_json" \
                   '. * $new_report' dependency_report/report_test.json > tmp_report.json && mv tmp_report.json dependency_report/report_test.json
 
             - name: Commit and push changes
