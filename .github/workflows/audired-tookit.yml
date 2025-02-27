@@ -158,11 +158,6 @@ jobs:
         env:
             SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
-            # - name: Create github environment variable for report data
-            #   run: |
-            #     report_artifact_json=$(cat collection-report/report.json)
-            #     echo "report_artifact_json=$report_artifact_json" >> $GITHUB_ENV
-
             - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
               with:
@@ -177,14 +172,13 @@ jobs:
                 path: collection-report
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
-                # run-id: ${{ github.event.workflow_run.id }}
+                run-id: ${{ github.event.workflow_run.id }}
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               run: |
                 # Artifact update
                 report_artifact_json=$(cat collection-report/report.json)
                 repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
-                echo "repo_name: $repo_name"
 
                 scan_results_parsed=[]
                 if [ -z "$SCANOSS_RESULTS" ]; then
@@ -197,34 +191,26 @@ jobs:
                       '.[$repo_name].scan_results = $scan_results')
                     echo "$updated_report_artifact_json" > collection-report/report.json
                     report_artifact_json=$(cat collection-report/report.json)
-                    echo "collection-report/report.json updated"
                 fi
 
                 # Push artifact report to existing report.json
                 mkdir -p dependency_report
     
                 # Check if report.json exists inside the dependency_report folder; if not, create it
-                if [ ! -f dependency_report/report_test.json ]; then
-                    echo "creating new json data file!"
-                    echo "{}" > dependency_report/report_test.json
+                if [ ! -f dependency_report/report.json ]; then
+                    echo "{}" > dependency_report/report.json
                 fi
 
                 jq --argjson new_report "$report_artifact_json" \
                   '. * $new_report' dependency_report/report.json > tmp_report.json
-
-                echo "tmp_report.json: "
-                cat tmp_report.json
                 
-                mv tmp_report.json dependency_report/report_test.json
-
-                echo "dependency_report/report_test.json: "
-                cat dependency_report/report_test.json
+                mv tmp_report.json dependency_report/report.json
 
             - name: Commit and push changes
               run: |
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
-                git add dependency_report/report_test.json
+                git add dependency_report/report.json
                 if ! git diff-index --quiet HEAD; then
                     echo "commiting changes"
                     git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
