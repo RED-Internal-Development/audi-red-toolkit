@@ -191,11 +191,8 @@ jobs:
                     echo "No scanoss results to include"
                 else
                     scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
-                    updated_report_artifact_json=$(echo $report_artifact_json | jq --arg repo_name "$repo_name" --arg scan_results "$scan_results_parsed" \
+                    updated_report_artifact_json=$(echo $report_artifact_json | jq --arg repo_name "$repo_name" --argjson scan_results "$scan_results_parsed" \
                       '.[$repo_name].scan_results = $scan_results')
-                    echo "$updated_report_artifact_json" > collection-report/report.json
-                    echo "updated collection-report/report.json"
-                    cat collection-report/report.json
                 fi
 
                 # Push artifact report to existing report.json
@@ -206,11 +203,7 @@ jobs:
                     echo "creating new json data file!"
                     echo "{}" > dependency_report/report_test.json
                 fi
-                
-                echo "final collection-report/report.json"
-                cat collection-report/report.json
-                echo "final dependency_report/report_test.json"
-                cat dependency_report/report_test.json
+
                 jq '. as $new_data | . * $new_data' collection-report/report.json dependency_report/report_test.json > dependency_report/report_test.json
 
             - name: Commit and push changes
