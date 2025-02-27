@@ -162,14 +162,14 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                 name: audired-collection-report
-                path: collection-report.json
+                path: collection-report
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
                 # run-id: ${{ github.event.workflow_run.id }}
             
             - name: Create github environment variable for report data
               run: |
-                report_artifact_json=$(cat collection-report.json)
+                report_artifact_json=$(cat collection-report/report.json)
                 echo "report_artifact_json=$report_artifact_json" >> $GITHUB_ENV
 
             - name: Checkout AudiRed Doc Sync repository
