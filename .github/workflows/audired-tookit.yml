@@ -151,50 +151,23 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    dependency_sync:
+    data_sync:
         runs-on: ubuntu-latest
         if: always()
         needs: scanoss
         env:
             SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
-            - name: Checkout repository 
-              uses: actions/checkout@v3
-      
-            - name: Get all open PRs created by Dependabot
-              run: |
-                PRS=$(gh pr list --author dependabot[bot] --state open --json title,url,createdAt --jq '.[] | "\(.title) - \(.url) - Created at: \(.createdAt)"')
-                
-                if [ -z "$PRS" ]; then
-                  echo "No open Dependabot PRs found."
-                  exit 0
-                else
-                  echo "Open Dependabot PRs:"
-                  echo "$PRS"
+            - name: Download lighthouse report artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: audired-collection-report
+                path: collection-report
+                github-token: ${{ github.token }}
+                repository: ${{ github.repository }}
+                # run-id: ${{ github.event.workflow_run.id }}
 
-                  dependabot_array=()
-                  while IFS= read -r line; do
-                    dependabot_array+=("\"$line\"")
-                  done <<< "$PRS"
-                  DEPENDABOT_PRS=$(IFS=,; echo "${dependabot_array[*]}")
-                  echo "DEPENDABOT_PRS=[${DEPENDABOT_PRS}]" >> $GITHUB_ENV
-                fi
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Extract dependencies from package.json of local repository
-              id: extract-deps
-              run: |
-                repo_name=$(jq -r '.name' package.json)
-                dependencies=$(jq '.dependencies' package.json | jq tostring)
-                devDependencies=$(jq '.devDependencies' package.json | jq tostring)
-                repository=$(jq '.repository' package.json | jq tostring)
-                echo "repo_name=$repo_name" >> $GITHUB_ENV
-                echo "dependencies=$dependencies" >> $GITHUB_ENV
-                echo "devDependencies=$devDependencies" >> $GITHUB_ENV
-                echo "repository=$repository" >> $GITHUB_ENV
-
-            - name: Checkout AudiRed Doc Sync repository 
+            - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
               with:
                 repository: ${{ inputs.destination_repo }}
@@ -203,64 +176,39 @@ jobs:
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               run: |
-                # Check if the dependency_report folder exists; if not, create it
-                mkdir -p dependency_report
-    
-                # Check if report.json exists inside the dependency_report folder; if not, create it
-                if [ ! -f dependency_report/report.json ]; then
-                    echo "{}" > dependency_report/report.json
-                fi
-    
-                # Read current report.json into a variable
-                report_json=$(cat dependency_report/report.json)
+                # Artifact update
+                report_artifact_json=$(cat collection-report/report.json)
+                repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
+                echo "repo_name: $repo_name"
 
-                dependencies_parsed=$(echo "$dependencies" | jq fromjson)
-                dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
-                repository_parsed=$(echo "$repository" | jq fromjson)
-                dependabot_array_json=[]
                 scan_results_parsed=[]
-
                 if [ -z "$SCANOSS_RESULTS" ]; then
                     echo "No scanoss results to include"
                 else
                     scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
+                    updated_report_artifact_json=$(echo $report | jq --arg repo_name "$repo_name" --arg scan_results "$scan_results_parsed" \
+                      '.[$repo_name].scan_results = $scan_results')
+                    echo "$updated_report_artifact_json" > $report_artifact_json
                 fi
 
-                if [ -z "$DEPENDABOT_PRS" ]; then
-                    echo "No dependabot PR data to include"
-                else
-                    dependabot_array_json="${DEPENDABOT_PRS}"
-                fi
+                # Push artifact report to existing report.json
+                mkdir -p dependency_report
     
-                # Check if the repository name is already in the report, if so update the dependencies
-                if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
-                    # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
-                        --argjson dependencies "$dependencies_parsed" \
-                        --argjson devDependencies "$dev_dependencies_parsed" \
-                        --argjson repository "$repository_parsed" \
-                        --argjson scan_results "$scan_results_parsed" \
-                        --argjson dependabot_prs "$dependabot_array_json" \
-                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }')
-                else
-                    # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
-                        --argjson dependencies "$dependencies_parsed" \
-                        --argjson devDependencies "$dev_dependencies_parsed" \
-                        --argjson repository "$repository_parsed" \
-                        --argjson scan_results "$scan_results_parsed" \
-                        --argjson dependabot_prs "$dependabot_array_json" \
-                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }}')
+                # Check if report.json exists inside the dependency_report folder; if not, create it
+                if [ ! -f dependency_report/report_test.json ]; then
+                    echo "creating new json data file!"
+                    echo "{}" > dependency_report/report_test.json
                 fi
-    
-                # Write the updated report back to the file inside the dependency_report folder
-                echo "$updated_report" > dependency_report/report.json
+                
+                echo "Merging artifact json into current report data!"
+                jq --argjson new_report "$report_artifact_json" \
+                  '. * $new_report' dependency_report/report_test.json > tmp_report.json && mv tmp_report.json dependency_report/report_test.json
 
             - name: Commit and push changes
               run: |
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
-                git add dependency_report/report.json
+                git add dependency_report/report_test.json
                 if ! git diff-index --quiet HEAD; then
                     echo "commiting changes"
                     git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
