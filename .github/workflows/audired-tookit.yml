@@ -61,11 +61,6 @@ on:
             description: 'Enable scanoss step, SCANOSS_KEY is required in secrets'
             type: boolean
             required: true
-        enable_jest:
-            description: 'Enabled jest tests run'
-            type: boolean
-            required: false
-            default: true
     secrets:
         DOC_SYNC_KEY:
             required: false
@@ -148,56 +143,6 @@ jobs:
             user_actor: ${{ github.actor }}
             use_rsync: true
             destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
-   
-    jest_test:
-        runs-on: ubuntu-latest
-        if: ${{ inputs.enable_jest }}
-        steps:
-            - name: Checkout repository 
-              uses: actions/checkout@v3
-            
-            - name: Setup node
-              uses: actions/setup-node@v4.0.2
-              with:
-                node-version-file: '.nvmrc'
-                cache: yarn
-                registry-url: https://npm.pkg.github.com
-                always-auth: true
-        
-            - name: Install dependencies
-              run: |
-                yarn install --frozen-lockfile
-                yarn install --frozen-lockfile --cwd src/api
-              env:
-                NODE_AUTH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
-        
-            - name: Run Jest tests with coverage
-              run: npx jest --coverage --coverageReporters="json-summary" --config=jest.config.js
-        
-            - name: Check coverage percentage
-              run: |
-                # Extract the coverage percentages for lines, statements, functions, and branches
-                LINES=$(jq '.total.lines.pct' < ./coverage/coverage-summary.json)
-                STATEMENTS=$(jq '.total.statements.pct' < ./coverage/coverage-summary.json)
-                FUNCTIONS=$(jq '.total.functions.pct' < ./coverage/coverage-summary.json)
-                BRANCHES=$(jq '.total.branches.pct' < ./coverage/coverage-summary.json)
-        
-                echo "Line coverage: $LINES%"
-                echo "Statement coverage: $STATEMENTS%"
-                echo "Function coverage: $FUNCTIONS%"
-                echo "Branch coverage: $BRANCHES%"
-        
-                # Calculate the average coverage
-                AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
-        
-                echo "Average coverage: $AVERAGE_COVERAGE%"
-        
-                # Fail the job if the average coverage is below 80%
-                if (( $(echo "$AVERAGE_COVERAGE < 80" | bc -l) )); then
-                    echo "Average coverage is below 80%. Please raise test threshold."
-                    #   echo "Average coverage is below 80%. Failing the job."
-                    #   exit 1
-                fi
 
     scanoss:
         runs-on: ubuntu-latest
@@ -234,110 +179,60 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    dependency_sync:
+    data_sync:
         runs-on: ubuntu-latest
-        if: always()
+        if: ${{ always() && github.event.workflow_run.id != '' }}
         needs: scanoss
         env:
             SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
-            - name: Checkout repository 
-              uses: actions/checkout@v3
-      
-            - name: Get all open PRs created by Dependabot
-              run: |
-                PRS=$(gh pr list --author dependabot[bot] --state open --json title,url,createdAt --jq '.[] | "\(.title) - \(.url) - Created at: \(.createdAt)"')
-                
-                if [ -z "$PRS" ]; then
-                  echo "No open Dependabot PRs found."
-                  exit 0
-                else
-                  echo "Open Dependabot PRs:"
-                  echo "$PRS"
-
-                  dependabot_array=()
-                  while IFS= read -r line; do
-                    dependabot_array+=("\"$line\"")
-                  done <<< "$PRS"
-                  DEPENDABOT_PRS=$(IFS=,; echo "${dependabot_array[*]}")
-                  echo "DEPENDABOT_PRS=[${DEPENDABOT_PRS}]" >> $GITHUB_ENV
-                fi
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Extract dependencies from package.json of local repository
-              id: extract-deps
-              run: |
-                repo_name=$(jq -r '.name' package.json)
-                dependencies=$(jq '.dependencies' package.json | jq tostring)
-                devDependencies=$(jq '.devDependencies' package.json | jq tostring)
-                repository=$(jq '.repository' package.json | jq tostring)
-                echo "repo_name=$repo_name" >> $GITHUB_ENV
-                echo "dependencies=$dependencies" >> $GITHUB_ENV
-                echo "devDependencies=$devDependencies" >> $GITHUB_ENV
-                echo "repository=$repository" >> $GITHUB_ENV
-
-            - name: Checkout AudiRed Doc Sync repository 
+            - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
               with:
                 repository: ${{ inputs.destination_repo }}
                 token: ${{ secrets.DOC_SYNC_KEY }}
                 ref: doc-sync-queue
+            
+            - name: Download lighthouse report artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: audired-collection-report
+                path: collection-report
+                github-token: ${{ github.token }}
+                repository: ${{ github.repository }}
+                run-id: ${{ github.event.workflow_run.id }}
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               run: |
-                # Check if the dependency_report folder exists; if not, create it
+                # Artifact update
+                report_artifact_json=$(cat collection-report/report.json)
+                repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
+
+                scan_results_parsed=[]
+                if [ -z "$SCANOSS_RESULTS" ]; then
+                    echo "No scanoss results to include"
+                else
+                    scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
+                    updated_report_artifact_json=$(echo "$report_artifact_json" | \
+                      jq --arg repo_name "$repo_name" \
+                      --argjson scan_results "$scan_results_parsed" \
+                      '.[$repo_name].scan_results = $scan_results')
+                    echo "$updated_report_artifact_json" > collection-report/report.json
+                    report_artifact_json=$(cat collection-report/report.json)
+                fi
+
+                # Push artifact report to existing report.json
                 mkdir -p dependency_report
     
                 # Check if report.json exists inside the dependency_report folder; if not, create it
                 if [ ! -f dependency_report/report.json ]; then
                     echo "{}" > dependency_report/report.json
                 fi
-    
-                # Read current report.json into a variable
-                report_json=$(cat dependency_report/report.json)
 
-                dependencies_parsed=$(echo "$dependencies" | jq fromjson)
-                dev_dependencies_parsed=$(echo "$devDependencies" | jq fromjson)
-                repository_parsed=$(echo "$repository" | jq fromjson)
-                dependabot_array_json=[]
-                scan_results_parsed=[]
-
-                if [ -z "$SCANOSS_RESULTS" ]; then
-                    echo "No scanoss results to include"
-                else
-                    scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
-                fi
-
-                if [ -z "$DEPENDABOT_PRS" ]; then
-                    echo "No dependabot PR data to include"
-                else
-                    dependabot_array_json="${DEPENDABOT_PRS}"
-                fi
-    
-                # Check if the repository name is already in the report, if so update the dependencies
-                if echo "$report_json" | jq -e ".\"$repo_name\"" > /dev/null; then
-                    # Update the dependencies for the specific repository name
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
-                        --argjson dependencies "$dependencies_parsed" \
-                        --argjson devDependencies "$dev_dependencies_parsed" \
-                        --argjson repository "$repository_parsed" \
-                        --argjson scan_results "$scan_results_parsed" \
-                        --argjson dependabot_prs "$dependabot_array_json" \
-                        '.[$repo_name] = { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }')
-                else
-                    # Add a new entry for the repository in report.json
-                    updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
-                        --argjson dependencies "$dependencies_parsed" \
-                        --argjson devDependencies "$dev_dependencies_parsed" \
-                        --argjson repository "$repository_parsed" \
-                        --argjson scan_results "$scan_results_parsed" \
-                        --argjson dependabot_prs "$dependabot_array_json" \
-                        '. + {($repo_name): { "dependencies": $dependencies, "devDependencies": $devDependencies, "repository": $repository, "scan_results": $scan_results, "dependabot_prs": $dependabot_prs }}')
-                fi
-    
-                # Write the updated report back to the file inside the dependency_report folder
-                echo "$updated_report" > dependency_report/report.json
+                jq --argjson new_report "$report_artifact_json" \
+                  '. * $new_report' dependency_report/report.json > tmp_report.json
+                
+                mv tmp_report.json dependency_report/report.json
 
             - name: Commit and push changes
               run: |
