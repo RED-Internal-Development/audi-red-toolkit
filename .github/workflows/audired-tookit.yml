@@ -75,7 +75,7 @@ jobs:
         if: ${{ always() && inputs.enable_doc_sync }}
         needs: data_sync
         env:
-          ENCODED_REPORT_DATA: ${{ needs.data_sync.outputs.report_data }}
+          REPORT_DATA: ${{ needs.data_sync.outputs.report_data }}
         steps:
         - name: Check if branch exists
           id: check_branch
@@ -111,11 +111,15 @@ jobs:
             if [ -z "$REPORT_DATA" ]; then
                 echo "No report results to include, skipping"
             else
-                REPORT_DATA=$(echo "$ENCODED_REPORT_DATA" | base64 --decode)
-                echo "---- REPORT DATA: $REPORT_DATA"
-                lighthouse_score=$(echo $REPORT_DATA | jq -r '.lighthouse_score')
-                unit_test_coverage=$(echo $REPORT_DATA | jq -r '.unit_test_coverage')
-                e2e_test_coverage=$(echo $REPORT_DATA | jq -r '.e2e_test_coverage')
+                STRINGIFIED_REPORT_DATA="$REPORT_DATA"
+                echo "Stringified REPORT_DATA: $STRINGIFIED_REPORT_DATA"
+
+                # Parse the stringified JSON back to an object using jq
+                report_data=$(echo "$STRINGIFIED_report_data" | jq .)
+                echo "---- REPORT DATA: $report_data"
+                lighthouse_score=$(echo $report_data | jq -r '.lighthouse_score')
+                unit_test_coverage=$(echo $report_data | jq -r '.unit_test_coverage')
+                e2e_test_coverage=$(echo $report_data | jq -r '.e2e_test_coverage')
 
                 NEW_CONTENT="# CI Report Summary\n"
                 if [ -n "$lighthouse_score" ]; then
@@ -249,8 +253,8 @@ jobs:
 
                 # output report data for data_sync job
                 report_data=$(cat dependency_report/report.json)
-                ENCODED_REPORT_DATA=$(echo "$report_data" | base64)
-                echo "report_data=$ENCODED_REPORT_DATA" >> $GITHUB_OUTPUT
+                stringified_report_data=$(echo "$report_data" | jq -c .)
+                echo "report_data=$stringified_report_data" >> $GITHUB_OUTPUT
 
             - name: Commit and push changes
               run: |
