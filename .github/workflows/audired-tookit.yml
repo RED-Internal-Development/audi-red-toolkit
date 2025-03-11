@@ -246,7 +246,7 @@ jobs:
                 mv tmp_report.json dependency_report/report.json
 
                 # output report data for data_sync job
-                report_data=(cat dependency_report/report.json)
+                report_data=$(cat dependency_report/report.json)
                 echo "report_data=$report_data" >> $GITHUB_OUTPUT
 
             - name: Commit and push changes
