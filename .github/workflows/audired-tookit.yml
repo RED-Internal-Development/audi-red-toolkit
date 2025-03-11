@@ -122,22 +122,22 @@ jobs:
                 echo "No report results to include, skipping"
             else
                 echo $report_file_data
-                lighthouse_score=$(jq '.lighthouse_score' "$report_file")
-                echo $lighthouse_score
-                unit_test_coverage=$(jq '.unit_test_coverage' "$report_file")
-                echo $unit_test_coverage
-                e2e_test_coverage=$(jq '.e2e_test_coverage' "$report_file")
-                echo $e2e_test_coverage
+                lighthouse_score=$(jq '.[0].lighthouse_score' "$report_file")
+                echo "lighthouse score: $lighthouse_score"
+                unit_test_coverage=$(jq '.[0].unit_test_coverage' "$report_file")
+                echo "unit test coverage: $unit_test_coverage"
+                e2e_test_coverage=$(jq '.[0].e2e_test_coverage' "$report_file")
+                echo "e2e test coverage: $e2e_test_coverage"
 
                 NEW_CONTENT="# CI Report Summary\n"
                 if [ -n "$lighthouse_score" ]; then
-                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score"
+                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1"
                 fi
                 if [ -n "$unit_test_coverage" ]; then
-                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage"
+                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage%"
                 fi
                 if [ -n "$e2e_test_coverage" ]; then
-                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage"
+                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage%"
                 fi
 
                 # Check if the file exists
