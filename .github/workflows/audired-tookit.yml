@@ -121,19 +121,23 @@ jobs:
             if [ -z "$report_file_data" ]; then
                 echo "No report results to include, skipping"
             else
+                echo $report_file_data
                 lighthouse_score=$(jq '.lighthouse_score' "$report_file")
+                echo $lighthouse_score
                 unit_test_coverage=$(jq '.unit_test_coverage' "$report_file")
+                echo $unit_test_coverage
                 e2e_test_coverage=$(jq '.e2e_test_coverage' "$report_file")
+                echo $e2e_test_coverage
 
                 NEW_CONTENT="# CI Report Summary\n"
                 if [ -n "$lighthouse_score" ]; then
-                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score\n"
+                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score"
                 fi
                 if [ -n "$unit_test_coverage" ]; then
-                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage\n"
+                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage"
                 fi
                 if [ -n "$e2e_test_coverage" ]; then
-                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage\n"
+                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage"
                 fi
 
                 # Check if the file exists
