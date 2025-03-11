@@ -74,8 +74,6 @@ jobs:
         runs-on: ubuntu-latest
         if: ${{ always() && inputs.enable_doc_sync }}
         needs: data_sync
-        env:
-          REPORT_DATA: ${{ needs.data_sync.outputs.report_data }}
         steps:
         - name: Check if branch exists
           id: check_branch
@@ -103,23 +101,28 @@ jobs:
           run: |
             cd ${{ inputs.source_file }}
             npx docusaurus-mdx-checker
+        
+        - name: Download lighthouse report artifact
+          # if: github.event.workflow_run.id != ''
+          uses: actions/download-artifact@v4
+          with:
+            name: data-report
+            path: data-report
+            github-token: ${{ github.token }}
+            repository: ${{ github.repository }}
 
         - name: Create or Update Project Summary with report data
           # if: github.event.workflow_run.id != ''
           run: |
             FILE_PATH="${{ inputs.source_file }}/project_information.mdx"
+            report_file="data-report/data-report.json"
+
             if [ -z "$REPORT_DATA" ]; then
                 echo "No report results to include, skipping"
             else
-                STRINGIFIED_REPORT_DATA="$REPORT_DATA"
-                echo "Stringified REPORT_DATA: $STRINGIFIED_REPORT_DATA"
-
-                # Parse the stringified JSON back to an object using jq
-                report_data=$(echo "$STRINGIFIED_report_data" | jq .)
-                echo "---- REPORT DATA: $report_data"
-                lighthouse_score=$(echo $report_data | jq -r '.lighthouse_score')
-                unit_test_coverage=$(echo $report_data | jq -r '.unit_test_coverage')
-                e2e_test_coverage=$(echo $report_data | jq -r '.e2e_test_coverage')
+                lighthouse_score=$(jq '.lighthouse_score' "$report_file")
+                unit_test_coverage=$(jq '.unit_test_coverage' "$report_file")
+                e2e_test_coverage=$(jq '.e2e_test_coverage' "$report_file")
 
                 NEW_CONTENT="# CI Report Summary\n"
                 if [ -n "$lighthouse_score" ]; then
@@ -209,7 +212,7 @@ jobs:
                 token: ${{ secrets.DOC_SYNC_KEY }}
                 ref: doc-sync-queue
             
-            - name: Download lighthouse report artifact
+            - name: Download collection report artifact
               uses: actions/download-artifact@v4
               with:
                 name: audired-collection-report
@@ -251,10 +254,11 @@ jobs:
                 
                 mv tmp_report.json dependency_report/report.json
 
-                # output report data for data_sync job
-                report_data=$(cat dependency_report/report.json)
-                stringified_report_data=$(echo "$report_data" | jq -c .)
-                echo "report_data=$stringified_report_data" >> $GITHUB_OUTPUT
+            - name: Upload final report
+              uses: actions/upload-artifact@v4
+              with:
+                name: data-report
+                path: dependency_report/report.json
 
             - name: Commit and push changes
               run: |
