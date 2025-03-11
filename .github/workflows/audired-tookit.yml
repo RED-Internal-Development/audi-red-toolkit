@@ -72,7 +72,10 @@ on:
 jobs:
     doc_sync:
         runs-on: ubuntu-latest
-        if: ${{ inputs.enable_doc_sync }}
+        if: ${{ always() && inputs.enable_doc_sync }}
+        needs: data_sync
+        env:
+          REPORT_DATA: ${{ needs.data_sync.outputs.report_data }}
         steps:
         - name: Check if branch exists
           id: check_branch
@@ -100,6 +103,38 @@ jobs:
           run: |
             cd ${{ inputs.source_file }}
             npx docusaurus-mdx-checker
+
+        - name: Create or Update Project Summary with report data
+          # if: github.event.workflow_run.id != ''
+          run: |
+            FILE_PATH="${{ inputs.source_file }}/project_information.mdx"
+            if [ -z "$REPORT_DATA" ]; then
+                echo "No report results to include, skipping"
+            else
+                lighthouse_score=$(echo $REPORT_DATA | jq -r '.lighthouse_score')
+                unit_test_coverage=$(echo $REPORT_DATA | jq -r '.unit_test_coverage')
+                e2e_test_coverage=$(echo $REPORT_DATA | jq -r '.e2e_test_coverage')
+
+                NEW_CONTENT="# CI Report Summary\n"
+                if [ -n "$lighthouse_score" ]; then
+                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score\n"
+                fi
+                if [ -n "$unit_test_coverage" ]; then
+                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage\n"
+                fi
+                if [ -n "$e2e_test_coverage" ]; then
+                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage\n"
+                fi
+
+                # Check if the file exists
+                if [ -f "$FILE_PATH" ]; then
+                  echo "File exists. Appending content to the top of the file: $FILE_PATH"
+                  echo -e "$NEW_CONTENT\n$(cat $FILE_PATH)" > $FILE_PATH
+                else
+                  echo "File does not exist. Creating a new file: $FILE_PATH"
+                  echo -e "$NEW_CONTENT" > $FILE_PATH
+                fi
+            fi
 
         - name: Pushes files from Feature App to Audi RED Portal for syndication
           uses: RED-Internal-Development/audred_docsync_action@main
@@ -153,10 +188,13 @@ jobs:
 
     data_sync:
         runs-on: ubuntu-latest
-        if: ${{ always() && github.event.workflow_run.id != '' }}
+        # if: ${{ always() && github.event.workflow_run.id != '' }}
+        if: always()
         needs: scanoss
         env:
-            SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
+          SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
+        outputs:
+          report_data: ${{ steps.generate-report.outputs.report_data }}
         steps:
             - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
@@ -172,9 +210,10 @@ jobs:
                 path: collection-report
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
-                run-id: ${{ github.event.workflow_run.id }}
+                # run-id: ${{ github.event.workflow_run.id }}
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
+              id: generate-report
               run: |
                 # Artifact update
                 report_artifact_json=$(cat collection-report/report.json)
@@ -205,6 +244,10 @@ jobs:
                   '. * $new_report' dependency_report/report.json > tmp_report.json
                 
                 mv tmp_report.json dependency_report/report.json
+
+                # output report data for data_sync job
+                report_data=(cat dependency_report/report.json)
+                echo "report_data=$report_data" >> $GITHUB_OUTPUT
 
             - name: Commit and push changes
               run: |
