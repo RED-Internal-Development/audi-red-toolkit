@@ -130,14 +130,14 @@ jobs:
                 echo "e2e test coverage: $e2e_test_coverage"
 
                 NEW_CONTENT="# CI Report Summary\n"
-                if [ -n "$lighthouse_score" ]; then
-                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1"
+                if [ -n "$lighthouse_score" ]  && [ "$lighthouse_score" != "null" ]; then
+                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1\n"
                 fi
-                if [ -n "$unit_test_coverage" ]; then
-                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage%"
+                if [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
+                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage%\n"
                 fi
-                if [ -n "$e2e_test_coverage" ]; then
-                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage%"
+                if [ -n "$e2e_test_coverage" ] && [ "$e2e_test_coverage" != "null" ]; then
+                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage%\n"
                 fi
 
                 # Check if the file exists
