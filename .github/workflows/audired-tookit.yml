@@ -121,12 +121,12 @@ jobs:
             if [ -z "$report_file_data" ]; then
                 echo "No report results to include, skipping"
             else
-                echo $report_file_data
-                lighthouse_score=$(jq '.[0].lighthouse_score' "$report_file")
+                repo_name=$(echo "$report_file_data" | jq -r 'to_entries | .[0].key')
+                lighthouse_score=$(jq '.\"$repo_name\".lighthouse_score' "$report_file")
                 echo "lighthouse score: $lighthouse_score"
-                unit_test_coverage=$(jq '.[0].unit_test_coverage' "$report_file")
+                unit_test_coverage=$(jq '.\"$repo_name\".unit_test_coverage' "$report_file")
                 echo "unit test coverage: $unit_test_coverage"
-                e2e_test_coverage=$(jq '.[0].e2e_test_coverage' "$report_file")
+                e2e_test_coverage=$(jq '.\"$repo_name\".e2e_test_coverage' "$report_file")
                 echo "e2e test coverage: $e2e_test_coverage"
 
                 NEW_CONTENT="# CI Report Summary\n"
