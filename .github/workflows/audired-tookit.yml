@@ -114,7 +114,7 @@ jobs:
         - name: Create or Update Project Summary with report data
           # if: github.event.workflow_run.id != ''
           run: |
-            FILE_PATH="${{ inputs.source_file }}/project_information.mdx"
+            FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
             report_file="data-report/report.json"
             report_file_data=$(cat $report_file)
 
@@ -135,10 +135,12 @@ jobs:
                   NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1\n"
                 fi
                 if [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
-                  NEW_CONTENT+="- **Unit Test Coverage**: $unit_test_coverage%\n"
+                  rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
+                  NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
                 fi
                 if [ -n "$e2e_test_coverage" ] && [ "$e2e_test_coverage" != "null" ]; then
-                  NEW_CONTENT+="- **E2E Test Coverage**: $e2e_test_coverage%\n"
+                  rounded_e2e_test_coverage=$(printf "%.0f" $e2e_test_coverage)
+                  NEW_CONTENT+="- **E2E Test Coverage**: $rounded_e2e_test_coverage%\n"
                 fi
 
                 # Check if the file exists
