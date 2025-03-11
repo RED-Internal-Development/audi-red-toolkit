@@ -115,9 +115,10 @@ jobs:
           # if: github.event.workflow_run.id != ''
           run: |
             FILE_PATH="${{ inputs.source_file }}/project_information.mdx"
-            report_file="data-report/data-report.json"
+            report_file="data-report/report.json"
+            report_file_data=$(cat $report_file)
 
-            if [ -z "$REPORT_DATA" ]; then
+            if [ -z "$report_file_data" ]; then
                 echo "No report results to include, skipping"
             else
                 lighthouse_score=$(jq '.lighthouse_score' "$report_file")
