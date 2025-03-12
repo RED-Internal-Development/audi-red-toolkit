@@ -102,8 +102,8 @@ jobs:
             cd ${{ inputs.source_file }}
             npx docusaurus-mdx-checker
         
-        - name: Download lighthouse report artifact
-          # if: github.event.workflow_run.id != ''
+        - name: Download collection report artifact
+          if: github.event.workflow_run.id != ''
           uses: actions/download-artifact@v4
           with:
             name: data-report
@@ -111,8 +111,8 @@ jobs:
             github-token: ${{ github.token }}
             repository: ${{ github.repository }}
 
-        - name: Create or Update Project Summary with report data
-          # if: github.event.workflow_run.id != ''
+        - name: Create or update project metrics with report data
+          if: github.event.workflow_run.id != ''
           run: |
             FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
             report_file="data-report/report.json"
@@ -205,8 +205,7 @@ jobs:
 
     data_sync:
         runs-on: ubuntu-latest
-        # if: ${{ always() && github.event.workflow_run.id != '' }}
-        if: always()
+        if: ${{ always() && github.event.workflow_run.id != '' }}
         needs: scanoss
         env:
           SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
@@ -227,7 +226,7 @@ jobs:
                 path: collection-report
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
-                # run-id: ${{ github.event.workflow_run.id }}
+                run-id: ${{ github.event.workflow_run.id }}
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
               id: generate-report
@@ -266,7 +265,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                 name: data-report
-                path: dependency_report/report.json
+                path: collection-report/report.json
 
             - name: Commit and push changes
               run: |
