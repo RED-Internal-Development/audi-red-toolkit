@@ -72,7 +72,8 @@ on:
 jobs:
     doc_sync:
         runs-on: ubuntu-latest
-        if: ${{ inputs.enable_doc_sync }}
+        if: ${{ always() && inputs.enable_doc_sync }}
+        needs: data_sync
         steps:
         - name: Check if branch exists
           id: check_branch
@@ -100,7 +101,7 @@ jobs:
           run: |
             cd ${{ inputs.source_file }}
             npx docusaurus-mdx-checker
-        
+
         - name: Check if referenced images exist
           run: |
             find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
@@ -108,7 +109,6 @@ jobs:
                   
                   grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
                       image=$(echo "$image" | sed 's/[?#].*$//')
-
                       if [[ "$image" =~ ^https?:// ]]; then
                           echo "Skipping external image: $image"
                           continue
@@ -119,15 +119,66 @@ jobs:
                       fi
   
                       IMAGE_PATH=$(realpath "$IMAGE_PATH")
-  
+
                       if [[ ! -f "$IMAGE_PATH" ]]; then
                           echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
                           exit 1
                       fi
                   done
               done
-  
+
               echo "All images are properly referenced and exist!"
+        
+        - name: Download collection report artifact
+          if: github.event.workflow_run.id != ''
+          uses: actions/download-artifact@v4
+          with:
+            name: data-report
+            path: data-report
+            github-token: ${{ github.token }}
+            repository: ${{ github.repository }}
+
+        - name: Create or update project metrics with report data
+          if: github.event.workflow_run.id != ''
+          run: |
+            FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
+            report_file="data-report/report.json"
+            report_file_data=$(cat $report_file)
+
+            if [ -z "$report_file_data" ]; then
+                echo "No report results to include, skipping"
+            else
+                repo_name=$(echo "$report_file_data" | jq -r 'to_entries | .[0].key')
+                echo "REPO: $repo_name"
+                lighthouse_score=$(jq ".[\"$repo_name\"].lighthouse_score" "$report_file")
+                echo "lighthouse score: $lighthouse_score"
+                unit_test_coverage=$(jq ".[\"$repo_name\"].unit_test_coverage" "$report_file")
+                echo "unit test coverage: $unit_test_coverage"
+                e2e_test_coverage=$(jq ".[\"$repo_name\"].e2e_test_coverage" "$report_file")
+                echo "e2e test coverage: $e2e_test_coverage"
+
+                NEW_CONTENT="# CI Report Summary\n"
+                if [ -n "$lighthouse_score" ]  && [ "$lighthouse_score" != "null" ]; then
+                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1\n"
+                fi
+                if [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
+                  rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
+                  NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
+                fi
+                if [ -n "$e2e_test_coverage" ] && [ "$e2e_test_coverage" != "null" ]; then
+                  rounded_e2e_test_coverage=$(printf "%.0f" $e2e_test_coverage)
+                  NEW_CONTENT+="- **E2E Test Coverage**: $rounded_e2e_test_coverage%\n"
+                fi
+
+                # Check if the file exists
+                if [ -f "$FILE_PATH" ]; then
+                  echo "File exists. Appending content to the top of the file: $FILE_PATH"
+                  echo -e "$NEW_CONTENT\n$(cat $FILE_PATH)" > $FILE_PATH
+                else
+                  echo "File does not exist. Creating a new file: $FILE_PATH"
+                  echo -e "$NEW_CONTENT" > $FILE_PATH
+                fi
+            fi
 
         - name: Pushes files from Feature App to Audi RED Portal for syndication
           uses: RED-Internal-Development/audred_docsync_action@main
@@ -184,7 +235,7 @@ jobs:
         if: ${{ always() && github.event.workflow_run.id != '' }}
         needs: scanoss
         env:
-            SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
+          SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
             - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
@@ -193,7 +244,7 @@ jobs:
                 token: ${{ secrets.DOC_SYNC_KEY }}
                 ref: doc-sync-queue
             
-            - name: Download lighthouse report artifact
+            - name: Download collection report artifact
               uses: actions/download-artifact@v4
               with:
                 name: audired-collection-report
@@ -203,6 +254,7 @@ jobs:
                 run-id: ${{ github.event.workflow_run.id }}
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
+              id: generate-report
               run: |
                 # Artifact update
                 report_artifact_json=$(cat collection-report/report.json)
@@ -233,6 +285,12 @@ jobs:
                   '. * $new_report' dependency_report/report.json > tmp_report.json
                 
                 mv tmp_report.json dependency_report/report.json
+
+            - name: Upload final report
+              uses: actions/upload-artifact@v4
+              with:
+                name: data-report
+                path: collection-report/report.json
 
             - name: Commit and push changes
               run: |
