@@ -297,7 +297,7 @@ jobs:
               run: |
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
-                git add dependency_report/report.json
+                git add data/report.json
                 if ! git diff-index --quiet HEAD; then
                     echo "commiting changes"
                     git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
