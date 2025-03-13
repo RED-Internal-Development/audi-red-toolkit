@@ -257,7 +257,7 @@ jobs:
               id: generate-report
               run: |
                 # Artifact update
-                data_folder="docs"
+                data_folder="data"
                 report_artifact_json=$(cat collection-report/report.json)
                 repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
 
