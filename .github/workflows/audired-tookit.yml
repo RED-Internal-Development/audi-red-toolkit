@@ -232,11 +232,7 @@ jobs:
 
     data_sync:
         runs-on: ubuntu-latest
-        permissions:
-          contents: write
-          pull-requests: write
-          security-events: write
-          repository-projects: write
+        permissions: write-all
         if: ${{ always() && github.event.workflow_run.id != '' }}
         needs: scanoss
         env:
