@@ -232,40 +232,11 @@ jobs:
 
     data_sync:
         runs-on: ubuntu-latest
-        permissions:
-          contents: read
-          actions: read
-          pull-requests: read
-          security-events: read
-          repository-projects: read
         if: ${{ always() && github.event.workflow_run.id != '' }}
         needs: scanoss
         env:
           SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
-            - name: Get all open Dependabot alerts
-              shell: bash
-              run: |
-                echo "repository: ${{ github.repository }}"
-                ALERTS=$(gh api \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "X-GitHub-Api-Version: 2022-11-28" \
-                    repos/${{ github.repository }}/dependabot/alerts --jq '[.[] | {package: .security_advisory.affected[0].package.name, severity: .security_advisory.severity, url: .html_url}]' || echo "")
-
-                if [ -z "$ALERTS" ]; then
-                    echo "No open Dependabot alerts found."
-                    DEPENDABOT_ALERTS="[]"
-                else
-                    echo "Open Dependabot alerts:"
-                    echo "$ALERTS"
-                    DEPENDABOT_ALERTS=$ALERTS
-                fi
-
-                echo "DEPENDABOT_ALERTS: $DEPENDABOT_ALERTS"
-                echo "DEPENDABOT_ALERTS=$DEPENDABOT_ALERTS" >> $GITHUB_ENV
-              env:
-                GH_TOKEN: ${{ github.token }}
-  
             - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
               with:
