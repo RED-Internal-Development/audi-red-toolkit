@@ -317,7 +317,7 @@ jobs:
                 else
                   echo '{}' > "$config_file"
                   msi_array=$(echo "$msi_page_page_ids" | tr ',' '\n' | jq -R . | jq -s .)
-                  jq ".msi_parent_page_ids = $msi_array | .team_folder = \"$folder_name\" | .app_name = \"$app_name\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+                  jq ".msi_parent_page_ids = $msi_array | .team_folder = \"$team_folder_name\" | .app_name = \"$app_name\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
                 fi
 
             - name: Commit and push changes
