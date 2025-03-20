@@ -307,11 +307,14 @@ jobs:
                 msi_page_page_ids="${{ inputs.msiParentPageIds }}"
                 config_file="deployment/repo_configs/$app_name.json"
 
-                echo '{}' > "$config_file"
+                mkdir -p "$(dirname "$config_file")"
+
                 if [[ -z "$msi_page_page_ids" ]]; then
-                  echo '{}' > "$config_file"
+                  if [[ -f "$config_file" ]]; then
+                    rm "$config_file"
+                  fi
                 else
-                  # If not empty, create an array and add it to the config file
+                  echo '{}' > "$config_file"
                   msi_array=$(echo "$msi_page_page_ids" | tr ',' '\n' | jq -R . | jq -s .)
                   jq ".msi_parent_page_ids = $msi_array" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
                 fi
