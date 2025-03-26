@@ -333,8 +333,6 @@ jobs:
                     cloud_jq_string=".cloud_parent_page_ids = $cloud_array | "
                   fi
                   
-                  echo "testing: "
-                  echo "$msi_jq_string$cloud_jq_string.team_folder = \"$team_folder_name\" | .app_name = \"$app_name\""
                   jq "$msi_jq_string$cloud_jq_string.team_folder = \"$team_folder_name\" | .app_name = \"$app_name\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
                   echo "config file:"
                   cat "$config_file"
