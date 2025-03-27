@@ -208,10 +208,6 @@ jobs:
     scanoss:
         runs-on: ubuntu-latest
         if: ${{ inputs.enable_scanoss }}
-        outputs:
-            scan_results: ${{ steps.set-scan-results-output.outputs.scan_results }}
-        env:
-            SCANOSS_KEY: ${{ secrets.SCANOSS_KEY }}
         steps:
         - name: Checkout
           uses: actions/checkout@v4
@@ -225,27 +221,18 @@ jobs:
             dependencies.enabled: true
             policies.halt_on_failure: false
             policies: copyleft, undeclared
-        
-        - name: Add results to github environment variable
-          id: set-scan-results-output
-          run: |
-            # Read the results.json file
-            result_file="${{ steps.scanoss-code-scan-step.outputs.result-filepath }}"
-            
-            # Parse the JSON and extract the dependencies from the first package.json entry
-            dependencies=$(jq '."package.json"[0].dependencies' "$result_file" | jq tostring)
-
-            # Set the dependencies as a GitHub environment output
-            echo "scan_results=$dependencies" >> $GITHUB_OUTPUT
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+        - name: Upload scanoss report
+          if: ${{ steps.scanoss-code-scan-step.outputs.result-filepath }}
+          uses: actions/upload-artifact@v4
+          with:
+            name: scanoss-report
+            path: ${{ steps.scanoss-code-scan-step.outputs.result-filepath }}
 
     data_sync:
         runs-on: ubuntu-latest
         if: always()
         needs: scanoss
-        env:
-          SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
         steps:
             - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
@@ -253,6 +240,13 @@ jobs:
                 repository: ${{ inputs.destination_repo }}
                 token: ${{ secrets.DOC_SYNC_KEY }}
                 ref: doc-sync-queue
+            
+            - name: Download scanoss report artifact
+              if: ${{ inputs.enable_scanoss }}
+              uses: actions/download-artifact@v4
+              with:
+                name: scanoss-report
+                path: scanoss-report
             
             - name: Download collection report artifact
               if: github.event.workflow_run.id != ''
@@ -264,27 +258,33 @@ jobs:
                 repository: ${{ github.repository }}
                 run-id: ${{ github.event.workflow_run.id }}
 
-            - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
+            - name: Update data/report.json in ${{ inputs.destination_repo }}
               if: github.event.workflow_run.id != ''
               id: generate-report
               run: |
-                # Artifact update
                 data_folder="data"
                 report_artifact_json=$(cat collection-report/report.json)
                 repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
+                scanoss_results_file_path="scanoss-report/scanoss.json"
+                scanoss_enabled=false
 
-                scan_results_parsed=[]
-                if [ -z "$SCANOSS_RESULTS" ]; then
-                    echo "No scanoss results to include"
+                scanoss_target_directory="$data_folder/scanoss"
+                scanoss_target_file="$scanoss_target_directory/$repo_name.json"
+                mkdir -p "$scanoss_target_directory"
+
+                if [ -f "$scanoss_results_file_path" ]; then
+                    scanoss_enabled=true
+                    cp -f "$scanoss_results_file_path" "$scanoss_target_file"
                 else
-                    scan_results_parsed=$(echo "$SCANOSS_RESULTS" | jq fromjson)
-                    updated_report_artifact_json=$(echo "$report_artifact_json" | \
-                      jq --arg repo_name "$repo_name" \
-                      --argjson scan_results "$scan_results_parsed" \
-                      '.[$repo_name].scan_results = $scan_results')
-                    echo "$updated_report_artifact_json" > collection-report/report.json
-                    report_artifact_json=$(cat collection-report/report.json)
+                    echo "No scanoss results to include"
                 fi
+
+                updated_report_artifact_json=$(echo "$report_artifact_json" | \
+                  jq --arg repo_name "$repo_name" \
+                  --argjson scan_results "$scanoss_enabled" \
+                  '.[$repo_name].scan_results = $scan_results')
+                echo "$updated_report_artifact_json" > collection-report/report.json
+                report_artifact_json=$(cat collection-report/report.json)
 
                 # Push artifact report to existing report.json
                 mkdir -p "$data_folder"
@@ -343,6 +343,9 @@ jobs:
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add data/report.json
+                if [[ -n "${{ github.event.workflow_run.id }}" ]]; then
+                  git add data/scanoss/
+                fi
                 git add deployment/
                 if ! git diff-index --quiet HEAD; then
                     echo "commiting changes"
