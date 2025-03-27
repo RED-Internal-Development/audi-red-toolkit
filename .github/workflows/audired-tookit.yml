@@ -265,7 +265,7 @@ jobs:
                 data_folder="data"
                 report_artifact_json=$(cat collection-report/report.json)
                 repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
-                scanoss_results_file_path="scanoss-report/scanoss.json"
+                scanoss_results_file_path="scanoss-report/results.json"
                 scanoss_enabled=false
 
                 scanoss_target_directory="$data_folder/scanoss"
