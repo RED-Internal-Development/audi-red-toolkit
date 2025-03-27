@@ -263,13 +263,14 @@ jobs:
               id: generate-report
               run: |
                 data_folder="data"
+                app_name=$(basename ${{ inputs.source_file }})
                 report_artifact_json=$(cat collection-report/report.json)
                 repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
                 scanoss_results_file_path="scanoss-report/results.json"
                 scanoss_enabled=false
 
                 scanoss_target_directory="$data_folder/scanoss"
-                scanoss_target_file="$scanoss_target_directory/$repo_name.json"
+                scanoss_target_file="$scanoss_target_directory/$app_name.json"
                 mkdir -p "$scanoss_target_directory"
 
                 if [ -f "$scanoss_results_file_path" ]; then
