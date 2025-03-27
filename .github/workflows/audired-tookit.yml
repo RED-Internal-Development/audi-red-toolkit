@@ -343,7 +343,9 @@ jobs:
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add data/report.json
-                git add data/scanoss/
+                if [[ -n ${{ github.event.workflow_run.id }} ]]; then
+                  git add data/scanoss/
+                fi
                 git add deployment/
                 if ! git diff-index --quiet HEAD; then
                     echo "commiting changes"
