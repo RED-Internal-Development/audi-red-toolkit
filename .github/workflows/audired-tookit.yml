@@ -268,12 +268,13 @@ jobs:
                 scanoss_results_file_path="scanoss-report/scanoss.json"
                 scanoss_enabled=false
 
+                scanoss_target_directory="$data_folder/scanoss"
+                scanoss_target_file="$scanoss_target_directory/$repo_name.json"
+                mkdir -p "$scanoss_target_directory"
+
                 if [ -f "$scanoss_results_file_path" ]; then
                     scanoss_enabled=true
-                    target_directory="$data_folder/scanoss"
-                    target_file="$target_directory/$repo_name.json"
-                    mkdir -p "$target_directory"
-                    cp -f "$scanoss_results_file_path" "$target_file"
+                    cp -f "$scanoss_results_file_path" "$scanoss_target_file"
                 else
                     echo "No scanoss results to include"
                 fi
