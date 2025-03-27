@@ -343,7 +343,7 @@ jobs:
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add data/report.json
-                if [[ -n ${{ github.event.workflow_run.id }} ]]; then
+                if [[ -n "${{ github.event.workflow_run.id }}" ]]; then
                   git add data/scanoss/
                 fi
                 git add deployment/
