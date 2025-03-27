@@ -53,6 +53,16 @@ on:
             type: string
             required: false
             default: github.com
+        msiParentPageIds:
+          description: 'By default we deployment all feature apps to a documentation sync parent id in msi. If you prefer to deploy elsewhere in this space, list ids'
+          default: ""
+          type: string
+          required: false
+        cloudParentPageIds:
+          description: 'By default we deployment all feature apps to a documentation sync parent id in confluence cloud. If you prefer to deploy elsewhere in this space, list ids'
+          default: ""
+          type: string
+          required: false
         enable_doc_sync:
             description: 'Enable doc sync step, DOC_SYNC_KEY is required in secrets'
             type: boolean
@@ -75,125 +85,125 @@ jobs:
         if: ${{ always() && inputs.enable_doc_sync }}
         needs: data_sync
         steps:
-        - name: Check if branch exists
-          id: check_branch
-          shell: bash
-          run: |
-            BRANCH_NAME="${{ inputs.destination_branch }}"
-            DESTINATION_REPO="${{ inputs.destination_repo }}"
-            API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
+          - name: Check if branch exists
+            id: check_branch
+            shell: bash
+            run: |
+              BRANCH_NAME="${{ inputs.destination_branch }}"
+              DESTINATION_REPO="${{ inputs.destination_repo }}"
+              API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
 
-            # Query the GitHub API
-            response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
+              # Query the GitHub API
+              response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
 
-            if [ "$response" -eq 200 ]; then
-                echo "Branch '${BRANCH_NAME}' exists."
-                echo "branch_exists=true" >> $GITHUB_OUTPUT
-            else
-                echo "Branch '${BRANCH_NAME}' does not exist."
-                echo "branch_exists=false" >> $GITHUB_OUTPUT
-            fi
+              if [ "$response" -eq 200 ]; then
+                  echo "Branch '${BRANCH_NAME}' exists."
+                  echo "branch_exists=true" >> $GITHUB_OUTPUT
+              else
+                  echo "Branch '${BRANCH_NAME}' does not exist."
+                  echo "branch_exists=false" >> $GITHUB_OUTPUT
+              fi
 
-        - name: Checkout
-          uses: actions/checkout@v2
-        
-        - name: Eslint check for Docusaurus build compatibility
-          run: |
-            cd ${{ inputs.source_file }}
-            npx docusaurus-mdx-checker
+          - name: Checkout
+            uses: actions/checkout@v2
+          
+          - name: Eslint check for Docusaurus build compatibility
+            run: |
+              cd ${{ inputs.source_file }}
+              npx docusaurus-mdx-checker
 
-        - name: Check if referenced images exist
-          run: |
-            find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
-                  echo "Checking file: $md_file"
-                  
-                  grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
-                      image=$(echo "$image" | sed 's/[?#].*$//')
-                      if [[ "$image" =~ ^https?:// ]]; then
-                          echo "Skipping external image: $image"
-                          continue
-                      elif [[ "$image" =~ ^/ ]]; then
-                          IMAGE_PATH="$GITHUB_WORKSPACE$image"
-                      else
-                          IMAGE_PATH="$(dirname "$md_file")/$image"
-                      fi
-  
-                      IMAGE_PATH=$(realpath "$IMAGE_PATH")
+          - name: Check if referenced images exist
+            run: |
+              find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
+                    echo "Checking file: $md_file"
+                    
+                    grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
+                        image=$(echo "$image" | sed 's/[?#].*$//')
+                        if [[ "$image" =~ ^https?:// ]]; then
+                            echo "Skipping external image: $image"
+                            continue
+                        elif [[ "$image" =~ ^/ ]]; then
+                            IMAGE_PATH="$GITHUB_WORKSPACE$image"
+                        else
+                            IMAGE_PATH="$(dirname "$md_file")/$image"
+                        fi
+    
+                        IMAGE_PATH=$(realpath "$IMAGE_PATH")
 
-                      if [[ ! -f "$IMAGE_PATH" ]]; then
-                          echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
-                          exit 1
-                      fi
-                  done
-              done
+                        if [[ ! -f "$IMAGE_PATH" ]]; then
+                            echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
+                            exit 1
+                        fi
+                    done
+                done
 
-              echo "All images are properly referenced and exist!"
-        
-        - name: Download collection report artifact
-          if: github.event.workflow_run.id != ''
-          uses: actions/download-artifact@v4
-          with:
-            name: data-report
-            path: data-report
-            github-token: ${{ github.token }}
-            repository: ${{ github.repository }}
+                echo "All images are properly referenced and exist!"
+          
+          - name: Download collection report artifact
+            if: github.event.workflow_run.id != ''
+            uses: actions/download-artifact@v4
+            with:
+              name: data-report
+              path: data-report
+              github-token: ${{ github.token }}
+              repository: ${{ github.repository }}
 
-        - name: Create or update project metrics with report data
-          if: github.event.workflow_run.id != ''
-          run: |
-            FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
-            report_file="data-report/report.json"
-            report_file_data=$(cat $report_file)
+          - name: Create or update project metrics with report data
+            if: github.event.workflow_run.id != ''
+            run: |
+              FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
+              report_file="data-report/report.json"
+              report_file_data=$(cat $report_file)
 
-            if [ -z "$report_file_data" ]; then
-                echo "No report results to include, skipping"
-            else
-                repo_name=$(echo "$report_file_data" | jq -r 'to_entries | .[0].key')
-                echo "REPO: $repo_name"
-                lighthouse_score=$(jq ".[\"$repo_name\"].lighthouse_score" "$report_file")
-                echo "lighthouse score: $lighthouse_score"
-                unit_test_coverage=$(jq ".[\"$repo_name\"].unit_test_coverage" "$report_file")
-                echo "unit test coverage: $unit_test_coverage"
-                e2e_test_coverage=$(jq ".[\"$repo_name\"].e2e_test_coverage" "$report_file")
-                echo "e2e test coverage: $e2e_test_coverage"
+              if [ -z "$report_file_data" ]; then
+                  echo "No report results to include, skipping"
+              else
+                  repo_name=$(echo "$report_file_data" | jq -r 'to_entries | .[0].key')
+                  echo "REPO: $repo_name"
+                  lighthouse_score=$(jq ".[\"$repo_name\"].lighthouse_score" "$report_file")
+                  echo "lighthouse score: $lighthouse_score"
+                  unit_test_coverage=$(jq ".[\"$repo_name\"].unit_test_coverage" "$report_file")
+                  echo "unit test coverage: $unit_test_coverage"
+                  e2e_test_coverage=$(jq ".[\"$repo_name\"].e2e_test_coverage" "$report_file")
+                  echo "e2e test coverage: $e2e_test_coverage"
 
-                NEW_CONTENT="# CI Report Summary\n"
-                if [ -n "$lighthouse_score" ]  && [ "$lighthouse_score" != "null" ]; then
-                  NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1\n"
-                fi
-                if [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
-                  rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
-                  NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
-                fi
-                if [ -n "$e2e_test_coverage" ] && [ "$e2e_test_coverage" != "null" ]; then
-                  rounded_e2e_test_coverage=$(printf "%.0f" $e2e_test_coverage)
-                  NEW_CONTENT+="- **E2E Test Coverage**: $rounded_e2e_test_coverage%\n"
-                fi
+                  NEW_CONTENT="# CI Report Summary\n"
+                  if [ -n "$lighthouse_score" ]  && [ "$lighthouse_score" != "null" ]; then
+                    NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1\n"
+                  fi
+                  if [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
+                    rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
+                    NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
+                  fi
+                  if [ -n "$e2e_test_coverage" ] && [ "$e2e_test_coverage" != "null" ]; then
+                    rounded_e2e_test_coverage=$(printf "%.0f" $e2e_test_coverage)
+                    NEW_CONTENT+="- **E2E Test Coverage**: $rounded_e2e_test_coverage%\n"
+                  fi
 
-                # Check if the file exists
-                if [ -f "$FILE_PATH" ]; then
-                  echo "File exists. Appending content to the top of the file: $FILE_PATH"
-                  echo -e "$NEW_CONTENT\n$(cat $FILE_PATH)" > $FILE_PATH
-                else
-                  echo "File does not exist. Creating a new file: $FILE_PATH"
-                  echo -e "$NEW_CONTENT" > $FILE_PATH
-                fi
-            fi
+                  # Check if the file exists
+                  if [ -f "$FILE_PATH" ]; then
+                    echo "File exists. Appending content to the top of the file: $FILE_PATH"
+                    echo -e "$NEW_CONTENT\n$(cat $FILE_PATH)" > $FILE_PATH
+                  else
+                    echo "File does not exist. Creating a new file: $FILE_PATH"
+                    echo -e "$NEW_CONTENT" > $FILE_PATH
+                  fi
+              fi
 
-        - name: Pushes files from Feature App to Audi RED Portal for syndication
-          uses: RED-Internal-Development/audred_docsync_action@main
-          env:
-            API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
-          with:
-            source_file: ${{ inputs.source_file }}
-            destination_repo: ${{ inputs.destination_repo }}
-            destination_folder: ${{ inputs.destination_folder }}
-            destination_branch: ${{ inputs.destination_branch }}
-            user_email: ${{ inputs.user_email }}
-            user_name: ${{ inputs.user_name }}
-            user_actor: ${{ github.actor }}
-            use_rsync: true
-            destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
+          - name: Pushes files from Feature App to Audi RED Portal for syndication
+            uses: RED-Internal-Development/audred_docsync_action@main
+            env:
+              API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
+            with:
+              source_file: ${{ inputs.source_file }}
+              destination_repo: ${{ inputs.destination_repo }}
+              destination_folder: ${{ inputs.destination_folder }}
+              destination_branch: ${{ inputs.destination_branch }}
+              user_email: ${{ inputs.user_email }}
+              user_name: ${{ inputs.user_name }}
+              user_actor: ${{ github.actor }}
+              use_rsync: true
+              destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
 
     scanoss:
         runs-on: ubuntu-latest
@@ -232,7 +242,7 @@ jobs:
 
     data_sync:
         runs-on: ubuntu-latest
-        if: ${{ always() && github.event.workflow_run.id != '' }}
+        if: always()
         needs: scanoss
         env:
           SCANOSS_RESULTS: ${{ needs.scanoss.outputs.scan_results }}
@@ -245,6 +255,7 @@ jobs:
                 ref: doc-sync-queue
             
             - name: Download collection report artifact
+              if: github.event.workflow_run.id != ''
               uses: actions/download-artifact@v4
               with:
                 name: audired-collection-report
@@ -254,6 +265,7 @@ jobs:
                 run-id: ${{ github.event.workflow_run.id }}
 
             - name: Update dependency_report/report.json in ${{ inputs.destination_repo }}
+              if: github.event.workflow_run.id != ''
               id: generate-report
               run: |
                 # Artifact update
@@ -288,19 +300,53 @@ jobs:
                 mv tmp_report.json "$data_folder"/report.json
 
             - name: Upload final report
+              if: github.event.workflow_run.id != ''
               uses: actions/upload-artifact@v4
               with:
                 name: data-report
                 path: collection-report/report.json
+            
+            - name: Create Repo Configuration File for MSI/Cloud Deployments
+              run: |
+                app_name=$(basename ${{ inputs.source_file }})
+                team_folder_name=$(basename ${{ inputs.destination_folder }})
+                msi_parent_page_ids="${{ inputs.msiParentPageIds }}"
+                cloud_parent_page_ids="${{ inputs.cloudParentPageIds }}"
+                config_file="deployment/repo_configs/$app_name.json"
+
+                mkdir -p "$(dirname "$config_file")"
+
+                if [[ -z "$msi_parent_page_ids" && -z "$cloud_parent_page_ids" ]]; then
+                  if [[ -f "$config_file" ]]; then
+                    rm "$config_file"
+                  fi
+                else
+                  echo '{}' > "$config_file"
+                  msi_jq_string=""
+                  if [[ -n "$msi_parent_page_ids" ]]; then
+                    msi_array=$(echo "$msi_parent_page_ids" | tr ',' '\n' | jq -R . | jq -s .)
+                    msi_jq_string=".msi_parent_page_ids = $msi_array | "
+                  fi
+
+                  if [[ -n "$cloud_parent_page_ids" ]]; then
+                    cloud_array=$(echo "$cloud_parent_page_ids" | tr ',' '\n' | jq -R . | jq -s .)
+                    cloud_jq_string=".cloud_parent_page_ids = $cloud_array | "
+                  fi
+                  
+                  jq "$msi_jq_string$cloud_jq_string.team_folder = \"$team_folder_name\" | .app_name = \"$app_name\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+                  echo "config file:"
+                  cat "$config_file"
+                fi
 
             - name: Commit and push changes
               run: |
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add data/report.json
+                git add deployment/
                 if ! git diff-index --quiet HEAD; then
                     echo "commiting changes"
-                    git commit -m "Update report.json with dependencies from ${{ inputs.destination_branch }}"
+                    git commit -m "Update report.json and deployment config from ${{ inputs.destination_branch }}"
                     git push
                 else
                     echo "No changes to push"
