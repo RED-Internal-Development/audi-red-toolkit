@@ -163,7 +163,7 @@ jobs:
                   lighthouse_score=$(jq ".[\"$repo_name\"].lighthouse_score" "$report_file")
                   echo "lighthouse score: $lighthouse_score"
                   unit_test_coverage_data=$(jq ".[\"$repo_name\"].unit_test_coverage" "$report_file")
-                  echo "unit test coverage: $unit_test_coverage"
+                  echo "unit test coverage: $unit_test_coverage_data"
                   e2e_test_coverage=$(jq ".[\"$repo_name\"].e2e_test_coverage" "$report_file")
                   echo "e2e test coverage: $e2e_test_coverage"
 
@@ -178,6 +178,7 @@ jobs:
                   fi
 
                   if [ -n "$unit_test_coverage_data" ] && [ "$unit_test_coverage_data" != "null" ]; then
+                    echo "checking unit_test_coverage_data"
                     check_value() {
                       local value=$1
                       value=$(echo "$value" | awk '{print $1+0}')
@@ -204,6 +205,8 @@ jobs:
                       | Lines | $unit_lines | $(check_value $unit_lines) | /n
                       | Overall | $rounded_unit_test_coverage | $(check_value $rounded_unit_test_coverage) | /n"
                   elif [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
+                    echo "rounded_unit_test_coverage"
+                    rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
                     NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
                   fi
 
