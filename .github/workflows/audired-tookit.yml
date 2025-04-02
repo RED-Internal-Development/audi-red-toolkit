@@ -162,8 +162,8 @@ jobs:
                   echo "REPO: $repo_name"
                   lighthouse_score=$(jq ".[\"$repo_name\"].lighthouse_score" "$report_file")
                   echo "lighthouse score: $lighthouse_score"
-                  unit_test_coverage=$(jq ".[\"$repo_name\"].unit_test_coverage" "$report_file")
-                  echo "unit test coverage: $unit_test_coverage"
+                  unit_test_coverage_data=$(jq ".[\"$repo_name\"].unit_test_coverage" "$report_file")
+                  echo "unit test coverage: $unit_test_coverage_data"
                   e2e_test_coverage=$(jq ".[\"$repo_name\"].e2e_test_coverage" "$report_file")
                   echo "e2e test coverage: $e2e_test_coverage"
 
@@ -171,13 +171,69 @@ jobs:
                   if [ -n "$lighthouse_score" ]  && [ "$lighthouse_score" != "null" ]; then
                     NEW_CONTENT+="- **Lighthouse Score**: $lighthouse_score / 1\n"
                   fi
-                  if [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
-                    rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
-                    NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
-                  fi
+
                   if [ -n "$e2e_test_coverage" ] && [ "$e2e_test_coverage" != "null" ]; then
                     rounded_e2e_test_coverage=$(printf "%.0f" $e2e_test_coverage)
                     NEW_CONTENT+="- **E2E Test Coverage**: $rounded_e2e_test_coverage%\n"
+                  fi
+
+                  if [ -n "$unit_test_coverage_data" ] && [ "$unit_test_coverage_data" != "null" ]; then
+                    echo "checking unit_test_coverage_data"
+                    check_value() {
+                      local value=$1
+                      value=$(echo "$value" | awk '{print $1+0}')
+                      
+                      if (( $(echo "$value > 80" | bc -l) )); then
+                        echo ":white_check_mark:"
+                      elif (( $(echo "$value > 50" | bc -l) )); then
+                        echo ":warning:"
+                      else
+                        echo ":x:"
+                      fi
+                    }
+                    
+                    unit_statements=$(jq ".[\"$repo_name\"].unit_test_coverage_data.statement_coverage" "$report_file")
+                    unit_functions=$(jq ".[\"$repo_name\"].unit_test_coverage_data.function_coverage" "$report_file")
+                    unit_branches=$(jq ".[\"$repo_name\"].unit_test_coverage_data.branch_coverage" "$report_file")
+                    unit_lines=$(jq ".[\"$repo_name\"].unit_test_coverage_data.line_coverage" "$report_file")
+                    unit_average=$(jq ".[\"$repo_name\"].unit_test_coverage_data.average_coverage" "$report_file")
+                    echo "unit_average: $unit_average"
+                    rounded_unit_test_coverage=$(printf "%.0f" $unit_average)
+                    echo "rounded_unit_test_coverage: $rounded_unit_test_coverage"
+                    NEW_CONTENT+=$(
+                      echo "## Unit Test Coverage" $'\n' \
+                          "| Category | Coverage | Rating |" $'\n' \
+                          "|-------------|------------|----------------|" $'\n' \
+                          "| Statements | "$unit_statements%" | $(check_value $unit_statements) |" $'\n' \
+                          "| Functions  | "$unit_functions%" | $(check_value $unit_functions) |" $'\n' \
+                          "| Branches   | "$unit_branches%" | $(check_value $unit_branches) |" $'\n' \
+                          "| Lines      | "$unit_lines%" | $(check_value $unit_lines) |" $'\n' \
+                          "| Overall    | "$rounded_unit_test_coverage%" | $(check_value $rounded_unit_test_coverage) |" $'\n'
+                    )
+
+                    RECOMMENDATIONS_CONTENT=""
+                    if (( $(echo "$unit_branches < 60" | bc -l) )); then
+                      RECOMMENDATIONS_CONTENT+="- Test more branches (if/else, error handling)"
+                    fi
+
+                    if (( $(echo "$unit_functions < 70" | bc -l) )); then
+                      RECOMMENDATIONS_CONTENT+="- Write additional unit tests for functions."
+                    fi
+
+                    if (( $(echo "$unit_lines < 70" | bc -l) )); then
+                      RECOMMENDATIONS_CONTENT+="- Better cover the entire code (e.g. rare code paths)"
+                    fi
+
+                    echo "RECOMMENDATIONS_CONTENT: $RECOMMENDATIONS_CONTENT"
+                    if [[ -n "RECOMMENDATIONS_CONTENT" ]]; then
+                      NEW_CONTENT+=$(
+                        echo $'\n' "### :pushpin: Recommendations:" $'\n' \
+                            "$RECOMMENDATIONS_CONTENT" $'\n'
+                      )
+                    fi
+                  elif [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
+                    rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
+                    NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
                   fi
 
                   # Check if the file exists
