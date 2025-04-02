@@ -190,10 +190,11 @@ jobs:
                         echo ":x:"
                       fi
                     }
-                    unit_statements=$(jq ".[\"$repo_name\"].unit_test_coverage.statements" "$report_file")
-                    unit_functions=$(jq ".[\"$repo_name\"].unit_test_coverage.functions" "$report_file")
-                    unit_branches=$(jq ".[\"$repo_name\"].unit_test_coverage.branches" "$report_file")
-                    unit_lines=$(jq ".[\"$repo_name\"].unit_test_coverage.lines" "$report_file")
+                    
+                    unit_statements=$(jq ".[\"$repo_name\"].unit_test_coverage_data.statements" "$report_file")
+                    unit_functions=$(jq ".[\"$repo_name\"].unit_test_coverage_data.functions" "$report_file")
+                    unit_branches=$(jq ".[\"$repo_name\"].unit_test_coverage_data.branches" "$report_file")
+                    unit_lines=$(jq ".[\"$repo_name\"].unit_test_coverage_data.lines" "$report_file")
                     rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
                     NEW_CONTENT+="| Category | Coverage | Rating | \n
                       |-------------|------------|----------------| \n
