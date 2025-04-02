@@ -216,11 +216,11 @@ jobs:
                       RECOMMENDATIONS_CONTENT+="- Test more branches (if/else, error handling)"
                     fi
 
-                    if (( $(echo "$unit_lines < 70" | bc -l) )); then
+                    if (( $(echo "$unit_functions < 70" | bc -l) )); then
                       RECOMMENDATIONS_CONTENT+="- Write additional unit tests for functions."
                     fi
 
-                    if (( $(echo "$unit_functions < 70" | bc -l) )); then
+                    if (( $(echo "$unit_lines < 70" | bc -l) )); then
                       RECOMMENDATIONS_CONTENT+="- Better cover the entire code (e.g. rare code paths)"
                     fi
 
