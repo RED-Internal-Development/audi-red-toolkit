@@ -208,7 +208,7 @@ jobs:
                           "| Functions  | "$unit_functions%" | $(check_value $unit_functions) |" $'\n' \
                           "| Branches   | "$unit_branches%" | $(check_value $unit_branches) |" $'\n' \
                           "| Lines      | "$unit_lines%" | $(check_value $unit_lines) |" $'\n' \
-                          "| Overall    | "$rounded_unit_test_coverage%" | $(check_value $rounded_unit_test_coverage) |"
+                          "| Overall    | "$rounded_unit_test_coverage%" | $(check_value $rounded_unit_test_coverage) |" $'\n'
                     )
 
                     RECOMMENDATIONS_CONTENT=""
