@@ -192,18 +192,19 @@ jobs:
                       fi
                     }
                     
-                    unit_statements=$(jq ".[\"$repo_name\"].unit_test_coverage_data.statements" "$report_file")
-                    unit_functions=$(jq ".[\"$repo_name\"].unit_test_coverage_data.functions" "$report_file")
-                    unit_branches=$(jq ".[\"$repo_name\"].unit_test_coverage_data.branches" "$report_file")
-                    unit_lines=$(jq ".[\"$repo_name\"].unit_test_coverage_data.lines" "$report_file")
+                    unit_statements=$(jq ".[\"$repo_name\"].unit_test_coverage_data.statement_coverage" "$report_file")
+                    echo "unit_statements: $unit_statements"
+                    unit_functions=$(jq ".[\"$repo_name\"].unit_test_coverage_data.function_coverage" "$report_file")
+                    unit_branches=$(jq ".[\"$repo_name\"].unit_test_coverage_data.branch_coverage" "$report_file")
+                    unit_lines=$(jq ".[\"$repo_name\"].unit_test_coverage_data.line_coverage" "$report_file")
                     rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
                     NEW_CONTENT+="| Category | Coverage | Rating | \n
-                      |-------------|------------|----------------| \n
-                      | Statements | $unit_statements | $(check_value $unit_statements) | \n
-                      | Functions | $unit_functions | $(check_value $unit_functions) | \n
-                      | Branches | $unit_branches | $(check_value $unit_branches) | \n
-                      | Lines | $unit_lines | $(check_value $unit_lines) | /n
-                      | Overall | $rounded_unit_test_coverage | $(check_value $rounded_unit_test_coverage) | /n"
+                    |-------------|------------|----------------|\n
+                    | Statements | $unit_statements | $(check_value $unit_statements) |\n
+                    | Functions | $unit_functions | $(check_value $unit_functions) |\n
+                    | Branches | $unit_branches | $(check_value $unit_branches) |\n
+                    | Lines | $unit_lines | $(check_value $unit_lines) |/n
+                    | Overall | $rounded_unit_test_coverage | $(check_value $rounded_unit_test_coverage) |/n"
                   elif [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
                     echo "rounded_unit_test_coverage"
                     rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
