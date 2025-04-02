@@ -210,6 +210,27 @@ jobs:
                           "| Lines      | "$unit_lines%" | $(check_value $unit_lines) |" $'\n' \
                           "| Overall    | "$rounded_unit_test_coverage%" | $(check_value $rounded_unit_test_coverage) |"
                     )
+
+                    RECOMMENDATIONS_CONTENT=""
+                    if (( $(echo "$unit_branches < 60" | bc -l) )); then
+                      RECOMMENDATIONS_CONTENT+="- Test more branches (if/else, error handling)"
+                    fi
+
+                    if (( $(echo "$unit_lines < 70" | bc -l) )); then
+                      RECOMMENDATIONS_CONTENT+="- Write additional unit tests for functions."
+                    fi
+
+                    if (( $(echo "$unit_functions < 70" | bc -l) )); then
+                      RECOMMENDATIONS_CONTENT+="- Better cover the entire code (e.g. rare code paths)"
+                    fi
+
+                    echo "RECOMMENDATIONS_CONTENT: $RECOMMENDATIONS_CONTENT"
+                    if [[ -n "RECOMMENDATIONS_CONTENT" ]]; then
+                      NEW_CONTENT+=$(
+                        echo "### :pushpin: Recommendations:" $'\n' \
+                            "$RECOMMENDATIONS_CONTENT" $'\n'
+                      )
+                    fi
                   elif [ -n "$unit_test_coverage" ] && [ "$unit_test_coverage" != "null" ]; then
                     rounded_unit_test_coverage=$(printf "%.0f" $unit_test_coverage)
                     NEW_CONTENT+="- **Unit Test Coverage**: $rounded_unit_test_coverage%\n"
