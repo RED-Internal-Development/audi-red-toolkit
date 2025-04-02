@@ -227,7 +227,7 @@ jobs:
                     echo "RECOMMENDATIONS_CONTENT: $RECOMMENDATIONS_CONTENT"
                     if [[ -n "RECOMMENDATIONS_CONTENT" ]]; then
                       NEW_CONTENT+=$(
-                        echo "### :pushpin: Recommendations:" $'\n' \
+                        echo $'\n' "### :pushpin: Recommendations:" $'\n' \
                             "$RECOMMENDATIONS_CONTENT" $'\n'
                       )
                     fi
