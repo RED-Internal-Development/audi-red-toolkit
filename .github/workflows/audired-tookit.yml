@@ -319,10 +319,12 @@ jobs:
               id: create-docs-folders
               run: |
                 app_name=$(basename ${{ inputs.source_file }})
+                docs_branch="${{ inputs.destination_branch }}"
                 docs_destination_team_folder="docs/feature_apps/${{ inputs.destination_branch }}"
                 docs_destination_app_folder="$docs_destination_team_folder/$app_name"
 
                 echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
+                echo "docs_branch=$docs_branch" >> $GITHUB_ENV
                 echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
                 echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
 
@@ -352,10 +354,10 @@ jobs:
                   --argjson scan_results "$scanoss_enabled" \
                   --arg docs_destination_team_folder "$docs_destination_team_folder" \
                   --arg docs_destination_app_folder "$docs_destination_app_folder" \
-                  '.[$repo_name] |= . + {scan_results: $scan_results, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder}}')
+                  --arg docs_branch "$docs_branch" \
+                  '.[$repo_name] |= . + {scan_results: $scan_results, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}}')
                 echo "$updated_report_artifact_json" > collection-report/report.json
                 report_artifact_json=$(cat collection-report/report.json)
-                echo "REPORT JSON: $report_artifact_json"
 
                 # Push artifact report to existing report.json
                 mkdir -p "$data_folder"
