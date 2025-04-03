@@ -244,20 +244,6 @@ jobs:
                     echo -e "$NEW_CONTENT" > $FILE_PATH
                   fi
               fi
-          
-          - name: Create dynamic destination folder based on branch
-            run: |
-              report_file="data-report/report.json"
-              report_file_data=$(cat $report_file)
-
-              echo "docs_destination_team_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}"
-
-              if [ -z "$report_file_data" ]; then
-                  echo "No report results to include, skipping"
-              else
-                  repo_name=$(echo "$report_file_data" | jq -r 'to_entries | .[0].key')
-                  echo "REPO: $repo_name"
-                  lighthouse_score=$(jq ".[\"$repo_name\"].lighthouse_score" "$report_file")
 
           - name: Pushes files from Feature App to Audi RED Portal for syndication
             uses: RED-Internal-Development/audred_docsync_action@main
