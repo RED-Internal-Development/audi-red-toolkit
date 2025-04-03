@@ -224,7 +224,6 @@ jobs:
                       RECOMMENDATIONS_CONTENT+="- Better cover the entire code (e.g. rare code paths)"
                     fi
 
-                    echo "RECOMMENDATIONS_CONTENT: $RECOMMENDATIONS_CONTENT"
                     if [[ -n "RECOMMENDATIONS_CONTENT" ]]; then
                       NEW_CONTENT+=$(
                         echo $'\n' "### :pushpin: Recommendations:" $'\n' \
@@ -245,6 +244,20 @@ jobs:
                     echo -e "$NEW_CONTENT" > $FILE_PATH
                   fi
               fi
+          
+          - name: Create dynamic destination folder based on branch
+            run: |
+              report_file="data-report/report.json"
+              report_file_data=$(cat $report_file)
+
+              echo "docs_destination_team_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}"
+
+              if [ -z "$report_file_data" ]; then
+                  echo "No report results to include, skipping"
+              else
+                  repo_name=$(echo "$report_file_data" | jq -r 'to_entries | .[0].key')
+                  echo "REPO: $repo_name"
+                  lighthouse_score=$(jq ".[\"$repo_name\"].lighthouse_score" "$report_file")
 
           - name: Pushes files from Feature App to Audi RED Portal for syndication
             uses: RED-Internal-Development/audred_docsync_action@main
@@ -253,7 +266,7 @@ jobs:
             with:
               source_file: ${{ inputs.source_file }}
               destination_repo: ${{ inputs.destination_repo }}
-              destination_folder: ${{ inputs.destination_folder }}
+              destination_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}
               destination_branch: ${{ inputs.destination_branch }}
               user_email: ${{ inputs.user_email }}
               user_name: ${{ inputs.user_name }}
@@ -289,6 +302,8 @@ jobs:
         runs-on: ubuntu-latest
         if: always()
         needs: scanoss
+        outputs:
+          docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
         steps:
             - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
@@ -313,10 +328,20 @@ jobs:
                 github-token: ${{ github.token }}
                 repository: ${{ github.repository }}
                 run-id: ${{ github.event.workflow_run.id }}
+            
+            - name: Dynamically create docs destination folder variables
+              id: create-docs-folders
+              run: |
+                app_name=$(basename ${{ inputs.source_file }})
+                docs_destination_team_folder="docs/feature_apps/${{ inputs.destination_branch }}"
+                docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+
+                echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
+                echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
+                echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
 
             - name: Update data/report.json in ${{ inputs.destination_repo }}
               if: github.event.workflow_run.id != ''
-              id: generate-report
               run: |
                 data_folder="data"
                 app_name=$(basename ${{ inputs.source_file }})
@@ -339,9 +364,12 @@ jobs:
                 updated_report_artifact_json=$(echo "$report_artifact_json" | \
                   jq --arg repo_name "$repo_name" \
                   --argjson scan_results "$scanoss_enabled" \
-                  '.[$repo_name].scan_results = $scan_results')
+                  --arg docs_destination_team_folder "$docs_destination_team_folder" \
+                  --arg docs_destination_app_folder "$docs_destination_app_folder" \
+                  '.[$repo_name] |= . + {scan_results: $scan_results, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder}}')
                 echo "$updated_report_artifact_json" > collection-report/report.json
                 report_artifact_json=$(cat collection-report/report.json)
+                echo "REPORT JSON: $report_artifact_json"
 
                 # Push artifact report to existing report.json
                 mkdir -p "$data_folder"
