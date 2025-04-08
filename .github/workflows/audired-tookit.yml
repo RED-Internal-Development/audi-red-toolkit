@@ -367,6 +367,8 @@ jobs:
                   report_artifact_json=$(cat $collection_report_file_path)
                 fi
 
+                echo "report_artifact_json: $report_artifact_json"
+
                 scanoss_results_file_path="scanoss-report/results.json"
                 scanoss_enabled=false
                 scanoss_target_directory="$data_folder/scanoss"
