@@ -295,7 +295,7 @@ jobs:
               uses: actions/checkout@v3
 
             - name: Collection of metadata from repository
-              id: metadata-collection
+              id: metadata_collection
               uses: RED-Internal-Development/audi-red-app-metadata-kit@staging
               with:
                 github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -341,7 +341,7 @@ jobs:
 
             - name: Update data/report.json with additional metadata
               run: |
-                metadata_file_path="${{ steps.metadata-collection.outputs.file_path }}"
+                metadata_file_path="${{ steps.metadata_collection.outputs.file_path }}"
                 echo "The file path is: $metadata_file_path"
                 cat "$metadata_file_path"
 
