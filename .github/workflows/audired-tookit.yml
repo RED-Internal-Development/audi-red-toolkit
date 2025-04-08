@@ -347,20 +347,24 @@ jobs:
 
             - name: Update data/report.json with additional metadata
               run: |
-                metadata_file_path="metadata-report/metadata-report.json"
-                echo "The file path is: $metadata_file_path"
-                cat "$metadata_file_path"
-
                 data_folder="data"
+                collection_report_file_path="collection-report/report.json"
+                metadata_file_path="metadata-report/metadata-report.json"
+                output_file_path="combined-data.json"
+
+                metadata_artifact_json=$(cat "$metadata_file_path")
+                repo_name=$(echo "$metadata_artifact_json" | jq -r 'to_entries | .[0].key')
       
-                if [[ -n "${{ inputs.workflow_run_id }}" ]]; then
-                  report_artifact_json=$(cat collection-report/report.json)
-                  repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
+                if [[ -n "${{ github.event.workflow_run.id }}" ]]; then
+                  jq --arg repo_name "$repo_name" \
+                    '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
+                    "$collection_report_file_path" "$metadata_file_path" > "$output_file_path"
+
+                  report_artifact_json=$(cat $output_file_path)
                 else
                   mkdir -p "collection-report"
-                  echo "{}" > collection-report/report.json
-                  report_artifact_json=$(collection-report/report.json)
-                  repo_name=$(jq -r '.repo_name' $metadata_file_path)
+                  echo $metadata_artifact_json > $collection_report_file_path
+                  report_artifact_json=$(cat $collection_report_file_path)
                 fi
 
                 scanoss_results_file_path="scanoss-report/results.json"
