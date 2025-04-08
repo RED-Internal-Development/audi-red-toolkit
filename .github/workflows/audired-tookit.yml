@@ -316,6 +316,12 @@ jobs:
                 name: scanoss-report
                 path: scanoss-report
             
+            - name: Download metadata artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: metadata-report
+                path: metadata-report
+            
             - name: Download collection report artifact
               if: github.event.workflow_run.id != ''
               uses: actions/download-artifact@v4
@@ -341,7 +347,7 @@ jobs:
 
             - name: Update data/report.json with additional metadata
               run: |
-                metadata_file_path="${{ steps.metadata_collection.outputs.file_path }}"
+                metadata_file_path="metadata-report/metadata-report.json"
                 echo "The file path is: $metadata_file_path"
                 cat "$metadata_file_path"
 
