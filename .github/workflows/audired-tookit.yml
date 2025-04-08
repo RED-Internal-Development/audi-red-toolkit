@@ -369,10 +369,11 @@ jobs:
 
                 echo "report_artifact_json: $report_artifact_json"
 
+                repo_basename=$(basename $repo_name)
                 scanoss_results_file_path="scanoss-report/results.json"
                 scanoss_enabled=false
                 scanoss_target_directory="$data_folder/scanoss"
-                scanoss_target_file="$scanoss_target_directory/$repo_name.json"
+                scanoss_target_file="$scanoss_target_directory/$repo_basename.json"
                 mkdir -p "$scanoss_target_directory"
 
                 if [ -f "$scanoss_results_file_path" ]; then
