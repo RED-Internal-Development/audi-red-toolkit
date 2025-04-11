@@ -291,6 +291,17 @@ jobs:
         outputs:
           docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
         steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v3
+
+            - name: Collection of metadata from repository
+              id: metadata_collection
+              uses: RED-Internal-Development/audi-red-app-metadata-kit@staging
+              with:
+                github_token: ${{ secrets.GITHUB_TOKEN }}
+                repository: ${{ github.repository }}
+                workflow_run_id: ${{ github.event.workflow_run.id }}
+            
             - name: Checkout AudiRed Doc Sync repository
               uses: actions/checkout@v3
               with:
@@ -304,6 +315,12 @@ jobs:
               with:
                 name: scanoss-report
                 path: scanoss-report
+            
+            - name: Download metadata artifact
+              uses: actions/download-artifact@v4
+              with:
+                name: metadata-report
+                path: metadata-report
             
             - name: Download collection report artifact
               if: github.event.workflow_run.id != ''
@@ -328,18 +345,35 @@ jobs:
                 echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
                 echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
 
-            - name: Update data/report.json in ${{ inputs.destination_repo }}
-              if: github.event.workflow_run.id != ''
+            - name: Update data/report.json with additional metadata
               run: |
                 data_folder="data"
-                app_name=$(basename ${{ inputs.source_file }})
-                report_artifact_json=$(cat collection-report/report.json)
-                repo_name=$(echo "$report_artifact_json" | jq -r 'to_entries | .[0].key')
+                collection_report_file_path="collection-report/report.json"
+                metadata_file_path="metadata-report/metadata-report.json"
+                output_file_path="combined-data.json"
+
+                metadata_artifact_json=$(cat "$metadata_file_path")
+                repo_name=$(echo "$metadata_artifact_json" | jq -r 'to_entries | .[0].key')
+      
+                if [[ -n "${{ github.event.workflow_run.id }}" ]]; then
+                  jq --arg repo_name "$repo_name" \
+                    '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
+                    "$collection_report_file_path" "$metadata_file_path" > "$output_file_path"
+
+                  report_artifact_json=$(cat $output_file_path)
+                else
+                  mkdir -p "collection-report"
+                  echo $metadata_artifact_json > $collection_report_file_path
+                  report_artifact_json=$(cat $collection_report_file_path)
+                fi
+
+                echo "report_artifact_json: $report_artifact_json"
+
+                repo_basename=$(basename $repo_name)
                 scanoss_results_file_path="scanoss-report/results.json"
                 scanoss_enabled=false
-
                 scanoss_target_directory="$data_folder/scanoss"
-                scanoss_target_file="$scanoss_target_directory/$app_name.json"
+                scanoss_target_file="$scanoss_target_directory/$repo_basename.json"
                 mkdir -p "$scanoss_target_directory"
 
                 if [ -f "$scanoss_results_file_path" ]; then
@@ -361,7 +395,7 @@ jobs:
 
                 # Push artifact report to existing report.json
                 mkdir -p "$data_folder"
-    
+
                 # Check if report.json exists inside the $data_folder folder; if not, create it
                 if [ ! -f "$data_folder"/report.json ]; then
                     echo "{}" > "$data_folder"/report.json
@@ -416,7 +450,7 @@ jobs:
                 git config --global user.email ${{ inputs.user_email }}
                 git config --global user.name ${{ inputs.user_name }}
                 git add data/report.json
-                if [[ -n "${{ github.event.workflow_run.id }}" ]]; then
+                if [[ -n "${{ inputs.enable_scanoss }}" ]]; then
                   git add data/scanoss/
                 fi
                 git add deployment/
