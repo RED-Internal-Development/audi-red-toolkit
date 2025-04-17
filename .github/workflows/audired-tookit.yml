@@ -58,11 +58,6 @@ on:
           default: ""
           type: string
           required: false
-        cloudParentPageIds:
-          description: 'By default we deployment all feature apps to a documentation sync parent id in confluence cloud. If you prefer to deploy elsewhere in this space, list ids'
-          default: ""
-          type: string
-          required: false
         enable_doc_sync:
             description: 'Enable doc sync step, DOC_SYNC_KEY is required in secrets'
             type: boolean
@@ -71,6 +66,11 @@ on:
             description: 'Enable scanoss step, SCANOSS_KEY is required in secrets'
             type: boolean
             required: true
+        enable_vwgoa_prod_support_deployment:
+            description: 'Enable app deployment to VWGOA Production Support Space'
+            type: boolean
+            required: false
+            default: false
     secrets:
         DOC_SYNC_KEY:
             required: false
@@ -421,12 +421,11 @@ jobs:
                 app_name=$(basename ${{ inputs.source_file }})
                 team_folder_name=$(basename ${{ inputs.destination_folder }})
                 msi_parent_page_ids="${{ inputs.msiParentPageIds }}"
-                cloud_parent_page_ids="${{ inputs.cloudParentPageIds }}"
                 config_file="deployment/repo_configs/$app_name.json"
 
                 mkdir -p "$(dirname "$config_file")"
 
-                if [[ -z "$msi_parent_page_ids" && -z "$cloud_parent_page_ids" ]]; then
+                if [[ -z "$msi_parent_page_ids" && "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "false" ]]; then
                   if [[ -f "$config_file" ]]; then
                     rm "$config_file"
                   fi
@@ -438,16 +437,16 @@ jobs:
                     msi_jq_string=".msi_parent_page_ids = $msi_array | "
                   fi
 
-                  if [[ -n "$cloud_parent_page_ids" ]]; then
-                    cloud_array=$(echo "$cloud_parent_page_ids" | tr ',' '\n' | jq -R . | jq -s .)
-                    cloud_jq_string=".cloud_parent_page_ids = $cloud_array | "
+                  if [ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" ]; then
+                    vwgoa_enabled=true
+                    vwgoa_jq_string=".vwgoa_enabled = $vwgoa_enabled | "
                   fi
                   
-                  jq "$msi_jq_string$cloud_jq_string.team_folder = \"$team_folder_name\" | .app_name = \"$app_name\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+                  jq "$msi_jq_string$vwgoa_jq_string.team_folder = \"$team_folder_name\" | .app_name = \"$app_name\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
                   echo "config file:"
                   cat "$config_file"
                 fi
-
+            
             - name: Commit and push changes
               run: |
                 git config --global user.email ${{ inputs.user_email }}
