@@ -383,13 +383,16 @@ jobs:
                     echo "No scanoss results to include"
                 fi
 
+                timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
                 updated_report_artifact_json=$(echo "$report_artifact_json" | \
                   jq --arg repo_name "$repo_name" \
                   --argjson scan_results "$scanoss_enabled" \
                   --arg docs_destination_team_folder "$docs_destination_team_folder" \
                   --arg docs_destination_app_folder "$docs_destination_app_folder" \
                   --arg docs_branch "$docs_branch" \
-                  '.[$repo_name] |= . + {scan_results: $scan_results, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}}')
+                  --arg timestamp "$timestamp" \
+                  '.[$repo_name] |= . + {scan_results: $scan_results, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}')
                 echo "$updated_report_artifact_json" > collection-report/report.json
                 report_artifact_json=$(cat collection-report/report.json)
 
