@@ -286,6 +286,7 @@ jobs:
 
     data_sync:
         runs-on: ubuntu-latest
+        permissions: write-all
         if: always()
         needs: scanoss
         outputs:
