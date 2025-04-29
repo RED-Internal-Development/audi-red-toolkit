@@ -295,6 +295,8 @@ jobs:
               uses: actions/checkout@v3
             
             - name: Collect repository secret names and associated timestamps
+              env:
+                GH_TOKEN: ${{ github.token }}
               run: |
                 response=$(curl -s -H "Authorization: token ${{ github.token }}" \
                      -H "Accept: application/vnd.github+json" \
