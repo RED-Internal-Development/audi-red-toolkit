@@ -117,6 +117,7 @@ jobs:
           
           - name: Validate mermaid.js code can be parsed
             run: |
+                folder=${{ inputs.source_file }}
                 find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
                   echo "Processing markdown file: $file"
                   
