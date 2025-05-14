@@ -117,7 +117,7 @@ jobs:
           
           - name: Validate mermaid.js code can be parsed
             run: |
-              node -e "
+              node <<'EOF'
               const fs = require('fs');
               const glob = require('glob');
               const mermaid = require('@mermaid-js/mermaid-cli');
@@ -145,7 +145,7 @@ jobs:
               } else {
                 console.log('✅ All Mermaid diagrams are valid.');
               }
-              "
+              EOF
 
           - name: Check if referenced images exist
             run: |
