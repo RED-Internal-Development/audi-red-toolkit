@@ -132,6 +132,7 @@ jobs:
                   base_file_name=$(basename "$base_file_name" .mdx)  # Remove .mdx extension if present
 
                   temp_file=$(mktemp)
+                  TMPDIR=$(mktemp -d)
 
                   while IFS= read -r line; do
                     if [[ "$line" == '```mermaid' ]]; then
@@ -146,7 +147,7 @@ jobs:
                       diagram_name="diagram_${index}.mmd"
                       echo "$mermaid_code" > "diagrams/${diagram_name}"
 
-                      if ! mmdc -i "diagrams/${diagram_name}" -o /dev/null 2>/tmp/mmdc_error.log; then
+                      if ! mmdc -i "diagrams/${diagram_name}" -o "$TMPDIR/output_${index}.svg" 2> "$TMPDIR/mmdc_error.log"; then
                         echo "❌ Mermaid validation failed in file:"
                         cat /tmp/mmdc_error.log
                         exit 1
