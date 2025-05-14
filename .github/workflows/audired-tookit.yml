@@ -149,7 +149,7 @@ jobs:
 
                       if ! mmdc -i "diagrams/${diagram_name}" -o "$TMPDIR/output_${index}.svg" 2> "$TMPDIR/mmdc_error.log"; then
                         echo "❌ Mermaid validation failed in file:"
-                        cat /tmp/mmdc_error.log
+                        cat "$TMPDIR/mmdc_error.log"
                         exit 1
                       fi
                       
