@@ -81,7 +81,7 @@ on:
 
 jobs:
     doc_sync:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         if: ${{ always() && inputs.enable_doc_sync }}
         needs: data_sync
         steps:
@@ -111,6 +111,52 @@ jobs:
             run: |
               cd ${{ inputs.source_file }}
               npx docusaurus-mdx-checker
+          
+          - name: Install mermaid CLI for parsing
+            run: npm install -g @mermaid-js/mermaid-cli
+          
+          - name: Validate mermaid.js code can be parsed
+            run: |
+                mkdir -p diagrams
+                folder=${{ inputs.source_file }}
+                index=1
+                find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
+                  echo "Processing markdown file: $file"
+                  
+                  in_code_block=false
+                  mermaid_code=""
+                  temp_file=$(mktemp)
+                  TMPDIR=$(mktemp -d)
+
+                  while IFS= read -r line; do
+                    if [[ "$line" == '```mermaid' ]]; then
+                      in_code_block=true
+                      mermaid_code=""
+                      continue
+                    elif [[ "$line" == '```' && "$in_code_block" == true ]]; then
+                      echo "Found Mermaid diagram:"
+                      echo "$mermaid_code"
+                      
+                      # Write the Mermaid code to a temporary .mmd file and generate the SVG
+                      diagram_name="diagram_${index}.mmd"
+                      echo "$mermaid_code" > "diagrams/${diagram_name}"
+
+                      if ! mmdc -i "diagrams/${diagram_name}" -o "$TMPDIR/output_${index}.svg" 2> "$TMPDIR/mmdc_error.log"; then
+                        echo "❌ Mermaid validation failed in file:"
+                        cat "$TMPDIR/mmdc_error.log"
+                        exit 1
+                      fi
+                      
+                      in_code_block=false
+                      index=$((index + 1))
+                    elif [[ "$in_code_block" == true ]]; then
+                      mermaid_code="$mermaid_code$line"$'\n'
+                    else
+                      echo "$line" >> "$temp_file"
+                    fi
+                  done < "$file"
+                done
+                echo "✅ All Mermaid blocks are valid!"
 
           - name: Check if referenced images exist
             run: |
