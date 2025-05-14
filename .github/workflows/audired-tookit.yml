@@ -123,14 +123,8 @@ jobs:
                 find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
                   echo "Processing markdown file: $file"
                   
-                  # Extract mermaid code blocks
                   in_code_block=false
                   mermaid_code=""
-                  
-                  # Extract the base file name (without the .md or .mdx extension)
-                  base_file_name=$(basename "$file" .md)  # Remove .md extension
-                  base_file_name=$(basename "$base_file_name" .mdx)  # Remove .mdx extension if present
-
                   temp_file=$(mktemp)
                   TMPDIR=$(mktemp -d)
 
@@ -153,14 +147,11 @@ jobs:
                         exit 1
                       fi
                       
-                      # Reset variables
                       in_code_block=false
                       index=$((index + 1))
                     elif [[ "$in_code_block" == true ]]; then
-                      # Append lines of Mermaid code
                       mermaid_code="$mermaid_code$line"$'\n'
                     else
-                      # Copy the line as is if it's not inside a mermaid block
                       echo "$line" >> "$temp_file"
                     fi
                   done < "$file"
