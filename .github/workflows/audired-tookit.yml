@@ -117,23 +117,26 @@ jobs:
           
           - name: Validate mermaid.js code can be parsed
             run: |
-              MD_FILES=$(find docs -type f \( -name "*.md" -o -name "*.mdx" \))
+              set -e
+              FILES=$(find docs -type f \( -name "*.md" -o -name "*.mdx" \))
 
-              echo "$MD_FILES" | while read -r file; do
-                node <<EOF
+              for file in $FILES; do
+                echo "🔍 Validating Mermaid blocks in $file"
+                node <<'EOF'
                 const fs = require('fs');
-                const mermaid = require('@mermaid-js/mermaid-cli');
-                const file = '${file.replace(/'/g, "'\\''")}';
+                const { parse } = require('mermaid');
+
+                const file = process.env.FILE;
                 const content = fs.readFileSync(file, 'utf8');
-                const mermaidBlocks = [...content.matchAll(/```mermaid\\s+([\\s\\S]*?)```/g)];
+                const mermaidBlocks = [...content.matchAll(/```mermaid\s+([\s\S]*?)```/g)];
 
                 let hasErrors = false;
 
                 mermaidBlocks.forEach(([, code], index) => {
                   try {
-                    mermaid.parse(code);
+                    parse(code);
                   } catch (err) {
-                    console.error(\`❌ Error in file: \${file} [block #\${index + 1}]\`);
+                    console.error(`❌ Error in file: ${file} [block #${index + 1}]`);
                     console.error(err.message);
                     hasErrors = true;
                   }
@@ -143,7 +146,7 @@ jobs:
                 EOF
 
                 if [ $? -ne 0 ]; then
-                  echo "Validation failed for $file"
+                  echo "❌ Mermaid validation failed in $file"
                   exit 1
                 fi
               done
