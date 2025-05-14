@@ -118,40 +118,34 @@ jobs:
           - name: Validate mermaid.js code can be parsed
             run: |
               set -e
-              FILES=$(find docs -type f \( -name "*.md" -o -name "*.mdx" \))
+              TMPDIR=$(mktemp -d)
 
-              for file in $FILES; do
-                echo "🔍 Validating Mermaid blocks in $file"
-                node <<'EOF'
-                const fs = require('fs');
-                const { parse } = require('mermaid');
-
-                const file = process.env.FILE;
-                const content = fs.readFileSync(file, 'utf8');
-                const mermaidBlocks = [...content.matchAll(/```mermaid\s+([\s\S]*?)```/g)];
-
-                let hasErrors = false;
-
-                mermaidBlocks.forEach(([, code], index) => {
-                  try {
-                    parse(code);
-                  } catch (err) {
-                    console.error(`❌ Error in file: ${file} [block #${index + 1}]`);
-                    console.error(err.message);
-                    hasErrors = true;
+              find docs -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r file; do
+                echo "Checking $file..."
+                awk '
+                  BEGIN { inblock=0; block=""; count=0; }
+                  /^```mermaid/ { inblock=1; block=""; next }
+                  /^```/ && inblock { 
+                    inblock=0;
+                    filename=sprintf("%s/block_%s.mmd", ENVIRON["TMPDIR"], count++);
+                    print block > filename;
+                    next
                   }
-                });
+                  inblock { block = block $0 "\n" }
+                ' "$file"
+              done
 
-                if (hasErrors) process.exit(1);
-                EOF
+              echo "✅ Extracted Mermaid blocks, now validating..."
 
-                if [ $? -ne 0 ]; then
-                  echo "❌ Mermaid validation failed in $file"
+              for mmdfile in "$TMPDIR"/*.mmd; do
+                if ! mmdc -i "$mmdfile" -o /dev/null 2>/tmp/mmdc_error.log; then
+                  echo "❌ Mermaid validation failed in $mmdfile:"
+                  cat /tmp/mmdc_error.log
                   exit 1
                 fi
               done
 
-              echo "✅ All Mermaid diagrams are valid."
+              echo "✅ All Mermaid blocks are valid!"
 
           - name: Check if referenced images exist
             run: |
