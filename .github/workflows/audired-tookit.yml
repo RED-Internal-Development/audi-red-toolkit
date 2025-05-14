@@ -113,39 +113,42 @@ jobs:
               npx docusaurus-mdx-checker
           
           - name: Install mermaid CLI for parsing
-            run: npm install -g glob @mermaid-js/mermaid-cli
+            run: npm install -g @mermaid-js/mermaid-cli
           
           - name: Validate mermaid.js code can be parsed
             run: |
-              node <<'EOF'
-              const fs = require('fs');
-              const glob = require('glob');
-              const mermaid = require('@mermaid-js/mermaid-cli');
+              MD_FILES=$(find docs -type f \( -name "*.md" -o -name "*.mdx" \))
 
-              const mdFiles = glob.sync('docs/**/*.{md,mdx}');
-              let hasErrors = false;
-
-              mdFiles.forEach((file) => {
+              echo "$MD_FILES" | while read -r file; do
+                node <<EOF
+                const fs = require('fs');
+                const mermaid = require('@mermaid-js/mermaid-cli');
+                const file = '${file.replace(/'/g, "'\\''")}';
                 const content = fs.readFileSync(file, 'utf8');
                 const mermaidBlocks = [...content.matchAll(/```mermaid\\s+([\\s\\S]*?)```/g)];
+
+                let hasErrors = false;
 
                 mermaidBlocks.forEach(([, code], index) => {
                   try {
                     mermaid.parse(code);
                   } catch (err) {
-                    console.error(`❌ Error in file: ${file} [block #${index + 1}]`);
+                    console.error(\`❌ Error in file: \${file} [block #\${index + 1}]\`);
                     console.error(err.message);
                     hasErrors = true;
                   }
                 });
-              });
 
-              if (hasErrors) {
-                process.exit(1);
-              } else {
-                console.log('✅ All Mermaid diagrams are valid.');
-              }
-              EOF
+                if (hasErrors) process.exit(1);
+                EOF
+
+                if [ $? -ne 0 ]; then
+                  echo "Validation failed for $file"
+                  exit 1
+                fi
+              done
+
+              echo "✅ All Mermaid diagrams are valid."
 
           - name: Check if referenced images exist
             run: |
