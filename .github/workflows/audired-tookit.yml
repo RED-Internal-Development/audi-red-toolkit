@@ -113,7 +113,7 @@ jobs:
               npx docusaurus-mdx-checker
           
           - name: Install mermaid CLI for parsing
-            run: npm install -g @mermaid-js/mermaid-cli glob
+            run: npm install glob @mermaid-js/mermaid-cli
           
           - name: Validate mermaid.js code can be parsed
             run: |
