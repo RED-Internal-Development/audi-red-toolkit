@@ -118,6 +118,7 @@ jobs:
           - name: Validate mermaid.js code can be parsed
             run: |
                 folder=${{ inputs.source_file }}
+                index=1
                 find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
                   echo "Processing markdown file: $file"
                   
@@ -138,20 +139,17 @@ jobs:
                       continue
                     elif [[ "$line" == '```' && "$in_code_block" == true ]]; then
                       echo "Found Mermaid diagram:"
-                      echo "$mermaid_code"  # Optional: debug output of mermaid code
+                      echo "$mermaid_code"
                       
                       # Write the Mermaid code to a temporary .mmd file and generate the SVG
                       diagram_name="diagram_${index}.mmd"
-                      echo "$mermaid_code" > "diagrams/${diagram_name}"
+                      echo "$mermaid_code" > "diagram_name"
 
-                      if ! mmdc -i "diagrams/${diagram_name}" -o /dev/null 2>/tmp/mmdc_error.log; then
+                      if ! mmdc -i "$diagram_name" -o /dev/null 2>/tmp/mmdc_error.log; then
                         echo "❌ Mermaid validation failed in file:"
                         cat /tmp/mmdc_error.log
                         exit 1
                       fi
-
-                      # Add the <img> tag to the markdown file
-                      echo "![Diagram ${index}](${svg_name})" >> "$temp_file"
                       
                       # Reset variables
                       in_code_block=false
