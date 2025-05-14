@@ -117,35 +117,54 @@ jobs:
           
           - name: Validate mermaid.js code can be parsed
             run: |
-              set -e
-              TMPDIR=$(mktemp -d)
+                find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
+                  echo "Processing markdown file: $file"
+                  
+                  # Extract mermaid code blocks
+                  in_code_block=false
+                  mermaid_code=""
+                  
+                  # Extract the base file name (without the .md or .mdx extension)
+                  base_file_name=$(basename "$file" .md)  # Remove .md extension
+                  base_file_name=$(basename "$base_file_name" .mdx)  # Remove .mdx extension if present
 
-              find docs -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r file; do
-                echo "Checking $file..."
-                awk '
-                  BEGIN { inblock=0; block=""; count=0; }
-                  /^```mermaid/ { inblock=1; block=""; next }
-                  /^```/ && inblock { 
-                    inblock=0;
-                    filename=sprintf("%s/block_%s.mmd", ENVIRON["TMPDIR"], count++);
-                    print block > filename;
-                    next
-                  }
-                  inblock { block = block $0 "\n" }
-                ' "$file"
-              done
+                  temp_file=$(mktemp)
 
-              echo "✅ Extracted Mermaid blocks, now validating..."
+                  while IFS= read -r line; do
+                    if [[ "$line" == '```mermaid' ]]; then
+                      in_code_block=true
+                      mermaid_code=""
+                      continue
+                    elif [[ "$line" == '```' && "$in_code_block" == true ]]; then
+                      echo "Found Mermaid diagram:"
+                      echo "$mermaid_code"  # Optional: debug output of mermaid code
+                      
+                      # Write the Mermaid code to a temporary .mmd file and generate the SVG
+                      diagram_name="diagram_${index}.mmd"
+                      echo "$mermaid_code" > "diagrams/${diagram_name}"
 
-              for mmdfile in "$TMPDIR"/*.mmd; do
-                if ! mmdc -i "$mmdfile" -o /dev/null 2>/tmp/mmdc_error.log; then
-                  echo "❌ Mermaid validation failed in $mmdfile:"
-                  cat /tmp/mmdc_error.log
-                  exit 1
-                fi
-              done
+                      if ! mmdc -i "diagrams/${diagram_name}" -o /dev/null 2>/tmp/mmdc_error.log; then
+                        echo "❌ Mermaid validation failed in file:"
+                        cat /tmp/mmdc_error.log
+                        exit 1
+                      fi
 
-              echo "✅ All Mermaid blocks are valid!"
+                      # Add the <img> tag to the markdown file
+                      echo "![Diagram ${index}](${svg_name})" >> "$temp_file"
+                      
+                      # Reset variables
+                      in_code_block=false
+                      index=$((index + 1))
+                    elif [[ "$in_code_block" == true ]]; then
+                      # Append lines of Mermaid code
+                      mermaid_code="$mermaid_code$line"$'\n'
+                    else
+                      # Copy the line as is if it's not inside a mermaid block
+                      echo "$line" >> "$temp_file"
+                    fi
+                  done < "$file"
+                done
+                echo "✅ All Mermaid blocks are valid!"
 
           - name: Check if referenced images exist
             run: |
