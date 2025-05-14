@@ -81,7 +81,7 @@ on:
 
 jobs:
     doc_sync:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-22.04
         if: ${{ always() && inputs.enable_doc_sync }}
         needs: data_sync
         steps:
