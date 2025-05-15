@@ -159,31 +159,31 @@ jobs:
           #       echo "✅ All Mermaid blocks are valid!"
 
           # - name: Check if referenced images exist
-            run: |
-              find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
-                    echo "Checking file: $md_file"
+          #   run: |
+          #     find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
+          #           echo "Checking file: $md_file"
                     
-                    grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
-                        image=$(echo "$image" | sed 's/[?#].*$//')
-                        if [[ "$image" =~ ^https?:// ]]; then
-                            echo "Skipping external image: $image"
-                            continue
-                        elif [[ "$image" =~ ^/ ]]; then
-                            IMAGE_PATH="$GITHUB_WORKSPACE$image"
-                        else
-                            IMAGE_PATH="$(dirname "$md_file")/$image"
-                        fi
+          #           grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
+          #               image=$(echo "$image" | sed 's/[?#].*$//')
+          #               if [[ "$image" =~ ^https?:// ]]; then
+          #                   echo "Skipping external image: $image"
+          #                   continue
+          #               elif [[ "$image" =~ ^/ ]]; then
+          #                   IMAGE_PATH="$GITHUB_WORKSPACE$image"
+          #               else
+          #                   IMAGE_PATH="$(dirname "$md_file")/$image"
+          #               fi
     
-                        IMAGE_PATH=$(realpath "$IMAGE_PATH")
+          #               IMAGE_PATH=$(realpath "$IMAGE_PATH")
 
-                        if [[ ! -f "$IMAGE_PATH" ]]; then
-                            echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
-                            exit 1
-                        fi
-                    done
-                done
+          #               if [[ ! -f "$IMAGE_PATH" ]]; then
+          #                   echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
+          #                   exit 1
+          #               fi
+          #           done
+          #       done
 
-                echo "All images are properly referenced and exist!"
+          #       echo "All images are properly referenced and exist!"
           
           - name: Create images from structurizr dsl files
             uses: RED-Internal-Development/audired_structurizr_action@main
