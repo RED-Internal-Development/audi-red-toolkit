@@ -107,86 +107,86 @@ jobs:
           - name: Checkout
             uses: actions/checkout@v2
           
-          # - name: Eslint check for Docusaurus build compatibility
-          #   run: |
-          #     cd ${{ inputs.source_file }}
-          #     npx docusaurus-mdx-checker
+          - name: Eslint check for Docusaurus build compatibility
+            run: |
+              cd ${{ inputs.source_file }}
+              npx docusaurus-mdx-checker
           
-          # - name: Install mermaid CLI for parsing
-          #   run: npm install -g @mermaid-js/mermaid-cli
+          - name: Install mermaid CLI for parsing
+            run: npm install -g @mermaid-js/mermaid-cli
           
-          # - name: Validate mermaid.js code can be parsed
-          #   run: |
-          #       mkdir -p diagrams
-          #       folder=${{ inputs.source_file }}
-          #       index=1
-          #       find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
-          #         echo "Processing markdown file: $file"
+          - name: Validate mermaid.js code can be parsed
+            run: |
+                mkdir -p diagrams
+                folder=${{ inputs.source_file }}
+                index=1
+                find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
+                  echo "Processing markdown file: $file"
                   
-          #         in_code_block=false
-          #         mermaid_code=""
-          #         temp_file=$(mktemp)
-          #         TMPDIR=$(mktemp -d)
+                  in_code_block=false
+                  mermaid_code=""
+                  temp_file=$(mktemp)
+                  TMPDIR=$(mktemp -d)
 
-          #         while IFS= read -r line; do
-          #           if [[ "$line" == '```mermaid' ]]; then
-          #             in_code_block=true
-          #             mermaid_code=""
-          #             continue
-          #           elif [[ "$line" == '```' && "$in_code_block" == true ]]; then
-          #             echo "Found Mermaid diagram:"
-          #             echo "$mermaid_code"
+                  while IFS= read -r line; do
+                    if [[ "$line" == '```mermaid' ]]; then
+                      in_code_block=true
+                      mermaid_code=""
+                      continue
+                    elif [[ "$line" == '```' && "$in_code_block" == true ]]; then
+                      echo "Found Mermaid diagram:"
+                      echo "$mermaid_code"
                       
-          #             # Write the Mermaid code to a temporary .mmd file and generate the SVG
-          #             diagram_name="diagram_${index}.mmd"
-          #             echo "$mermaid_code" > "diagrams/${diagram_name}"
+                      # Write the Mermaid code to a temporary .mmd file and generate the SVG
+                      diagram_name="diagram_${index}.mmd"
+                      echo "$mermaid_code" > "diagrams/${diagram_name}"
 
-          #             if ! mmdc -i "diagrams/${diagram_name}" -o "$TMPDIR/output_${index}.svg" 2> "$TMPDIR/mmdc_error.log"; then
-          #               echo "❌ Mermaid validation failed in file:"
-          #               cat "$TMPDIR/mmdc_error.log"
-          #               exit 1
-          #             fi
+                      if ! mmdc -i "diagrams/${diagram_name}" -o "$TMPDIR/output_${index}.svg" 2> "$TMPDIR/mmdc_error.log"; then
+                        echo "❌ Mermaid validation failed in file:"
+                        cat "$TMPDIR/mmdc_error.log"
+                        exit 1
+                      fi
                       
-          #             in_code_block=false
-          #             index=$((index + 1))
-          #           elif [[ "$in_code_block" == true ]]; then
-          #             mermaid_code="$mermaid_code$line"$'\n'
-          #           else
-          #             echo "$line" >> "$temp_file"
-          #           fi
-          #         done < "$file"
-          #       done
-          #       echo "✅ All Mermaid blocks are valid!"
+                      in_code_block=false
+                      index=$((index + 1))
+                    elif [[ "$in_code_block" == true ]]; then
+                      mermaid_code="$mermaid_code$line"$'\n'
+                    else
+                      echo "$line" >> "$temp_file"
+                    fi
+                  done < "$file"
+                done
+                echo "✅ All Mermaid blocks are valid!"
 
-          # - name: Check if referenced images exist
-          #   run: |
-          #     find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
-          #           echo "Checking file: $md_file"
-                    
-          #           grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
-          #               image=$(echo "$image" | sed 's/[?#].*$//')
-          #               if [[ "$image" =~ ^https?:// ]]; then
-          #                   echo "Skipping external image: $image"
-          #                   continue
-          #               elif [[ "$image" =~ ^/ ]]; then
-          #                   IMAGE_PATH="$GITHUB_WORKSPACE$image"
-          #               else
-          #                   IMAGE_PATH="$(dirname "$md_file")/$image"
-          #               fi
-    
-          #               IMAGE_PATH=$(realpath "$IMAGE_PATH")
-
-          #               if [[ ! -f "$IMAGE_PATH" ]]; then
-          #                   echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
-          #                   exit 1
-          #               fi
-          #           done
-          #       done
-
-          #       echo "All images are properly referenced and exist!"
-          
           - name: Create images from structurizr dsl files
             uses: RED-Internal-Development/audired_structurizr_action@main
+          
+          - name: Check if referenced images exist
+            run: |
+              find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
+                    echo "Checking file: $md_file"
+                    
+                    grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
+                        image=$(echo "$image" | sed 's/[?#].*$//')
+                        if [[ "$image" =~ ^https?:// ]]; then
+                            echo "Skipping external image: $image"
+                            continue
+                        elif [[ "$image" =~ ^/ ]]; then
+                            IMAGE_PATH="$GITHUB_WORKSPACE$image"
+                        else
+                            IMAGE_PATH="$(dirname "$md_file")/$image"
+                        fi
+    
+                        IMAGE_PATH=$(realpath "$IMAGE_PATH")
+
+                        if [[ ! -f "$IMAGE_PATH" ]]; then
+                            echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
+                            exit 1
+                        fi
+                    done
+                done
+
+                echo "All images are properly referenced and exist!"
           
           - name: Download collection report artifact
             if: github.event.workflow_run.id != ''
