@@ -158,6 +158,9 @@ jobs:
                 done
                 echo "✅ All Mermaid blocks are valid!"
 
+          - name: Create images from structurizr dsl files
+            uses: RED-Internal-Development/audired_structurizr_action@main
+          
           - name: Check if referenced images exist
             run: |
               find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
