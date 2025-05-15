@@ -335,7 +335,7 @@ jobs:
 
     data_sync:
         runs-on: ubuntu-latest
-        # if: always()
+        if: always()
         needs: scanoss
         outputs:
           docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
