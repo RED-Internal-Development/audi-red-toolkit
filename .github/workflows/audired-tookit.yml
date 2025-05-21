@@ -511,6 +511,7 @@ jobs:
                 fi
 
     scheduled_sync:
+      if: github.event_name == 'schedule'
       runs-on: ubuntu-latest
       steps:
         - name: Checkout Repository
@@ -545,7 +546,6 @@ jobs:
             key: ${{ runner.os }}-node-modules-cache-${{ github.sha }}
     
         - name: Cypress Coverage Run
-          # if: github.event_name == 'schedule'
           run: |
             echo "Runs only on a cron job"
             npm run test:e2e-run-dev
