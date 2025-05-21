@@ -517,7 +517,19 @@ jobs:
         - name: Checkout Repository
           uses: actions/checkout@v3
         
+        - name: Check if test:e2e-run-dev script exists
+          id: check_script
+          run: |
+            if jq -e '.scripts["test:e2e-run-dev"]' package.json > /dev/null; then
+              echo "Script exists. Startin cypress install, run, and coverage collection"
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Script does not exist. Skipping cypress collection"
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+            fi
+        
         - name: Load Cypress cache
+          if: steps.check_script.outputs.exists == 'true'
           uses: actions/cache@v4.2.0
           with:
             path: |
@@ -527,6 +539,7 @@ jobs:
               ${{ runner.os }}-cypress
 
         - name: Setup node
+          if: steps.check_script.outputs.exists == 'true'
           uses: actions/setup-node@v4.4.0
           with:
             node-version-file: '.nvmrc'
@@ -534,10 +547,12 @@ jobs:
             registry-url: https://npm.pkg.github.com
 
         - name: Install dependencies
+          if: steps.check_script.outputs.exists == 'true'
           run: |
             npm ci
 
         - name: Save node_modules
+          if: steps.check_script.outputs.exists == 'true'
           id: cache-node-modules
           uses: actions/cache/save@v4.2.0
           with:
@@ -546,11 +561,13 @@ jobs:
             key: ${{ runner.os }}-node-modules-cache-${{ github.sha }}
     
         - name: Cypress Coverage Run
+          if: steps.check_script.outputs.exists == 'true'
           run: |
             echo "Runs only on a cron job"
             npm run test:e2e-run-dev
         
         - name: E2E (Cypress) Coverage Collection
+          if: steps.check_script.outputs.exists == 'true'
           run: |
             if [ -d ".nyc_output" ]; then
                 COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
