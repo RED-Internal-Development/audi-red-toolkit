@@ -513,6 +513,9 @@ jobs:
     scheduled_sync:
       runs-on: ubuntu-latest
       steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v3
+    
         - name: Cypress Coverage Run
           # if: github.event_name == 'schedule'
           run: |
