@@ -511,7 +511,7 @@ jobs:
                 fi
 
     scheduled_sync:
-      if: github.event_name == 'schedule'
+      # if: github.event_name == 'schedule'
       runs-on: ubuntu-latest
       steps:
         - name: Checkout Repository
