@@ -509,3 +509,39 @@ jobs:
                 else
                     echo "No changes to push"
                 fi
+
+    scheduled_sync:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Cypress Coverage Run
+          # if: github.event_name == 'schedule'
+          run: |
+            echo "Runs only on a cron job"
+            npm run test:e2e-run-dev
+        
+        - name: E2E (Cypress) Coverage Collection
+          run: |
+            if [ -d ".nyc_output" ]; then
+                COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
+
+                echo "Coverage Output: $COVERAGE_OUTPUT"
+
+                STATEMENTS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Statements\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+                BRANCHES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Branches\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+                FUNCTIONS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Functions\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+                LINES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Lines\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+
+                echo "Line coverage: $LINES%"
+                echo "Statement coverage: $STATEMENTS%"
+                echo "Function coverage: $FUNCTIONS%"
+                echo "Branch coverage: $BRANCHES%"
+
+                AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
+
+                echo "Average coverage: $AVERAGE_COVERAGE%"
+            else
+                echo ".nyc_output folder does not exist for coverage reporting"
+                AVERAGE_COVERAGE=null
+            fi
+
+            echo "E2E_TEST_COVERAGE=$AVERAGE_COVERAGE" >> $GITHUB_ENV
