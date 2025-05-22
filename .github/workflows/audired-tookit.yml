@@ -611,7 +611,14 @@ jobs:
             echo "E2E_TEST_COVERAGE_FUNCTIONS=$FUNCTIONS" >> $GITHUB_ENV
             echo "E2E_TEST_COVERAGE_LINES=$LINES" >> $GITHUB_ENV
 
+        - name: Extract repo_name from package.json
+          if: steps.check_script.outputs.exists == 'true'
+          run: |
+            repo_name=$(jq -r '.name' package.json)
+            echo "repo_name=$repo_name" >> $GITHUB_ENV
+
         - name: Create audired-cypress-report.json
+          if: steps.check_script.outputs.exists == 'true'
           run: |
             echo "{}" > audired-cypress-report.json
             report_json=$(cat audired-cypress-report.json)
@@ -627,6 +634,7 @@ jobs:
             echo "$updated_report" > audired-cypress-report.json
 
         - name: Upload report.json
+          if: steps.check_script.outputs.exists == 'true'
           uses: actions/upload-artifact@v4.3.1
           with:
             name: audired-cypress-report
