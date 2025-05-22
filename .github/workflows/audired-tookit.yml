@@ -336,7 +336,7 @@ jobs:
     data_sync:
         runs-on: ubuntu-latest
         if: always()
-        needs: scanoss
+        needs: [scanoss, scheduled_sync]
         outputs:
           docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
         steps:
@@ -371,6 +371,13 @@ jobs:
                 name: metadata-report
                 path: metadata-report
             
+            - name: Download cypress report artifact
+              if: github.event_name == 'schedule' && needs.scheduled_sync.outputs.cypress_run == 'true'
+              uses: actions/download-artifact@v4
+              with:
+                name: audired-cypress-report
+                path: audired-cypress-report
+            
             - name: Download collection report artifact
               if: github.event.workflow_run.id != ''
               uses: actions/download-artifact@v4
@@ -399,6 +406,7 @@ jobs:
                 data_folder="data"
                 collection_report_file_path="collection-report/report.json"
                 metadata_file_path="metadata-report/metadata-report.json"
+                cypress_data_file_path="audired-cypress-report/audired-cypress-report.json"
                 output_file_path="combined-data.json"
 
                 metadata_artifact_json=$(cat "$metadata_file_path")
@@ -414,6 +422,17 @@ jobs:
                   mkdir -p "collection-report"
                   echo $metadata_artifact_json > $collection_report_file_path
                   report_artifact_json=$(cat $collection_report_file_path)
+                fi
+
+                if [[ -f "$cypress_data_file_path" ]]; then
+                  echo "$report_artifact_json" > "$collection_report_file_path"
+                  jq --arg repo_name "$repo_name" \
+                    '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
+                    "$collection_report_file_path" "$cypress_data_file_path" > "$output_file_path"
+
+                  report_artifact_json=$(cat "$output_file_path")
+                else
+                  echo "No cypress data artifact found."
                 fi
 
                 echo "report_artifact_json: $report_artifact_json"
@@ -512,3 +531,113 @@ jobs:
                 else
                     echo "No changes to push"
                 fi
+
+    scheduled_sync:
+      if: github.event_name == 'schedule'
+      outputs:
+          cypress_run: ${{ steps.check_script.outputs.exists }}
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v3
+        
+        - name: Check if test:e2e-run-dev script exists
+          id: check_script
+          run: |
+            if jq -e '.scripts["test:e2e-run-dev"]' package.json > /dev/null; then
+              echo "Script exists. Startin cypress install, run, and coverage collection"
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Script does not exist. Skipping cypress collection"
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+            fi
+        
+        - name: Load Cypress cache
+          if: steps.check_script.outputs.exists == 'true'
+          uses: actions/cache@v4.2.0
+          with:
+            path: |
+              ~/.cache/Cypress
+            key: ${{ runner.os }}-cypress-${{ hashFiles('**/package-lock.json') }}
+            restore-keys: |
+              ${{ runner.os }}-cypress
+
+        - name: Setup node
+          if: steps.check_script.outputs.exists == 'true'
+          uses: actions/setup-node@v4.4.0
+          with:
+            node-version-file: '.nvmrc'
+            cache: npm
+            registry-url: https://npm.pkg.github.com
+
+        - name: Install dependencies
+          if: steps.check_script.outputs.exists == 'true'
+          run: |
+            npm ci
+    
+        - name: Cypress Coverage Run
+          if: steps.check_script.outputs.exists == 'true'
+          run: |
+            echo "Runs only on a cron job"
+            npm run test:e2e-run-dev
+        
+        - name: E2E (Cypress) Coverage Collection
+          if: steps.check_script.outputs.exists == 'true'
+          run: |
+            if [ -d ".nyc_output" ]; then
+                COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
+
+                echo "Coverage Output: $COVERAGE_OUTPUT"
+
+                STATEMENTS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Statements\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+                BRANCHES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Branches\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+                FUNCTIONS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Functions\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+                LINES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Lines\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+
+                echo "Line coverage: $LINES%"
+                echo "Statement coverage: $STATEMENTS%"
+                echo "Function coverage: $FUNCTIONS%"
+                echo "Branch coverage: $BRANCHES%"
+
+                AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
+
+                echo "Average coverage: $AVERAGE_COVERAGE%"
+            else
+                echo ".nyc_output folder does not exist for coverage reporting"
+                AVERAGE_COVERAGE=null
+            fi
+
+            echo "E2E_TEST_COVERAGE=$AVERAGE_COVERAGE" >> $GITHUB_ENV
+            echo "E2E_TEST_COVERAGE_STATEMENTS=$STATEMENTS" >> $GITHUB_ENV
+            echo "E2E_TEST_COVERAGE_BRANCHES=$BRANCHES" >> $GITHUB_ENV
+            echo "E2E_TEST_COVERAGE_FUNCTIONS=$FUNCTIONS" >> $GITHUB_ENV
+            echo "E2E_TEST_COVERAGE_LINES=$LINES" >> $GITHUB_ENV
+
+        - name: Extract repo_name from package.json
+          if: steps.check_script.outputs.exists == 'true'
+          run: |
+            repo_name=$(jq -r '.name' package.json)
+            echo "repo_name=$repo_name" >> $GITHUB_ENV
+
+        - name: Create audired-cypress-report.json
+          if: steps.check_script.outputs.exists == 'true'
+          run: |
+            echo "{}" > audired-cypress-report.json
+            report_json=$(cat audired-cypress-report.json)
+
+            updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
+                --argjson e2e_test_coverage_statements "$E2E_TEST_COVERAGE_STATEMENTS" \
+                --argjson e2e_test_coverage_branches "$E2E_TEST_COVERAGE_BRANCHES" \
+                --argjson e2e_test_coverage_functions "$E2E_TEST_COVERAGE_FUNCTIONS" \
+                --argjson e2e_test_coverage_lines "$E2E_TEST_COVERAGE_LINES" \
+                --argjson e2e_test_coverage "$E2E_TEST_COVERAGE" \
+                '. + {($repo_name): {"e2e_test_coverage_breakdown": {"e2e_test_coverage_statements": $e2e_test_coverage_statements, "e2e_test_coverage_branches": $e2e_test_coverage_branches, "e2e_test_coverage_functions": $e2e_test_coverage_functions, "e2e_test_coverage_lines": $e2e_test_coverage_lines}, "e2e_test_coverage": $e2e_test_coverage}}')
+
+            echo "$updated_report" > audired-cypress-report.json
+
+        - name: Upload report.json
+          if: steps.check_script.outputs.exists == 'true'
+          uses: actions/upload-artifact@v4.3.1
+          with:
+            name: audired-cypress-report
+            path: audired-cypress-report.json
