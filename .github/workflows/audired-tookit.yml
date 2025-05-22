@@ -336,7 +336,7 @@ jobs:
     data_sync:
         runs-on: ubuntu-latest
         if: always()
-        needs: [scanoss, scheduled_sync]
+        needs: [scanoss, cypress_sync]
         outputs:
           docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
         steps:
@@ -372,7 +372,7 @@ jobs:
                 path: metadata-report
             
             - name: Download cypress report artifact
-              if: github.event_name == 'schedule' && needs.scheduled_sync.outputs.cypress_run == 'true'
+              if: github.event_name == 'schedule' && needs.cypress_sync.outputs.cypress_run == 'true'
               uses: actions/download-artifact@v4
               with:
                 name: audired-cypress-report
@@ -532,7 +532,7 @@ jobs:
                     echo "No changes to push"
                 fi
 
-    scheduled_sync:
+    cypress_sync:
       if: github.event_name == 'schedule'
       outputs:
           cypress_run: ${{ steps.check_script.outputs.exists }}
