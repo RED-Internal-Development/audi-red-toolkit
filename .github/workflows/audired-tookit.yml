@@ -369,7 +369,7 @@ jobs:
                 path: metadata-report
             
             - name: Download cypress report artifact
-              # if: github.event_name == 'schedule' && needs.scheduled_sync.outputs.cypress_run == 'true'
+              if: github.event_name == 'schedule' && needs.scheduled_sync.outputs.cypress_run == 'true'
               if: needs.scheduled_sync.outputs.cypress_run == 'true'
               uses: actions/download-artifact@v4
               with:
@@ -531,7 +531,7 @@ jobs:
                 fi
 
     scheduled_sync:
-      # if: github.event_name == 'schedule'
+      if: github.event_name == 'schedule'
       outputs:
           cypress_run: ${{ steps.check_script.outputs.exists }}
       runs-on: ubuntu-latest
