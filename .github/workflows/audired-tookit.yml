@@ -611,10 +611,10 @@ jobs:
             echo "E2E_TEST_COVERAGE_FUNCTIONS=$FUNCTIONS" >> $GITHUB_ENV
             echo "E2E_TEST_COVERAGE_LINES=$LINES" >> $GITHUB_ENV
 
-        - name: Create report.json
+        - name: Create audired-cypress-report.json
           run: |
-            echo "{}" > report.json
-            report_json=$(cat report.json)
+            echo "{}" > audired-cypress-report.json
+            report_json=$(cat audired-cypress-report.json)
 
             updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
                 --argjson e2e_test_coverage_statements "$E2E_TEST_COVERAGE_STATEMENTS" \
@@ -624,10 +624,10 @@ jobs:
                 --argjson e2e_test_coverage "$E2E_TEST_COVERAGE" \
                 '. + {($repo_name): {"e2e_test_coverage_breakdown": {"e2e_test_coverage_statements": $e2e_test_coverage_statements, "e2e_test_coverage_branches": $e2e_test_coverage_branches, "e2e_test_coverage_functions": $e2e_test_coverage_functions, "e2e_test_coverage_lines": $e2e_test_coverage_lines}, "e2e_test_coverage": $e2e_test_coverage}}')
 
-            echo "$updated_report" > report.json
+            echo "$updated_report" > audired-cypress-report.json
 
         - name: Upload report.json
           uses: actions/upload-artifact@v4.3.1
           with:
             name: audired-cypress-report
-            path: report.json
+            path: audired-cypress-report.json
