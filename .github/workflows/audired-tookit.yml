@@ -368,6 +368,14 @@ jobs:
                 name: metadata-report
                 path: metadata-report
             
+            - name: Download cypress report artifact
+              # if: github.event_name == 'schedule' && needs.scheduled_sync.outputs.cypress_run == 'true'
+              if: needs.scheduled_sync.outputs.cypress_run == 'true'
+              uses: actions/download-artifact@v4
+              with:
+                name: cypress-report
+                path: cypress-report
+            
             - name: Download collection report artifact
               if: github.event.workflow_run.id != ''
               uses: actions/download-artifact@v4
@@ -396,6 +404,7 @@ jobs:
                 data_folder="data"
                 collection_report_file_path="collection-report/report.json"
                 metadata_file_path="metadata-report/metadata-report.json"
+                cypress_data_file_path="audired-cypress-report/audired-cypress-report.json"
                 output_file_path="combined-data.json"
 
                 metadata_artifact_json=$(cat "$metadata_file_path")
@@ -411,6 +420,17 @@ jobs:
                   mkdir -p "collection-report"
                   echo $metadata_artifact_json > $collection_report_file_path
                   report_artifact_json=$(cat $collection_report_file_path)
+                fi
+
+                if [[ -f "$cypress_data_file_path" ]]; then
+                  echo "$report_artifact_json" > "$collection_report_file_path"
+                  jq --arg repo_name "$repo_name" \
+                    '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
+                    "$collection_report_file_path" "$cypress_data_file_path" > "$output_file_path"
+
+                  report_artifact_json=$(cat "$output_file_path")
+                else
+                  echo "No cypress data artifact found."
                 fi
 
                 echo "report_artifact_json: $report_artifact_json"
@@ -512,6 +532,8 @@ jobs:
 
     scheduled_sync:
       # if: github.event_name == 'schedule'
+      outputs:
+          cypress_run: ${{ steps.check_script.outputs.exists }}
       runs-on: ubuntu-latest
       steps:
         - name: Checkout Repository
@@ -550,15 +572,6 @@ jobs:
           if: steps.check_script.outputs.exists == 'true'
           run: |
             npm ci
-
-        - name: Save node_modules
-          if: steps.check_script.outputs.exists == 'true'
-          id: cache-node-modules
-          uses: actions/cache/save@v4.2.0
-          with:
-            path: |
-              **/node_modules
-            key: ${{ runner.os }}-node-modules-cache-${{ github.sha }}
     
         - name: Cypress Coverage Run
           if: steps.check_script.outputs.exists == 'true'
