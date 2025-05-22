@@ -373,8 +373,8 @@ jobs:
               if: needs.scheduled_sync.outputs.cypress_run == 'true'
               uses: actions/download-artifact@v4
               with:
-                name: cypress-report
-                path: cypress-report
+                name: audired-cypress-report
+                path: audired-cypress-report
             
             - name: Download collection report artifact
               if: github.event.workflow_run.id != ''
