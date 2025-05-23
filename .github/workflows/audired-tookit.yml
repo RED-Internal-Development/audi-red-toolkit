@@ -78,6 +78,9 @@ on:
         SCANOSS_KEY:
             required: false
             description: 'Key used to authenticate to scanoss for open source checks'
+env:
+  NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
     doc_sync:
