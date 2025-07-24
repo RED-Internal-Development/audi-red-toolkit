@@ -601,9 +601,9 @@ jobs:
             echo "Coverage Output: $COVERAGE_OUTPUT"
         
             extract_raw() {
-              echo "$COVERAGE_OUTPUT" | grep -oPm1 "^$1\s*:\s*\K([0-9.]+|Unknown)"
+              echo "$COVERAGE_OUTPUT" | grep -oPm1 "^$1\s*:\s*\K([0-9.]+|Unknown)(?=%)"
             }
-          
+
             # Pull the *raw* value (may be 'Unknown')
             RAW_STATEMENTS=$(extract_raw Statements)
             RAW_BRANCHES=$(extract_raw Branches)
