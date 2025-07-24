@@ -544,7 +544,7 @@ jobs:
           fi
 
   cypress_sync:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     outputs:
       cypress_run: ${{ steps.check_script.outputs.exists }}
     runs-on: ubuntu-latest
