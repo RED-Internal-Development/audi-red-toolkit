@@ -596,26 +596,60 @@ jobs:
         if: steps.check_script.outputs.exists == 'true'
         run: |
           if [ -d ".nyc_output" ]; then
-              COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
+            COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
 
-              echo "Coverage Output: $COVERAGE_OUTPUT"
+            echo "Coverage Output: $COVERAGE_OUTPUT"
+        
+            extract_raw() {
+              echo "$COVERAGE_OUTPUT" | grep -oPm1 "^$1\s*:\s*(\K[0-9.]+|Unknown)"
+            }
+          
+            # Pull the *raw* value (may be 'Unknown')
+            RAW_STATEMENTS=$(extract_raw Statements)
+            RAW_BRANCHES=$(extract_raw Branches)
+            RAW_FUNCTIONS=$(extract_raw Functions)
+            RAW_LINES=$(extract_raw Lines)
+          
+            # Check if all are Unknown first
+            if [[ $RAW_STATEMENTS == Unknown && \
+                $RAW_BRANCHES   == Unknown && \
+                $RAW_FUNCTIONS  == Unknown && \
+                $RAW_LINES      == Unknown ]]; then
+              echo "::error::Coverage summary returned 'Unknown' for all metrics – cannot proceed."
+              exit 1
+            fi
+          
+            # Warn about individual Unknown metrics
+            UNKNOWN_COUNT=0
+            [[ $RAW_STATEMENTS == Unknown ]] && { echo "::warning::Statements coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_BRANCHES == Unknown ]] && { echo "::warning::Branches coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_FUNCTIONS == Unknown ]] && { echo "::warning::Functions coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_LINES == Unknown ]] && { echo "::warning::Lines coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+          
+            # Convert to numbers (Unknown -> 0)
+            to_num() { [[ $1 == Unknown ]] && echo 0 || echo "$1"; }
 
-              STATEMENTS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Statements\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              BRANCHES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Branches\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              FUNCTIONS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Functions\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              LINES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Lines\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+            STATEMENTS=$(to_num "$RAW_STATEMENTS")
+            BRANCHES=$(to_num "$RAW_BRANCHES")
+            FUNCTIONS=$(to_num "$RAW_FUNCTIONS")
+            LINES=$(to_num "$RAW_LINES")
 
-              echo "Line coverage: $LINES%"
-              echo "Statement coverage: $STATEMENTS%"
-              echo "Function coverage: $FUNCTIONS%"
-              echo "Branch coverage: $BRANCHES%"
+            echo "Line coverage:      ${LINES}%   (raw: ${RAW_LINES})"
+            echo "Statement coverage: ${STATEMENTS}% (raw: ${RAW_STATEMENTS})"
+            echo "Function coverage:  ${FUNCTIONS}% (raw: ${RAW_FUNCTIONS})"
+            echo "Branch coverage:    ${BRANCHES}%  (raw: ${RAW_BRANCHES})"
 
+            # Calculate average but note if partial
+            if [[ $UNKNOWN_COUNT -gt 0 ]]; then
               AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
-
+              echo "Average coverage: $AVERAGE_COVERAGE% (Note: $UNKNOWN_COUNT metric(s) unavailable, counted as 0%)"
+            else
+              AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
               echo "Average coverage: $AVERAGE_COVERAGE%"
+            fi
           else
-              echo ".nyc_output folder does not exist for coverage reporting"
-              AVERAGE_COVERAGE=null
+            echo ".nyc_output folder does not exist for coverage reporting"
+            AVERAGE_COVERAGE=null
           fi
 
           echo "E2E_TEST_COVERAGE=$AVERAGE_COVERAGE" >> $GITHUB_ENV
