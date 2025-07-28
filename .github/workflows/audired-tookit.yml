@@ -261,3 +261,4 @@ jobs:
               git push
           else
               echo "No changes to push"
+          fi
