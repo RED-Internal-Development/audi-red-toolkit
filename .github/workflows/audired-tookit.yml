@@ -65,7 +65,7 @@ on:
       enable_scanoss:
         description: "Enable scanoss step, SCANOSS_KEY is required in secrets"
         type: boolean
-        required: true
+        required: false
     secrets:
       DOC_SYNC_KEY:
         required: false
