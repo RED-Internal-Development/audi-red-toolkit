@@ -62,6 +62,11 @@ on:
         description: "Enable doc sync step, DOC_SYNC_KEY is required in secrets"
         type: boolean
         required: true
+      enable_scanoss:
+        description: "[Deprecated] Ignored. Kept for backward compatibility."
+        type: boolean
+        required: false
+        default: false
       enable_vwgoa_prod_support_deployment:
         description: "Enable app deployment to VWGOA Production Support Space"
         type: boolean
@@ -71,6 +76,9 @@ on:
       DOC_SYNC_KEY:
         required: false
         description: "Team key used to copy files to audired"
+      SCANOSS_KEY:
+        required: false
+        description: "[Deprecated] Ignored. Kept for backward compatibility."
 env:
   NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
