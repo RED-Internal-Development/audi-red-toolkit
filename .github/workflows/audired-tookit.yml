@@ -185,7 +185,6 @@ jobs:
             echo "All images are properly referenced and exist!"
 
       - name: Download collection report artifact
-        if: github.event.workflow_run.id != ''
         uses: actions/download-artifact@v4
         with:
           name: data-report
@@ -194,7 +193,6 @@ jobs:
           repository: ${{ github.repository }}
 
       - name: Create or update project metrics with report data
-        if: github.event.workflow_run.id != ''
         run: |
           FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
           report_file="data-report/report.json"
@@ -436,7 +434,6 @@ jobs:
           mv tmp_report.json "$data_folder"/report.json
 
       - name: Upload final report
-        if: github.event.workflow_run.id != ''
         uses: actions/upload-artifact@v4
         with:
           name: data-report
