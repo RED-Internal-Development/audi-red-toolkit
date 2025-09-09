@@ -62,10 +62,6 @@ on:
         description: "Enable doc sync step, DOC_SYNC_KEY is required in secrets"
         type: boolean
         required: true
-      enable_scanoss:
-        description: "Enable scanoss step, SCANOSS_KEY is required in secrets"
-        type: boolean
-        required: true
       enable_vwgoa_prod_support_deployment:
         description: "Enable app deployment to VWGOA Production Support Space"
         type: boolean
@@ -75,9 +71,6 @@ on:
       DOC_SYNC_KEY:
         required: false
         description: "Team key used to copy files to audired"
-      SCANOSS_KEY:
-        required: false
-        description: "Key used to authenticate to scanoss for open source checks"
 env:
   NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -192,7 +185,6 @@ jobs:
             echo "All images are properly referenced and exist!"
 
       - name: Download collection report artifact
-        if: github.event.workflow_run.id != ''
         uses: actions/download-artifact@v4
         with:
           name: data-report
@@ -201,7 +193,6 @@ jobs:
           repository: ${{ github.repository }}
 
       - name: Create or update project metrics with report data
-        if: github.event.workflow_run.id != ''
         run: |
           FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
           report_file="data-report/report.json"
@@ -312,34 +303,10 @@ jobs:
           use_rsync: true
           destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
 
-  scanoss:
-    runs-on: ubuntu-latest
-    if: ${{ inputs.enable_scanoss }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run SCANOSS Code Scan
-        id: scanoss-code-scan-step
-        uses: scanoss/gha-code-scan@v0.2.0
-        with:
-          api.key: ${{ secrets.SCANOSS_KEY }}
-          api.url: https://api.scanoss.com/scan/direct
-          dependencies.enabled: true
-          policies.halt_on_failure: false
-          policies: copyleft, undeclared
-
-      - name: Upload scanoss report
-        if: ${{ steps.scanoss-code-scan-step.outputs.result-filepath }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: scanoss-report
-          path: ${{ steps.scanoss-code-scan-step.outputs.result-filepath }}
-
   data_sync:
     runs-on: ubuntu-latest
     if: always()
-    needs: [scanoss, cypress_sync]
+    needs: [cypress_sync]
     outputs:
       docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
     steps:
@@ -360,13 +327,6 @@ jobs:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
-
-      - name: Download scanoss report artifact
-        if: ${{ inputs.enable_scanoss }}
-        uses: actions/download-artifact@v4
-        with:
-          name: scanoss-report
-          path: scanoss-report
 
       - name: Download metadata artifact
         uses: actions/download-artifact@v4
@@ -440,20 +400,6 @@ jobs:
 
           echo "report_artifact_json: $report_artifact_json"
 
-          repo_basename=$(basename $repo_name)
-          scanoss_results_file_path="scanoss-report/results.json"
-          scanoss_enabled=false
-          scanoss_target_directory="$data_folder/scanoss"
-          scanoss_target_file="$scanoss_target_directory/$repo_basename.json"
-          mkdir -p "$scanoss_target_directory"
-
-          if [ -f "$scanoss_results_file_path" ]; then
-              scanoss_enabled=true
-              cp -f "$scanoss_results_file_path" "$scanoss_target_file"
-          else
-              echo "No scanoss results to include"
-          fi
-
           # prod_support_enabled variable
 
           prod_support_enabled=false
@@ -465,13 +411,12 @@ jobs:
 
           updated_report_artifact_json=$(echo "$report_artifact_json" | \
             jq --arg repo_name "$repo_name" \
-            --argjson scan_results "$scanoss_enabled" \
             --argjson prod_support "$prod_support_enabled" \
             --arg docs_destination_team_folder "$docs_destination_team_folder" \
             --arg docs_destination_app_folder "$docs_destination_app_folder" \
             --arg docs_branch "$docs_branch" \
             --arg timestamp "$timestamp" \
-            '.[$repo_name] |= . + {scan_results: $scan_results, prod_support_enabled: $prod_support, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}')
+            '.[$repo_name] |= . + {prod_support_enabled: $prod_support, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}')
           echo "$updated_report_artifact_json" > collection-report/report.json
           report_artifact_json=$(cat collection-report/report.json)
 
@@ -489,7 +434,6 @@ jobs:
           mv tmp_report.json "$data_folder"/report.json
 
       - name: Upload final report
-        if: github.event.workflow_run.id != ''
         uses: actions/upload-artifact@v4
         with:
           name: data-report
@@ -531,9 +475,6 @@ jobs:
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
           git add data/report.json
-          if [[ -n "${{ inputs.enable_scanoss }}" ]]; then
-            git add data/scanoss/
-          fi
           git add deployment/
           if ! git diff-index --quiet HEAD; then
               echo "commiting changes"
@@ -544,7 +485,7 @@ jobs:
           fi
 
   cypress_sync:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     outputs:
       cypress_run: ${{ steps.check_script.outputs.exists }}
     runs-on: ubuntu-latest
@@ -596,26 +537,60 @@ jobs:
         if: steps.check_script.outputs.exists == 'true'
         run: |
           if [ -d ".nyc_output" ]; then
-              COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
+            COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
 
-              echo "Coverage Output: $COVERAGE_OUTPUT"
+            echo "Coverage Output: $COVERAGE_OUTPUT"
+        
+            extract_raw() {
+              echo "$COVERAGE_OUTPUT" | grep -oPm1 "^$1\s*:\s*\K([0-9.]+|Unknown)(?=%)"
+            }
 
-              STATEMENTS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Statements\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              BRANCHES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Branches\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              FUNCTIONS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Functions\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              LINES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Lines\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+            # Pull the *raw* value (may be 'Unknown')
+            RAW_STATEMENTS=$(extract_raw Statements)
+            RAW_BRANCHES=$(extract_raw Branches)
+            RAW_FUNCTIONS=$(extract_raw Functions)
+            RAW_LINES=$(extract_raw Lines)
+          
+            # Check if all are Unknown first
+            if [[ $RAW_STATEMENTS == Unknown && \
+                $RAW_BRANCHES   == Unknown && \
+                $RAW_FUNCTIONS  == Unknown && \
+                $RAW_LINES      == Unknown ]]; then
+              echo "::error::Coverage summary returned 'Unknown' for all metrics – cannot proceed."
+              exit 1
+            fi
+          
+            # Warn about individual Unknown metrics
+            UNKNOWN_COUNT=0
+            [[ $RAW_STATEMENTS == Unknown ]] && { echo "::warning::Statements coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_BRANCHES == Unknown ]] && { echo "::warning::Branches coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_FUNCTIONS == Unknown ]] && { echo "::warning::Functions coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_LINES == Unknown ]] && { echo "::warning::Lines coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+          
+            # Convert to numbers (Unknown -> 0)
+            to_num() { [[ $1 == Unknown ]] && echo 0 || echo "$1"; }
 
-              echo "Line coverage: $LINES%"
-              echo "Statement coverage: $STATEMENTS%"
-              echo "Function coverage: $FUNCTIONS%"
-              echo "Branch coverage: $BRANCHES%"
+            STATEMENTS=$(to_num "$RAW_STATEMENTS")
+            BRANCHES=$(to_num "$RAW_BRANCHES")
+            FUNCTIONS=$(to_num "$RAW_FUNCTIONS")
+            LINES=$(to_num "$RAW_LINES")
 
+            echo "Line coverage:      ${LINES}%   (raw: ${RAW_LINES})"
+            echo "Statement coverage: ${STATEMENTS}% (raw: ${RAW_STATEMENTS})"
+            echo "Function coverage:  ${FUNCTIONS}% (raw: ${RAW_FUNCTIONS})"
+            echo "Branch coverage:    ${BRANCHES}%  (raw: ${RAW_BRANCHES})"
+
+            # Calculate average but note if partial
+            if [[ $UNKNOWN_COUNT -gt 0 ]]; then
               AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
-
+              echo "Average coverage: $AVERAGE_COVERAGE% (Note: $UNKNOWN_COUNT metric(s) unavailable, counted as 0%)"
+            else
+              AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
               echo "Average coverage: $AVERAGE_COVERAGE%"
+            fi
           else
-              echo ".nyc_output folder does not exist for coverage reporting"
-              AVERAGE_COVERAGE=null
+            echo ".nyc_output folder does not exist for coverage reporting"
+            AVERAGE_COVERAGE=null
           fi
 
           echo "E2E_TEST_COVERAGE=$AVERAGE_COVERAGE" >> $GITHUB_ENV
