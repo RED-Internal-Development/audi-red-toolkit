@@ -63,9 +63,10 @@ on:
         type: boolean
         required: true
       enable_scanoss:
-        description: "Enable scanoss step, SCANOSS_KEY is required in secrets"
+        description: "[Deprecated] Ignored. Kept for backward compatibility."
         type: boolean
-        required: true
+        required: false
+        default: false
       enable_vwgoa_prod_support_deployment:
         description: "Enable app deployment to VWGOA Production Support Space"
         type: boolean
@@ -77,7 +78,8 @@ on:
         description: "Team key used to copy files to audired"
       SCANOSS_KEY:
         required: false
-        description: "Key used to authenticate to scanoss for open source checks"
+        description: "[Deprecated] Ignored. Kept for backward compatibility."
+
 env:
   NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -407,6 +409,7 @@ jobs:
       - name: Update data/report.json with additional metadata
         run: |
           data_folder="data"
+          per_repo_folder="$data_folder/per-repo"
           collection_report_file_path="collection-report/report.json"
           metadata_file_path="metadata-report/metadata-report.json"
           cypress_data_file_path="audired-cypress-report/audired-cypress-report.json"
@@ -488,6 +491,17 @@ jobs:
 
           mv tmp_report.json "$data_folder"/report.json
 
+          mkdir -p "$per_repo_folder"
+          safe_repo_name=$(echo "$repo_name" | tr '/@ ' '___')
+          per_repo_file="$per_repo_folder/$safe_repo_name.json"
+          repo_snapshot=$(echo "$report_artifact_json" | jq --arg repo_name "$repo_name" '.[$repo_name]')
+
+          if [ -z "$repo_snapshot" ] || [ "$repo_snapshot" = "null" ]; then
+            echo "{}" > "$per_repo_file"
+          else
+            echo "$repo_snapshot" > "$per_repo_file"
+          fi
+
       - name: Upload final report
         if: github.event.workflow_run.id != ''
         uses: actions/upload-artifact@v4
@@ -531,8 +545,8 @@ jobs:
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
           git add data/report.json
-          if [[ -n "${{ inputs.enable_scanoss }}" ]]; then
-            git add data/scanoss/
+          if [ -d data/per-repo ]; then
+              git add data/per-repo/
           fi
           git add deployment/
           if ! git diff-index --quiet HEAD; then
@@ -596,20 +610,54 @@ jobs:
         if: steps.check_script.outputs.exists == 'true'
         run: |
           if [ -d ".nyc_output" ]; then
-              COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
+            COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
 
-              echo "Coverage Output: $COVERAGE_OUTPUT"
+            echo "Coverage Output: $COVERAGE_OUTPUT"
 
-              STATEMENTS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Statements\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              BRANCHES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Branches\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              FUNCTIONS=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Functions\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
-              LINES=$(echo "$COVERAGE_OUTPUT" | grep -oP 'Lines\s+:\s+\K[0-9.]+|Unknown' | sed 's/Unknown/0/')
+            extract_raw() {
+              echo "$COVERAGE_OUTPUT" | grep -oPm1 "^$1\s*:\s*\K([0-9.]+|Unknown)(?=%)"
+            }
 
-              echo "Line coverage: $LINES%"
-              echo "Statement coverage: $STATEMENTS%"
-              echo "Function coverage: $FUNCTIONS%"
-              echo "Branch coverage: $BRANCHES%"
+            # Pull the *raw* value (may be 'Unknown')
+            RAW_STATEMENTS=$(extract_raw Statements)
+            RAW_BRANCHES=$(extract_raw Branches)
+            RAW_FUNCTIONS=$(extract_raw Functions)
+            RAW_LINES=$(extract_raw Lines)
 
+            # Check if all are Unknown first
+            if [[ $RAW_STATEMENTS == Unknown && \
+                $RAW_BRANCHES   == Unknown && \
+                $RAW_FUNCTIONS  == Unknown && \
+                $RAW_LINES      == Unknown ]]; then
+              echo "::error::Coverage summary returned 'Unknown' for all metrics – cannot proceed."
+              exit 1
+            fi
+
+            # Warn about individual Unknown metrics
+            UNKNOWN_COUNT=0
+            [[ $RAW_STATEMENTS == Unknown ]] && { echo "::warning::Statements coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_BRANCHES == Unknown ]] && { echo "::warning::Branches coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_FUNCTIONS == Unknown ]] && { echo "::warning::Functions coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+            [[ $RAW_LINES == Unknown ]] && { echo "::warning::Lines coverage is unavailable"; ((UNKNOWN_COUNT++)); }
+
+            # Convert to numbers (Unknown -> 0)
+            to_num() { [[ $1 == Unknown ]] && echo 0 || echo "$1"; }
+
+            STATEMENTS=$(to_num "$RAW_STATEMENTS")
+            BRANCHES=$(to_num "$RAW_BRANCHES")
+            FUNCTIONS=$(to_num "$RAW_FUNCTIONS")
+            LINES=$(to_num "$RAW_LINES")
+
+            echo "Line coverage:      ${LINES}%   (raw: ${RAW_LINES})"
+            echo "Statement coverage: ${STATEMENTS}% (raw: ${RAW_STATEMENTS})"
+            echo "Function coverage:  ${FUNCTIONS}% (raw: ${RAW_FUNCTIONS})"
+            echo "Branch coverage:    ${BRANCHES}%  (raw: ${RAW_BRANCHES})"
+
+            # Calculate average but note if partial
+            if [[ $UNKNOWN_COUNT -gt 0 ]]; then
+              AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
+              echo "Average coverage: $AVERAGE_COVERAGE% (Note: $UNKNOWN_COUNT metric(s) unavailable, counted as 0%)"
+            else
               AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
 
               echo "Average coverage: $AVERAGE_COVERAGE%"
