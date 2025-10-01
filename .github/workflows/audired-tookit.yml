@@ -375,6 +375,7 @@ jobs:
       - name: Update data/report.json with additional metadata
         run: |
           data_folder="data"
+          per_repo_folder="$data_folder/per-repo"
           collection_report_file_path="collection-report/report.json"
           metadata_file_path="metadata-report/metadata-report.json"
           cypress_data_file_path="audired-cypress-report/audired-cypress-report.json"
@@ -441,6 +442,17 @@ jobs:
 
           mv tmp_report.json "$data_folder"/report.json
 
+          mkdir -p "$per_repo_folder"
+          safe_repo_name=$(echo "$repo_name" | tr '/@ ' '___')
+          per_repo_file="$per_repo_folder/$safe_repo_name.json"
+          repo_snapshot=$(echo "$report_artifact_json" | jq --arg repo_name "$repo_name" '.[$repo_name]')
+
+          if [ -z "$repo_snapshot" ] || [ "$repo_snapshot" = "null" ]; then
+            echo "{}" > "$per_repo_file"
+          else
+            echo "$repo_snapshot" > "$per_repo_file"
+          fi
+
       - name: Upload final report
         uses: actions/upload-artifact@v4
         with:
@@ -483,6 +495,9 @@ jobs:
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
           git add data/report.json
+          if [ -d data/per-repo ]; then
+              git add data/per-repo/
+          fi
           git add deployment/
           if ! git diff-index --quiet HEAD; then
               echo "commiting changes"
