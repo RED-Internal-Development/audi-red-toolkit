@@ -78,7 +78,7 @@ on:
         description: "Team key used to copy files to audired"
       SCANOSS_KEY:
         required: false
-        description: "[Deprecated] Ignored. Kept for backward compatibility."
+        description: "[Deprecated] Ignored. Keeping for backward compatibility."
 env:
   NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
