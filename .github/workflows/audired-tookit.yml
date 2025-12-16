@@ -455,18 +455,28 @@ jobs:
         run: |
           app_name=$(basename ${{ inputs.source_file }})
           docs_branch="${{ inputs.destination_branch }}"
+          project_type="${{ needs.detect_project.outputs.project_type }}"
           
-          # Use detected docs_base_path or default to feature_apps for backward compatibility
-          docs_base="${{ needs.detect_project.outputs.docs_base_path || 'feature_apps' }}"
-          docs_destination_team_folder="docs/$docs_base/${{ inputs.destination_branch }}"
-          docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+          # Determine paths based on project type
+          if [[ "$project_type" == "backend-service" ]]; then
+            # Backend services: no team folder, goes directly under backend_services/
+            docs_destination_team_folder="docs/backend_services"
+            docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+          else
+            # Frontend apps: include team folder (destination_branch)
+            docs_base="${{ needs.detect_project.outputs.docs_base_path || 'feature_apps' }}"
+            docs_destination_team_folder="docs/$docs_base/${{ inputs.destination_branch }}"
+            docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+          fi
 
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_ENV
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
           
-          echo "📁 Docs destination: $docs_destination_team_folder"
+          echo "📁 Project type: $project_type"
+          echo "📁 Docs destination folder: $docs_destination_team_folder"
+          echo "📁 App/Service folder: $docs_destination_app_folder"
 
       - name: Update data/report.json with additional metadata
         run: |
@@ -574,11 +584,30 @@ jobs:
       - name: Create Repo Configuration File for MSI/Cloud Deployments
         run: |
           app_name=$(basename ${{ inputs.source_file }})
-          team_folder_name=$(basename ${{ inputs.destination_folder }})
+          project_type="${{ needs.detect_project.outputs.project_type }}"
+          
+          # Determine team folder name based on project type
+          if [[ "$project_type" == "backend-service" ]]; then
+            # Backend services: all under "Backend Services" parent
+            team_folder_name="Backend Services"
+          else
+            # Frontend apps: use destination_branch as team name
+            team_folder_name="${{ inputs.destination_branch }}"
+          fi
+          
           msi_parent_page_ids="${{ inputs.msiParentPageIds }}"
           config_file="deployment/repo_configs/$app_name.json"
 
           mkdir -p "$(dirname "$config_file")"
+          
+          # NOTE: Config files are ONLY created for apps with special deployment needs:
+          # 1. Custom MSI parent page IDs (deploy to additional Confluence pages)
+          # 2. VWGOA Production Support deployment enabled
+          # 
+          # For STANDARD deployments (most apps), config files are DELETED because:
+          # - MSI deployment reads from the folder structure (docs/feature_apps/{TEAM}/{APP})
+          # - No additional configuration is needed
+          # - This keeps the repo clean and reduces maintenance
 
           if [[ -z "$msi_parent_page_ids" && "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "false" ]]; then
             if [[ -f "$config_file" ]]; then
