@@ -276,11 +276,21 @@ jobs:
 
       - name: Download collection report artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: data-report
           path: data-report
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
+
+      - name: Verify artifact and create fallback if needed
+        run: |
+          if [ -f "data-report/report.json" ]; then
+            echo "✅ Artifact downloaded successfully"
+            ls -la data-report/
+          else
+            echo "⚠️ Artifact not found - creating empty report for backend services"
+            mkdir -p data-report
+            echo '{}' > data-report/report.json
+          fi
 
       - name: Create or update project metrics with report data
         run: |
@@ -577,9 +587,12 @@ jobs:
 
       - name: Upload final report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: data-report
           path: collection-report/report.json
+          retention-days: 1
+          if-no-files-found: warn
 
       - name: Create Repo Configuration File for MSI/Cloud Deployments
         run: |
