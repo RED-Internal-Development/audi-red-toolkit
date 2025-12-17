@@ -467,6 +467,13 @@ jobs:
           docs_branch="${{ inputs.destination_branch }}"
           project_type="${{ needs.detect_project.outputs.project_type }}"
           
+          # Fix: If app_name is "docs" (backend services with docs at root), use repository name instead
+          if [[ "$app_name" == "docs" ]]; then
+            # Extract repository name from github.repository (owner/repo-name)
+            app_name=$(basename "${{ github.repository }}")
+            echo "📝 Detected docs at root - using repository name: $app_name"
+          fi
+          
           # Determine paths based on project type
           if [[ "$project_type" == "backend-service" ]]; then
             # Backend services: no team folder, goes directly under backend_services/
