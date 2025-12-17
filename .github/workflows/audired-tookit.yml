@@ -397,6 +397,7 @@ jobs:
           destination_repo: ${{ inputs.destination_repo }}
           destination_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}
           destination_branch: ${{ inputs.destination_branch }}
+          rename: ${{ needs.data_sync.outputs.app_name }}
           user_email: ${{ inputs.user_email }}
           user_name: ${{ inputs.user_name }}
           user_actor: ${{ github.actor }}
@@ -409,6 +410,8 @@ jobs:
     needs: [detect_project, cypress_sync, jest_sync]
     outputs:
       docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
+      docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
+      app_name: ${{ steps.create-docs-folders.outputs.app_name }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -487,6 +490,8 @@ jobs:
           fi
 
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
+          echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_OUTPUT
+          echo "app_name=$app_name" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_ENV
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
