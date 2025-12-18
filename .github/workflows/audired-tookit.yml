@@ -388,12 +388,23 @@ jobs:
               fi
           fi
 
+      - name: Prepare source path for rsync
+        id: prepare_source
+        run: |
+          SOURCE="${{ inputs.source_file }}"
+          # Add trailing slash if source is a directory (needed for rsync to copy contents, not the folder itself)
+          if [ -d "$SOURCE" ]; then
+            SOURCE="${SOURCE%/}/"
+          fi
+          echo "source_path=$SOURCE" >> $GITHUB_OUTPUT
+          echo "Using source path: $SOURCE"
+
       - name: Push documentation to Audi RED Portal for syndication
         uses: RED-Internal-Development/audred_docsync_action@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
         with:
-          source_file: ${{ inputs.source_file }}
+          source_file: ${{ steps.prepare_source.outputs.source_path }}
           destination_repo: ${{ inputs.destination_repo }}
           destination_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}
           destination_branch: ${{ inputs.destination_branch }}
