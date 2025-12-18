@@ -72,6 +72,11 @@ on:
         type: boolean
         required: false
         default: false
+      project_type:
+        description: "Type of project: 'frontend-app', 'backend-service', or 'auto-detect'. Auto-detected if not specified."
+        type: string
+        required: false
+        default: "auto-detect"
     secrets:
       DOC_SYNC_KEY:
         required: false
@@ -84,10 +89,87 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  detect_project:
+    runs-on: ubuntu-latest
+    outputs:
+      project_type: ${{ steps.detect.outputs.project_type }}
+      has_jest: ${{ steps.detect.outputs.has_jest }}
+      has_cypress: ${{ steps.detect.outputs.has_cypress }}
+      docs_base_path: ${{ steps.detect.outputs.docs_base_path }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Detect project type
+        id: detect
+        shell: bash
+        run: |
+          INPUT_TYPE="${{ inputs.project_type }}"
+          
+          # If explicitly set, use it
+          if [[ "$INPUT_TYPE" != "auto-detect" ]]; then
+            echo "project_type=$INPUT_TYPE" >> $GITHUB_OUTPUT
+            
+            if [[ "$INPUT_TYPE" == "backend-service" ]]; then
+              echo "docs_base_path=backend_services" >> $GITHUB_OUTPUT
+            else
+              echo "docs_base_path=feature_apps" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Auto-detect based on package.json and file structure
+            HAS_CYPRESS=false
+            HAS_JEST=false
+            
+            if [ -f "package.json" ]; then
+              # Check for Cypress
+              if jq -e '.scripts | to_entries[] | select(.value | contains("cypress"))' package.json > /dev/null 2>&1; then
+                HAS_CYPRESS=true
+              fi
+              
+              if [ -d "cypress" ]; then
+                HAS_CYPRESS=true
+              fi
+              
+              # Check for Jest
+              if jq -e '.scripts | to_entries[] | select(.key | test("test|jest"))' package.json > /dev/null 2>&1; then
+                HAS_JEST=true
+              fi
+              
+              if [ -f "jest.config.js" ] || [ -f "jest.config.ts" ] || jq -e '.jest' package.json > /dev/null 2>&1; then
+                HAS_JEST=true
+              fi
+            fi
+            
+            # Determine project type
+            if [[ "$HAS_CYPRESS" == "true" ]]; then
+              DETECTED_TYPE="frontend-app"
+              DOCS_PATH="feature_apps"
+            elif [[ "$HAS_JEST" == "true" ]]; then
+              DETECTED_TYPE="backend-service"
+              DOCS_PATH="backend_services"
+            else
+              # Default to frontend-app for backward compatibility
+              DETECTED_TYPE="frontend-app"
+              DOCS_PATH="feature_apps"
+            fi
+            
+            echo "project_type=$DETECTED_TYPE" >> $GITHUB_OUTPUT
+            echo "docs_base_path=$DOCS_PATH" >> $GITHUB_OUTPUT
+          fi
+          
+          # Always output test framework availability
+          echo "has_cypress=$HAS_CYPRESS" >> $GITHUB_OUTPUT
+          echo "has_jest=$HAS_JEST" >> $GITHUB_OUTPUT
+          
+          echo "✅ Detected project type: ${DETECTED_TYPE:-$INPUT_TYPE}"
+          echo "✅ Cypress available: $HAS_CYPRESS"
+          echo "✅ Jest available: $HAS_JEST"
+          echo "✅ Docs base path: ${DOCS_PATH:-$([ \"$INPUT_TYPE\" == \"backend-service\" ] && echo backend_services || echo feature_apps)}"
+
   doc_sync:
     runs-on: ubuntu-22.04
     if: ${{ always() && inputs.enable_doc_sync }}
-    needs: data_sync
+    needs: [detect_project, data_sync]
     steps:
       - name: Check if branch exists
         id: check_branch
@@ -109,7 +191,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Eslint check for Docusaurus build compatibility
         run: |
@@ -194,11 +276,21 @@ jobs:
 
       - name: Download collection report artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: data-report
           path: data-report
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
+
+      - name: Verify artifact and create fallback if needed
+        run: |
+          if [ -f "data-report/report.json" ]; then
+            echo "✅ Artifact downloaded successfully"
+            ls -la data-report/
+          else
+            echo "⚠️ Artifact not found - creating empty report for backend services"
+            mkdir -p data-report
+            echo '{}' > data-report/report.json
+          fi
 
       - name: Create or update project metrics with report data
         run: |
@@ -296,15 +388,27 @@ jobs:
               fi
           fi
 
-      - name: Pushes files from Feature App to Audi RED Portal for syndication
+      - name: Prepare source path for rsync
+        id: prepare_source
+        run: |
+          SOURCE="${{ inputs.source_file }}"
+          # Add trailing slash if source is a directory (needed for rsync to copy contents, not the folder itself)
+          if [ -d "$SOURCE" ]; then
+            SOURCE="${SOURCE%/}/"
+          fi
+          echo "source_path=$SOURCE" >> $GITHUB_OUTPUT
+          echo "Using source path: $SOURCE"
+
+      - name: Push documentation to Audi RED Portal for syndication
         uses: RED-Internal-Development/audred_docsync_action@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
         with:
-          source_file: ${{ inputs.source_file }}
+          source_file: ${{ steps.prepare_source.outputs.source_path }}
           destination_repo: ${{ inputs.destination_repo }}
           destination_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}
           destination_branch: ${{ inputs.destination_branch }}
+          rename: ${{ needs.data_sync.outputs.app_name }}
           user_email: ${{ inputs.user_email }}
           user_name: ${{ inputs.user_name }}
           user_actor: ${{ github.actor }}
@@ -314,12 +418,14 @@ jobs:
   data_sync:
     runs-on: ubuntu-latest
     if: always()
-    needs: [cypress_sync]
+    needs: [detect_project, cypress_sync, jest_sync]
     outputs:
       docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
+      docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
+      app_name: ${{ steps.create-docs-folders.outputs.app_name }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Collection of metadata from repository
         id: metadata_collection
@@ -330,7 +436,7 @@ jobs:
           workflow_run_id: ${{ github.event.workflow_run.id }}
 
       - name: Checkout AudiRed Doc Sync repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
@@ -349,6 +455,15 @@ jobs:
           name: audired-cypress-report
           path: audired-cypress-report
 
+      - name: Download jest report artifact
+        if: |
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+          needs.jest_sync.outputs.jest_run == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: audired-jest-report
+          path: audired-jest-report
+
       - name: Download collection report artifact
         if: github.event.workflow_run.id != ''
         uses: actions/download-artifact@v4
@@ -364,13 +479,37 @@ jobs:
         run: |
           app_name=$(basename ${{ inputs.source_file }})
           docs_branch="${{ inputs.destination_branch }}"
-          docs_destination_team_folder="docs/feature_apps/${{ inputs.destination_branch }}"
-          docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+          project_type="${{ needs.detect_project.outputs.project_type }}"
+          
+          # Fix: If app_name is "docs" (backend services with docs at root), use repository name instead
+          if [[ "$app_name" == "docs" ]]; then
+            # Extract repository name from github.repository (owner/repo-name)
+            app_name=$(basename "${{ github.repository }}")
+            echo "📝 Detected docs at root - using repository name: $app_name"
+          fi
+          
+          # Determine paths based on project type
+          if [[ "$project_type" == "backend-service" ]]; then
+            # Backend services: no team folder, goes directly under backend_services/
+            docs_destination_team_folder="docs/backend_services"
+            docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+          else
+            # Frontend apps: include team folder (destination_branch)
+            docs_base="${{ needs.detect_project.outputs.docs_base_path || 'feature_apps' }}"
+            docs_destination_team_folder="docs/$docs_base/${{ inputs.destination_branch }}"
+            docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+          fi
 
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
+          echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_OUTPUT
+          echo "app_name=$app_name" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_ENV
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
+          
+          echo "📁 Project type: $project_type"
+          echo "📁 Docs destination folder: $docs_destination_team_folder"
+          echo "📁 App/Service folder: $docs_destination_app_folder"
 
       - name: Update data/report.json with additional metadata
         run: |
@@ -405,6 +544,22 @@ jobs:
             report_artifact_json=$(cat "$output_file_path")
           else
             echo "No cypress data artifact found."
+          fi
+
+          # Merge Jest data from Pattern A (scheduled runs)
+          jest_data_file_path="audired-jest-report/audired-jest-report.json"
+          if [[ -f "$jest_data_file_path" ]]; then
+            echo "Merging Jest coverage data from scheduled run..."
+            echo "$report_artifact_json" > "$collection_report_file_path"
+            
+            jq --arg repo_name "$repo_name" \
+              '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
+              "$collection_report_file_path" "$jest_data_file_path" > "$output_file_path"
+            
+            report_artifact_json=$(cat "$output_file_path")
+            echo "✅ Jest data merged successfully"
+          else
+            echo "No Jest data from scheduled run to merge"
           fi
 
           echo "report_artifact_json: $report_artifact_json"
@@ -455,18 +610,40 @@ jobs:
 
       - name: Upload final report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: data-report
           path: collection-report/report.json
+          retention-days: 1
+          if-no-files-found: warn
 
       - name: Create Repo Configuration File for MSI/Cloud Deployments
         run: |
           app_name=$(basename ${{ inputs.source_file }})
-          team_folder_name=$(basename ${{ inputs.destination_folder }})
+          project_type="${{ needs.detect_project.outputs.project_type }}"
+          
+          # Determine team folder name based on project type
+          if [[ "$project_type" == "backend-service" ]]; then
+            # Backend services: all under "Backend Services" parent
+            team_folder_name="Backend Services"
+          else
+            # Frontend apps: use destination_branch as team name
+            team_folder_name="${{ inputs.destination_branch }}"
+          fi
+          
           msi_parent_page_ids="${{ inputs.msiParentPageIds }}"
           config_file="deployment/repo_configs/$app_name.json"
 
           mkdir -p "$(dirname "$config_file")"
+          
+          # NOTE: Config files are ONLY created for apps with special deployment needs:
+          # 1. Custom MSI parent page IDs (deploy to additional Confluence pages)
+          # 2. VWGOA Production Support deployment enabled
+          # 
+          # For STANDARD deployments (most apps), config files are DELETED because:
+          # - MSI deployment reads from the folder structure (docs/feature_apps/{TEAM}/{APP})
+          # - No additional configuration is needed
+          # - This keeps the repo clean and reduces maintenance
 
           if [[ -z "$msi_parent_page_ids" && "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "false" ]]; then
             if [[ -f "$config_file" ]]; then
@@ -507,20 +684,101 @@ jobs:
               echo "No changes to push"
           fi
 
-  cypress_sync:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    outputs:
-      cypress_run: ${{ steps.check_script.outputs.exists }}
+  jest_sync:
     runs-on: ubuntu-latest
+    needs: detect_project
+    if: |
+      needs.detect_project.outputs.has_jest == 'true' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    outputs:
+      jest_run: ${{ steps.check_script.outputs.exists }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Check if Jest test script exists
+        id: check_script
+        shell: bash
+        run: |
+          if jq -e '.scripts["test"] or .scripts["test:unit"] or .scripts["test:coverage"]' package.json > /dev/null; then
+            echo "Jest test script found"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No Jest test script found"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_script.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install dependencies
+        if: steps.check_script.outputs.exists == 'true'
+        shell: bash
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Jest with Coverage
+        if: steps.check_script.outputs.exists == 'true'
+        shell: bash
+        run: |
+          # Try different script patterns
+          if jq -e '.scripts["test:coverage"]' package.json > /dev/null; then
+            npm run test:coverage
+          elif jq -e '.scripts["test:unit"]' package.json > /dev/null; then
+            npm run test:unit -- --coverage
+          else
+            npm test -- --coverage
+          fi
+
+      - name: Collect Jest Coverage using Collection Kit
+        if: steps.check_script.outputs.exists == 'true'
+        uses: ./Actions/audi-red-collection-kit_action.yml
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          jest_coverage_file_path: coverage/coverage-summary.json
+          lighthouse_coverage_file_path: ""
+      
+      - name: Rename report for consistency
+        if: steps.check_script.outputs.exists == 'true'
+        shell: bash
+        run: |
+          if [ -f "report.json" ]; then
+            mv report.json audired-jest-report.json
+            echo "✅ Jest coverage report created via collection-kit"
+            cat audired-jest-report.json
+          fi
+
+      - name: Upload Jest Coverage Report
+        if: steps.check_script.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: audired-jest-report
+          path: audired-jest-report.json
+          retention-days: 30
+
+  cypress_sync:
+    runs-on: ubuntu-latest
+    needs: detect_project
+    if: |
+      needs.detect_project.outputs.has_cypress == 'true' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    outputs:
+      cypress_run: ${{ steps.check_script.outputs.exists }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Check if test:e2e-run-dev script exists
         id: check_script
         run: |
           if jq -e '.scripts["test:e2e-run-dev"]' package.json > /dev/null; then
-            echo "Script exists. Startin cypress install, run, and coverage collection"
+            echo "Script exists. Starting cypress install, run, and coverage collection"
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "Script does not exist. Skipping cypress collection"
@@ -529,7 +787,7 @@ jobs:
 
       - name: Load Cypress cache
         if: steps.check_script.outputs.exists == 'true'
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/Cypress
@@ -539,7 +797,7 @@ jobs:
 
       - name: Setup node
         if: steps.check_script.outputs.exists == 'true'
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
           cache: npm
@@ -646,7 +904,7 @@ jobs:
 
       - name: Upload report.json
         if: steps.check_script.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4.3.1
+        uses: actions/upload-artifact@v4
         with:
           name: audired-cypress-report
           path: audired-cypress-report.json
