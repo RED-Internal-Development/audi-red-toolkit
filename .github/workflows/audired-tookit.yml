@@ -738,7 +738,7 @@ jobs:
 
       - name: Collect Jest Coverage using Collection Kit
         if: steps.check_script.outputs.exists == 'true'
-        uses: ./Actions/audi-red-collection-kit_action.yml
+        uses: RED-Internal-Development/audi-red-collection-kit@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
