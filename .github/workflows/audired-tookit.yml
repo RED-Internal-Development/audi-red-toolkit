@@ -742,7 +742,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
-          lighthouse_coverage_file_path: ""
       
       - name: Rename report for consistency
         if: steps.check_script.outputs.exists == 'true'
