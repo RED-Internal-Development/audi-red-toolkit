@@ -194,7 +194,7 @@ jobs:
         run: |
           set -euo pipefail
           source_dir="${{ inputs.source_file }}"
-          sync_source_dir=".docsync_source"
+          sync_source_dir="docsync_source"
 
           rm -rf "$sync_source_dir"
           mkdir -p "$sync_source_dir"
@@ -224,7 +224,7 @@ jobs:
             exit 1
           fi
 
-          echo "sync_source=$sync_source_dir" >> "$GITHUB_OUTPUT"
+          echo "sync_source=$sync_source_dir/." >> "$GITHUB_OUTPUT"
 
       - name: Pushes files from Feature App to Audi RED Portal for syndication
         uses: RED-Internal-Development/audred_docsync_action@main
