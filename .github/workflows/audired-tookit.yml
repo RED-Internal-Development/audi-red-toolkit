@@ -107,25 +107,119 @@ jobs:
           find "${{ inputs.source_file }}" -type f -name "CHANGELOG*.md" -print -delete
 
 
-      - name: Normalize markdown email autolinks for MDX compatibility
+      - name: Normalize markdown syntax for MDX compatibility
         shell: bash
         run: |
           set -euo pipefail
           source_path="${{ inputs.source_file }}"
 
+          normalize_file() {
+            local file="$1"
+            python3 - "$file" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          content = path.read_text(encoding="utf-8")
+
+          email_re = re.compile(r"<([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})>")
+          placeholder_re = re.compile(r"<<<([^>\n]+)>>>")
+          angle_re = re.compile(r"<([^>\n]+)>")
+          inline_code_split_re = re.compile(r"(`[^`]*`)")
+
+
+          def normalize_non_code_segment(segment: str) -> str:
+              segment = email_re.sub(lambda m: f"[{m.group(1)}](mailto:{m.group(1)})", segment)
+              segment = placeholder_re.sub(lambda m: f"&lt;&lt;&lt;{m.group(1)}&gt;&gt;&gt;", segment)
+
+              def angle_repl(match: re.Match[str]) -> str:
+                  inner = match.group(1).strip()
+                  if inner.startswith(("http://", "https://", "mailto:")):
+                      return match.group(0)
+                  return f"`<{inner}>`"
+
+              return angle_re.sub(angle_repl, segment)
+
+
+          lines = content.splitlines(keepends=True)
+          in_fence = False
+          changed = False
+
+          for idx, line in enumerate(lines):
+              stripped = line.lstrip()
+              if stripped.startswith("```") or stripped.startswith("~~~"):
+                  in_fence = not in_fence
+                  continue
+
+              if in_fence:
+                  continue
+
+              parts = inline_code_split_re.split(line)
+              if len(parts) == 1:
+                  new_line = normalize_non_code_segment(line)
+              else:
+                  new_parts = []
+                  for part in parts:
+                      if part.startswith("`") and part.endswith("`"):
+                          new_parts.append(part)
+                      else:
+                          new_parts.append(normalize_non_code_segment(part))
+                  new_line = "".join(new_parts)
+
+              if new_line != line:
+                  lines[idx] = new_line
+                  changed = True
+
+          if changed:
+              path.write_text("".join(lines), encoding="utf-8")
+          PY
+          }
+
           if [ -d "$source_path" ]; then
-            find "$source_path" -type f \( -name "*.md" -o -name "*.mdx" \) \
-              -exec perl -i -pe 's{<([[:alnum:]._%+\-]+@[[:alnum:].-]+\.[[:alpha:]]{2,})>}{[$1](mailto:$1)}g' {} +
+            find "$source_path" -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' file; do
+              normalize_file "$file"
+            done
           elif [ -f "$source_path" ]; then
-            perl -i -pe 's{<([[:alnum:]._%+\-]+@[[:alnum:].-]+\.[[:alpha:]]{2,})>}{[$1](mailto:$1)}g' "$source_path"
+            normalize_file "$source_path"
           else
             echo "Skipping normalization. source_file '$source_path' not found."
           fi
 
 
       - name: Eslint check for Docusaurus build compatibility
+        shell: bash
         run: |
-          cd ${{ inputs.source_file }}
+          set -euo pipefail
+          source_dir="${{ inputs.source_file }}"
+          mdx_check_dir="$(mktemp -d)"
+
+          if [ -d "$source_dir" ]; then
+            if [ "$source_dir" = "." ]; then
+              # Keep MDX checker scope aligned with the files we actually sync.
+              rsync -av --prune-empty-dirs \
+                --include='*/' \
+                --include='docs/***' \
+                --include='**/Docs/***' \
+                --include='**/*.docc/***' \
+                --include='**/structurizr/***' \
+                --include='*.md' \
+                --include='*.mdx' \
+                --exclude='*' \
+                "$source_dir"/ "$mdx_check_dir"/
+            else
+              rsync -av --prune-empty-dirs "$source_dir"/ "$mdx_check_dir"/
+            fi
+          elif [ -f "$source_dir" ]; then
+            relative_dir=$(dirname "$source_dir")
+            mkdir -p "$mdx_check_dir/$relative_dir"
+            cp "$source_dir" "$mdx_check_dir/$source_dir"
+          else
+            echo "Unsupported source_file: '$source_dir'. Expected a directory or file."
+            exit 1
+          fi
+
+          cd "$mdx_check_dir"
           npx docusaurus-mdx-checker
 
       - name: Install mermaid CLI for parsing
