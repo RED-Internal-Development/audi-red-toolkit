@@ -188,12 +188,50 @@ jobs:
 
             echo "All images are properly referenced and exist!"
 
+      - name: Prepare documentation sync source
+        id: prepare_sync_source
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_dir="${{ inputs.source_file }}"
+          sync_source_dir=".docsync_source"
+
+          rm -rf "$sync_source_dir"
+          mkdir -p "$sync_source_dir"
+
+          if [ -d "$source_dir" ]; then
+            if [ "$source_dir" = "." ]; then
+              # When syncing from repo root, copy only documentation paths (all file types).
+              rsync -av --prune-empty-dirs \
+                --include='*/' \
+                --include='docs/***' \
+                --include='**/*.docc/***' \
+                --include='**/structurizr/***' \
+                --include='*.md' \
+                --include='*.mdx' \
+                --exclude='*' \
+                "$source_dir"/ "$sync_source_dir"/
+            else
+              # For explicit doc source directories, keep all file types.
+              rsync -av --prune-empty-dirs "$source_dir"/ "$sync_source_dir"/
+            fi
+          elif [ -f "$source_dir" ]; then
+            relative_dir=$(dirname "$source_dir")
+            mkdir -p "$sync_source_dir/$relative_dir"
+            cp "$source_dir" "$sync_source_dir/$source_dir"
+          else
+            echo "Unsupported source_file: '$source_dir'. Expected a directory or file."
+            exit 1
+          fi
+
+          echo "sync_source=$sync_source_dir" >> "$GITHUB_OUTPUT"
+
       - name: Pushes files from Feature App to Audi RED Portal for syndication
         uses: RED-Internal-Development/audred_docsync_action@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
         with:
-          source_file: ${{ inputs.source_file }}
+          source_file: ${{ steps.prepare_sync_source.outputs.sync_source }}
           destination_repo: ${{ inputs.destination_repo }}
           destination_folder: ${{ inputs.destination_folder }}
           destination_branch: ${{ inputs.destination_branch }}
