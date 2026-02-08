@@ -335,6 +335,24 @@ jobs:
             exit 1
           fi
 
+          if [ "${{ inputs.destination_branch }}" = "myaudi_ios" ]; then
+            modules_root=""
+            if [ -d "$sync_source_dir/Modules" ]; then
+              modules_root="$sync_source_dir/Modules"
+            elif [ -d "$sync_source_dir/modules" ]; then
+              modules_root="$sync_source_dir/modules"
+            fi
+
+            if [ -n "$modules_root" ]; then
+              mkdir -p "$sync_source_dir/core" "$sync_source_dir/features"
+
+              [ -d "$modules_root/Core" ] && rsync -av --delete "$modules_root/Core"/ "$sync_source_dir/core/"
+              [ -d "$modules_root/Features" ] && rsync -av --delete "$modules_root/Features"/ "$sync_source_dir/features/"
+
+              rm -rf "$modules_root"
+            fi
+          fi
+
           echo "sync_source=$sync_source_dir/." >> "$GITHUB_OUTPUT"
 
       - name: Pushes files from Feature App to Audi RED Portal for syndication
