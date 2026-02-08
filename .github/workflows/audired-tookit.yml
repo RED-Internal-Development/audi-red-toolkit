@@ -107,6 +107,22 @@ jobs:
           find "${{ inputs.source_file }}" -type f -name "CHANGELOG*.md" -print -delete
 
 
+      - name: Normalize markdown email autolinks for MDX compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_path="${{ inputs.source_file }}"
+
+          if [ -d "$source_path" ]; then
+            find "$source_path" -type f \( -name "*.md" -o -name "*.mdx" \) \
+              -exec perl -i -pe 's{<([[:alnum:]._%+\-]+@[[:alnum:].-]+\.[[:alpha:]]{2,})>}{[$1](mailto:$1)}g' {} +
+          elif [ -f "$source_path" ]; then
+            perl -i -pe 's{<([[:alnum:]._%+\-]+@[[:alnum:].-]+\.[[:alpha:]]{2,})>}{[$1](mailto:$1)}g' "$source_path"
+          else
+            echo "Skipping normalization. source_file '$source_path' not found."
+          fi
+
+
       - name: Eslint check for Docusaurus build compatibility
         run: |
           cd ${{ inputs.source_file }}
@@ -205,6 +221,7 @@ jobs:
               rsync -av --prune-empty-dirs \
                 --include='*/' \
                 --include='docs/***' \
+                --include='**/Docs/***' \
                 --include='**/*.docc/***' \
                 --include='**/structurizr/***' \
                 --include='*.md' \
