@@ -280,6 +280,7 @@ jobs:
             echo "All images are properly referenced and exist!"
 
       - name: Download collection report artifact
+        if: ${{ inputs.enable_data_sync }}
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -287,6 +288,7 @@ jobs:
           path: data-report
 
       - name: Verify artifact and create fallback if needed
+        if: ${{ inputs.enable_data_sync }}
         run: |
           if [ -f "data-report/report.json" ]; then
             echo "✅ Artifact downloaded successfully"
@@ -298,6 +300,7 @@ jobs:
           fi
 
       - name: Create or update project metrics with report data
+        if: ${{ inputs.enable_data_sync }}
         run: |
           FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
           report_file="data-report/report.json"
@@ -393,6 +396,24 @@ jobs:
               fi
           fi
 
+      - name: Resolve destination folder and app name
+        if: ${{ !inputs.enable_data_sync }}
+        id: resolve_dest
+        shell: bash
+        run: |
+          DEST_FOLDER="${{ inputs.destination_folder }}"
+          APP_NAME="${{ inputs.rename }}"
+
+          if [[ -z "$DEST_FOLDER" ]]; then
+            echo "❌ destination_folder input is required when data_sync is disabled"
+            exit 1
+          fi
+
+          echo "docs_destination_team_folder=$DEST_FOLDER" >> $GITHUB_OUTPUT
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "Destination folder: $DEST_FOLDER"
+          echo "App name: $APP_NAME"
+
       - name: Prepare source path for rsync
         id: prepare_source
         run: |
@@ -411,9 +432,9 @@ jobs:
         with:
           source_file: ${{ steps.prepare_source.outputs.source_path }}
           destination_repo: ${{ inputs.destination_repo }}
-          destination_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}
+          destination_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder || steps.resolve_dest.outputs.docs_destination_team_folder }}
           destination_branch: ${{ inputs.destination_branch }}
-          rename: ${{ needs.data_sync.outputs.app_name }}
+          rename: ${{ needs.data_sync.outputs.app_name || steps.resolve_dest.outputs.app_name }}
           user_email: ${{ inputs.user_email }}
           user_name: ${{ inputs.user_name }}
           user_actor: ${{ github.actor }}
@@ -747,7 +768,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
-      
+
       - name: Rename report for consistency
         if: steps.check_script.outputs.exists == 'true'
         shell: bash
