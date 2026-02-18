@@ -29,11 +29,11 @@ on:
         type: string
         required: true
       destination_branch:
-        description: "branch to push file to, defaults to main"
+        description: "[Deprecated] Branch to push file to. Branch is now selected from app-type profile."
         type: string
         required: false
       destination_branch_create:
-        description: "Destination branch to create for this commit"
+        description: "[Deprecated] Ignored. Branch selection is profile-driven by app type."
         type: string
         required: false
       commit_message:
@@ -54,7 +54,7 @@ on:
         required: false
         default: github.com
       msiParentPageIds:
-        description: "By default we deployment all feature apps to a documentation sync parent id in msi. If you prefer to deploy elsewhere in this space, list ids"
+        description: "[Deprecated] Ignored. MSI parent placement is profile-driven by app type."
         default: ""
         type: string
         required: false
@@ -77,11 +77,19 @@ on:
         type: boolean
         required: false
         default: false
+      app_type:
+        description: "Preferred profile key. Supported values: feature_app, backend_service, mobile_app, graph_service, special_app."
+        type: string
+        required: false
       project_type:
-        description: "Type of project: 'frontend-app', 'backend-service', or 'auto-detect'. Auto-detected if not specified."
+        description: "[Deprecated] Legacy type input. Mapped to app_type when provided and app_type is not set."
         type: string
         required: false
         default: "auto-detect"
+      red_docs_portal_path_override:
+        description: "Optional RED docs portal path override for special-app only. Must start with docs/"
+        type: string
+        required: false
     secrets:
       DOC_SYNC_KEY:
         required: false
@@ -97,6 +105,7 @@ jobs:
   detect_project:
     runs-on: ubuntu-latest
     outputs:
+      app_type: ${{ steps.detect.outputs.app_type }}
       project_type: ${{ steps.detect.outputs.project_type }}
       has_jest: ${{ steps.detect.outputs.has_jest }}
       has_cypress: ${{ steps.detect.outputs.has_cypress }}
@@ -109,21 +118,52 @@ jobs:
         id: detect
         shell: bash
         run: |
+          INPUT_APP_TYPE="${{ inputs.app_type }}"
           INPUT_TYPE="${{ inputs.project_type }}"
-          
-          # If explicitly set, use it
-          if [[ "$INPUT_TYPE" != "auto-detect" ]]; then
-            echo "project_type=$INPUT_TYPE" >> $GITHUB_OUTPUT
-            
-            if [[ "$INPUT_TYPE" == "backend-service" ]]; then
-              echo "docs_base_path=backend_services" >> $GITHUB_OUTPUT
-            else
-              echo "docs_base_path=feature_apps" >> $GITHUB_OUTPUT
+
+          HAS_CYPRESS=false
+          HAS_JEST=false
+          DETECTION_MODE=""
+          RESOLVED_APP_TYPE=""
+          DOCS_PATH="feature_apps"
+
+          map_legacy_project_type() {
+            case "$1" in
+              frontend-app|frontend_app) echo "feature_app" ;;
+              backend-service|backend_service) echo "backend_service" ;;
+              mobile-app|mobile_app) echo "mobile_app" ;;
+              graph-service|graph_service) echo "graph_service" ;;
+              special-app|special_app) echo "special_app" ;;
+              *) echo "" ;;
+            esac
+          }
+
+          validate_app_type() {
+            case "$1" in
+              feature_app|backend_service|mobile_app|graph_service|special_app) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          # app_type takes precedence when set
+          if [[ -n "$INPUT_APP_TYPE" ]]; then
+            if ! validate_app_type "$INPUT_APP_TYPE"; then
+              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, graph_service, special_app"
+              exit 1
             fi
+            RESOLVED_APP_TYPE="$INPUT_APP_TYPE"
+            DETECTION_MODE="app_type"
+          elif [[ "$INPUT_TYPE" != "auto-detect" ]]; then
+            RESOLVED_APP_TYPE="$(map_legacy_project_type "$INPUT_TYPE")"
+            if [[ -z "$RESOLVED_APP_TYPE" ]]; then
+              echo "::error::Invalid project_type '$INPUT_TYPE'. Use app_type instead."
+              exit 1
+            fi
+            DETECTION_MODE="project_type (deprecated)"
           else
             # Auto-detect based on package.json and file structure
-            HAS_CYPRESS=false
-            HAS_JEST=false
+            DETECTION_MODE="auto-detect (deprecated)"
+            echo "::warning::Using auto-detect is deprecated. Please provide app_type."
             
             if [ -f "package.json" ]; then
               # Check for Cypress
@@ -145,42 +185,120 @@ jobs:
               fi
             fi
             
-            # Determine project type
+            # Determine app_type
             if [[ "$HAS_CYPRESS" == "true" ]]; then
-              DETECTED_TYPE="frontend-app"
-              DOCS_PATH="feature_apps"
+              RESOLVED_APP_TYPE="feature_app"
             elif [[ "$HAS_JEST" == "true" ]]; then
-              DETECTED_TYPE="backend-service"
-              DOCS_PATH="backend_services"
+              RESOLVED_APP_TYPE="backend_service"
             else
-              # Default to frontend-app for backward compatibility
-              DETECTED_TYPE="frontend-app"
-              DOCS_PATH="feature_apps"
+              RESOLVED_APP_TYPE="feature_app"
             fi
-            
-            echo "project_type=$DETECTED_TYPE" >> $GITHUB_OUTPUT
-            echo "docs_base_path=$DOCS_PATH" >> $GITHUB_OUTPUT
           fi
+
+          case "$RESOLVED_APP_TYPE" in
+            backend_service) DOCS_PATH="backend_services" ;;
+            special_app) DOCS_PATH="special_apps" ;;
+            *) DOCS_PATH="feature_apps" ;;
+          esac
+
+          # Keep both outputs for backward compatibility; both carry normalized app_type.
+          echo "app_type=$RESOLVED_APP_TYPE" >> $GITHUB_OUTPUT
+          echo "project_type=$RESOLVED_APP_TYPE" >> $GITHUB_OUTPUT
+          echo "docs_base_path=$DOCS_PATH" >> $GITHUB_OUTPUT
           
           # Always output test framework availability
           echo "has_cypress=$HAS_CYPRESS" >> $GITHUB_OUTPUT
           echo "has_jest=$HAS_JEST" >> $GITHUB_OUTPUT
           
-          echo "✅ Detected project type: ${DETECTED_TYPE:-$INPUT_TYPE}"
+          echo "✅ Resolved app_type: $RESOLVED_APP_TYPE"
+          echo "✅ Resolution mode: $DETECTION_MODE"
           echo "✅ Cypress available: $HAS_CYPRESS"
           echo "✅ Jest available: $HAS_JEST"
-          echo "✅ Docs base path: ${DOCS_PATH:-$([ \"$INPUT_TYPE\" == \"backend-service\" ] && echo backend_services || echo feature_apps)}"
+          echo "✅ Docs base path: $DOCS_PATH"
 
   doc_sync:
     runs-on: ubuntu-22.04
     if: ${{ always() && inputs.enable_doc_sync }}
-    needs: [detect_project, data_sync]
+    needs: [detect_project]
     steps:
+      - name: Checkout toolkit config
+        uses: actions/checkout@v4
+        with:
+          repository: RED-Internal-Development/audi-red-toolkit
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
+
+      - name: Resolve docs sync target from profile
+        id: resolve_target
+        shell: bash
+        run: |
+          app_name=$(basename ${{ inputs.source_file }})
+          project_type="${{ needs.detect_project.outputs.project_type }}"
+          profile_file="toolkit-config/config/app-type-profiles.yml"
+
+          if [[ "$app_name" == "docs" ]]; then
+            app_name=$(basename "${{ github.repository }}")
+            echo "📝 Detected docs at root - using repository name: $app_name"
+          fi
+
+          if [[ ! -f "$profile_file" ]]; then
+            echo "Profile file not found: $profile_file"
+            exit 1
+          fi
+
+          profile_key=$(ruby -ryaml -e '
+            data = YAML.load_file(ARGV[0])
+            raw = ARGV[1].to_s.strip
+            normalized = raw.tr("-", "_")
+            alias_map = {
+              "frontend_app" => "feature_app",
+              "backend_service" => "backend_service",
+              "mobile_app" => "mobile_app",
+              "graph_service" => "graph_service",
+              "special_app" => "special_app"
+            }
+            candidate = alias_map.fetch(normalized, normalized)
+            unless data.key?(candidate)
+              warn "Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
+              exit 1
+            end
+            puts candidate
+          ' "$profile_file" "$project_type")
+
+          base_path=$(ruby -ryaml -e 'data = YAML.load_file(ARGV[0]); puts data[ARGV[1]]["red_docs"]["base_path"]' "$profile_file" "$profile_key")
+          docs_branch=$(ruby -ryaml -e 'data = YAML.load_file(ARGV[0]); puts data[ARGV[1]]["red_docs"]["branch"]' "$profile_file" "$profile_key")
+          docs_destination_app_folder=$(echo "$base_path" | sed "s|{app}|$app_name|g")
+
+          if [[ "$profile_key" == "special_app" ]]; then
+            custom_path="${{ inputs.red_docs_portal_path_override }}"
+            if [[ -n "$custom_path" ]]; then
+              if [[ "$custom_path" != docs/* ]]; then
+                echo "::error::Invalid red_docs_portal_path_override. It must start with 'docs/'"
+                exit 1
+              fi
+              if [[ "$custom_path" == *".."* ]]; then
+                echo "::error::Invalid red_docs_portal_path_override. '..' is not allowed."
+                exit 1
+              fi
+              custom_path="${custom_path%/}"
+              if [[ "$custom_path" == *"{app}"* ]]; then
+                docs_destination_app_folder=$(echo "$custom_path" | sed "s|{app}|$app_name|g")
+              else
+                docs_destination_app_folder="$custom_path/$app_name"
+              fi
+            fi
+          fi
+
+          docs_destination_team_folder=$(dirname "$docs_destination_app_folder")
+          echo "app_name=$app_name" >> "$GITHUB_OUTPUT"
+          echo "docs_branch=$docs_branch" >> "$GITHUB_OUTPUT"
+          echo "docs_destination_team_folder=$docs_destination_team_folder" >> "$GITHUB_OUTPUT"
+
       - name: Check if branch exists
         id: check_branch
         shell: bash
         run: |
-          BRANCH_NAME="${{ inputs.destination_branch }}"
+          BRANCH_NAME="${{ steps.resolve_target.outputs.docs_branch }}"
           DESTINATION_REPO="${{ inputs.destination_repo }}"
           API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
 
@@ -411,9 +529,9 @@ jobs:
         with:
           source_file: ${{ steps.prepare_source.outputs.source_path }}
           destination_repo: ${{ inputs.destination_repo }}
-          destination_folder: ${{ needs.data_sync.outputs.docs_destination_team_folder }}
-          destination_branch: ${{ inputs.destination_branch }}
-          rename: ${{ needs.data_sync.outputs.app_name }}
+          destination_folder: ${{ steps.resolve_target.outputs.docs_destination_team_folder || inputs.destination_folder }}
+          destination_branch: ${{ steps.resolve_target.outputs.docs_branch }}
+          rename: ${{ steps.resolve_target.outputs.app_name || inputs.rename }}
           user_email: ${{ inputs.user_email }}
           user_name: ${{ inputs.user_name }}
           user_actor: ${{ github.actor }}
@@ -428,6 +546,7 @@ jobs:
       docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
       docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
       app_name: ${{ steps.create-docs-folders.outputs.app_name }}
+      docs_branch: ${{ steps.create-docs-folders.outputs.docs_branch }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -446,6 +565,13 @@ jobs:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
+
+      - name: Checkout toolkit config
+        uses: actions/checkout@v4
+        with:
+          repository: RED-Internal-Development/audi-red-toolkit
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
 
       - name: Download metadata artifact
         uses: actions/download-artifact@v4
@@ -483,8 +609,8 @@ jobs:
         id: create-docs-folders
         run: |
           app_name=$(basename ${{ inputs.source_file }})
-          docs_branch="${{ inputs.destination_branch }}"
           project_type="${{ needs.detect_project.outputs.project_type }}"
+          profile_file="toolkit-config/config/app-type-profiles.yml"
           
           # Fix: If app_name is "docs" (backend services with docs at root), use repository name instead
           if [[ "$app_name" == "docs" ]]; then
@@ -493,26 +619,68 @@ jobs:
             echo "📝 Detected docs at root - using repository name: $app_name"
           fi
           
-          # Determine paths based on project type
-          if [[ "$project_type" == "backend-service" ]]; then
-            # Backend services: no team folder, goes directly under backend_services/
-            docs_destination_team_folder="docs/backend_services"
-            docs_destination_app_folder="$docs_destination_team_folder/$app_name"
-          else
-            # Frontend apps: include team folder (destination_branch)
-            docs_base="${{ needs.detect_project.outputs.docs_base_path || 'feature_apps' }}"
-            docs_destination_team_folder="docs/$docs_base/${{ inputs.destination_branch }}"
-            docs_destination_app_folder="$docs_destination_team_folder/$app_name"
+          if [[ ! -f "$profile_file" ]]; then
+            echo "Profile file not found: $profile_file"
+            exit 1
           fi
+
+          # Normalize project_type and map legacy aliases to profile keys.
+          # Fail fast when project_type is not backed by a profile key.
+          profile_key=$(ruby -ryaml -e '
+            data = YAML.load_file(ARGV[0])
+            raw = ARGV[1].to_s.strip
+            normalized = raw.tr("-", "_")
+            alias_map = {
+              "frontend_app" => "feature_app",
+              "backend_service" => "backend_service",
+              "mobile_app" => "mobile_app",
+              "graph_service" => "graph_service",
+              "special_app" => "special_app"
+            }
+            candidate = alias_map.fetch(normalized, normalized)
+            unless data.key?(candidate)
+              warn "Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
+              exit 1
+            end
+            puts candidate
+          ' "$profile_file" "$project_type")
+
+          base_path=$(ruby -ryaml -e 'data = YAML.load_file(ARGV[0]); puts data[ARGV[1]]["red_docs"]["base_path"]' "$profile_file" "$profile_key")
+          docs_branch=$(ruby -ryaml -e 'data = YAML.load_file(ARGV[0]); puts data[ARGV[1]]["red_docs"]["branch"]' "$profile_file" "$profile_key")
+          docs_destination_app_folder=$(echo "$base_path" | sed "s|{app}|$app_name|g")
+          
+          if [[ "$profile_key" == "special_app" ]]; then
+            custom_path="${{ inputs.red_docs_portal_path_override }}"
+            if [[ -n "$custom_path" ]]; then
+              if [[ "$custom_path" != docs/* ]]; then
+                echo "::error::Invalid red_docs_portal_path_override. It must start with 'docs/'"
+                exit 1
+              fi
+              if [[ "$custom_path" == *".."* ]]; then
+                echo "::error::Invalid red_docs_portal_path_override. '..' is not allowed."
+                exit 1
+              fi
+              custom_path="${custom_path%/}"
+              if [[ "$custom_path" == *"{app}"* ]]; then
+                docs_destination_app_folder=$(echo "$custom_path" | sed "s|{app}|$app_name|g")
+              else
+                docs_destination_app_folder="$custom_path/$app_name"
+              fi
+            fi
+          fi
+
+          docs_destination_team_folder=$(dirname "$docs_destination_app_folder")
 
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_OUTPUT
           echo "app_name=$app_name" >> $GITHUB_OUTPUT
+          echo "docs_branch=$docs_branch" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_ENV
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
           
           echo "📁 Project type: $project_type"
+          echo "📁 Profile key: $profile_key"
           echo "📁 Docs destination folder: $docs_destination_team_folder"
           echo "📁 App/Service folder: $docs_destination_app_folder"
 
@@ -626,48 +794,68 @@ jobs:
         run: |
           app_name=$(basename ${{ inputs.source_file }})
           project_type="${{ needs.detect_project.outputs.project_type }}"
-          
-          # Determine team folder name based on project type
-          if [[ "$project_type" == "backend-service" ]]; then
-            # Backend services: all under "Backend Services" parent
-            team_folder_name="Backend Services"
-          else
-            # Frontend apps: use destination_branch as team name
-            team_folder_name="${{ inputs.destination_branch }}"
-          fi
-          
-          msi_parent_page_ids="${{ inputs.msiParentPageIds }}"
+          profile_file="toolkit-config/config/app-type-profiles.yml"
+
           config_file="deployment/repo_configs/$app_name.json"
 
           mkdir -p "$(dirname "$config_file")"
-          
-          # NOTE: Config files are ONLY created for apps with special deployment needs:
-          # 1. Custom MSI parent page IDs (deploy to additional Confluence pages)
-          # 2. VWGOA Production Support deployment enabled
-          # 
-          # For STANDARD deployments (most apps), config files are DELETED because:
-          # - MSI deployment reads from the folder structure (docs/feature_apps/{TEAM}/{APP})
-          # - No additional configuration is needed
-          # - This keeps the repo clean and reduces maintenance
 
-          if [[ -z "$msi_parent_page_ids" && "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "false" ]]; then
+          if [[ ! -f "$profile_file" ]]; then
+            echo "Profile file not found: $profile_file"
+            exit 1
+          fi
+
+          profile_key=$(ruby -ryaml -e '
+            data = YAML.load_file(ARGV[0])
+            raw = ARGV[1].to_s.strip
+            normalized = raw.tr("-", "_")
+            alias_map = {
+              "frontend_app" => "feature_app",
+              "backend_service" => "backend_service",
+              "mobile_app" => "mobile_app",
+              "graph_service" => "graph_service",
+              "special_app" => "special_app"
+            }
+            candidate = alias_map.fetch(normalized, normalized)
+            unless data.key?(candidate)
+              warn "Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
+              exit 1
+            end
+            puts candidate
+          ' "$profile_file" "$project_type")
+
+          if [[ "$profile_key" == "special_app" && "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" ]]; then
+            echo "::error::VWGOA deployment is not supported for project_type '$project_type' (special_app)."
+            exit 1
+          fi
+
+          vwgoa_parent_page_id=$(ruby -ryaml -e '
+            data = YAML.load_file(ARGV[0])
+            profile = data[ARGV[1]] || {}
+            vwgoa = profile["vwgoa"] || {}
+            puts(vwgoa["parent_page_id"].to_s)
+          ' "$profile_file" "$profile_key")
+          
+          # NOTE: Config files are ONLY created for VWGOA deployments.
+          # MSI parent placement is now determined by project_type in the MSI workflow,
+          # so per-app MSI config is no longer required.
+
+          if [[ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "false" ]]; then
             if [[ -f "$config_file" ]]; then
               rm "$config_file"
             fi
           else
-            echo '{}' > "$config_file"
-            msi_jq_string=""
-            if [[ -n "$msi_parent_page_ids" ]]; then
-              msi_array=$(echo "$msi_parent_page_ids" | tr ',' '\n' | jq -R . | jq -s .)
-              msi_jq_string=".msi_parent_page_ids = $msi_array | "
+            if [[ -z "$vwgoa_parent_page_id" ]]; then
+              echo "::error::VWGOA sync is not available for project_type '$project_type' (profile key '$profile_key'). Define 'vwgoa.parent_page_id' in app-type profile to enable."
+              exit 1
             fi
 
+            echo '{}' > "$config_file"
             if [ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" ]; then
               vwgoa_enabled=true
               vwgoa_jq_string=".vwgoa_enabled = $vwgoa_enabled | "
             fi
-            
-            jq "$msi_jq_string$vwgoa_jq_string.team_folder = \"$team_folder_name\" | .app_name = \"$app_name\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+            jq "$vwgoa_jq_string.app_name = \"$app_name\" | .project_type = \"$project_type\" | .vwgoa_parent_page_id = \"$vwgoa_parent_page_id\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
             echo "config file:"
             cat "$config_file"
           fi
@@ -683,7 +871,7 @@ jobs:
           git add deployment/
           if ! git diff-index --quiet HEAD; then
               echo "commiting changes"
-              git commit -m "Update report.json and deployment config from ${{ inputs.destination_branch }}"
+              git commit -m "Update report.json and deployment config from $docs_branch"
               git push
           else
               echo "No changes to push"
