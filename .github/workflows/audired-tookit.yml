@@ -225,6 +225,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: RED-Internal-Development/audi-red-toolkit
+          ref: simplified-docs-sync
           token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
@@ -570,6 +571,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: RED-Internal-Development/audi-red-toolkit
+          ref: simplified-docs-sync
           token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
