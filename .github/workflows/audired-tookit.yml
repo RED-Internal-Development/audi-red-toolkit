@@ -233,14 +233,9 @@ jobs:
         id: resolve_target
         shell: bash
         run: |
-          app_name=$(basename ${{ inputs.source_file }})
+          app_name=$(basename "${{ github.repository }}")
           project_type="${{ needs.detect_project.outputs.project_type }}"
           profile_file="toolkit-config/config/app-type-profiles.yml"
-
-          if [[ "$app_name" == "docs" ]]; then
-            app_name=$(basename "${{ github.repository }}")
-            echo "📝 Detected docs at root - using repository name: $app_name"
-          fi
 
           if [[ ! -f "$profile_file" ]]; then
             echo "Profile file not found: $profile_file"
@@ -610,16 +605,9 @@ jobs:
       - name: Dynamically create docs destination folder variables
         id: create-docs-folders
         run: |
-          app_name=$(basename ${{ inputs.source_file }})
+          app_name=$(basename "${{ github.repository }}")
           project_type="${{ needs.detect_project.outputs.project_type }}"
           profile_file="toolkit-config/config/app-type-profiles.yml"
-          
-          # Fix: If app_name is "docs" (backend services with docs at root), use repository name instead
-          if [[ "$app_name" == "docs" ]]; then
-            # Extract repository name from github.repository (owner/repo-name)
-            app_name=$(basename "${{ github.repository }}")
-            echo "📝 Detected docs at root - using repository name: $app_name"
-          fi
           
           if [[ ! -f "$profile_file" ]]; then
             echo "Profile file not found: $profile_file"
@@ -794,7 +782,7 @@ jobs:
 
       - name: Create Repo Configuration File for MSI/Cloud Deployments
         run: |
-          app_name=$(basename ${{ inputs.source_file }})
+          app_name=$(basename "${{ github.repository }}")
           project_type="${{ needs.detect_project.outputs.project_type }}"
           profile_file="toolkit-config/config/app-type-profiles.yml"
 
