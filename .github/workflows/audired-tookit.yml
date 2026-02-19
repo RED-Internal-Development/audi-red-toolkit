@@ -226,7 +226,7 @@ jobs:
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           ref: simplified-docs-sync
-          token: ${{ secrets.DOC_SYNC_KEY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
       - name: Resolve docs sync target from profile
@@ -567,7 +567,7 @@ jobs:
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           ref: simplified-docs-sync
-          token: ${{ secrets.DOC_SYNC_KEY }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
       - name: Download metadata artifact
@@ -683,28 +683,22 @@ jobs:
           cypress_data_file_path="audired-cypress-report/audired-cypress-report.json"
           output_file_path="combined-data.json"
 
-          metadata_artifact_json=$(cat "$metadata_file_path")
-          repo_name=$(echo "$metadata_artifact_json" | jq -r 'to_entries | .[0].key')
+          repo_name=$(jq -r 'to_entries | .[0].key' "$metadata_file_path")
+          mkdir -p "collection-report"
 
-          if [[ -n "${{ github.event.workflow_run.id }}" ]]; then
+          if [[ -n "${{ github.event.workflow_run.id }}" && -f "$collection_report_file_path" ]]; then
             jq --arg repo_name "$repo_name" \
               '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
               "$collection_report_file_path" "$metadata_file_path" > "$output_file_path"
-
-            report_artifact_json=$(cat $output_file_path)
           else
-            mkdir -p "collection-report"
-            echo $metadata_artifact_json > $collection_report_file_path
-            report_artifact_json=$(cat $collection_report_file_path)
+            cp "$metadata_file_path" "$output_file_path"
           fi
 
           if [[ -f "$cypress_data_file_path" ]]; then
-            echo "$report_artifact_json" > "$collection_report_file_path"
             jq --arg repo_name "$repo_name" \
               '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
-              "$collection_report_file_path" "$cypress_data_file_path" > "$output_file_path"
-
-            report_artifact_json=$(cat "$output_file_path")
+              "$output_file_path" "$cypress_data_file_path" > "$output_file_path.tmp"
+            mv "$output_file_path.tmp" "$output_file_path"
           else
             echo "No cypress data artifact found."
           fi
@@ -713,19 +707,14 @@ jobs:
           jest_data_file_path="audired-jest-report/audired-jest-report.json"
           if [[ -f "$jest_data_file_path" ]]; then
             echo "Merging Jest coverage data from scheduled run..."
-            echo "$report_artifact_json" > "$collection_report_file_path"
-            
             jq --arg repo_name "$repo_name" \
               '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
-              "$collection_report_file_path" "$jest_data_file_path" > "$output_file_path"
-            
-            report_artifact_json=$(cat "$output_file_path")
+              "$output_file_path" "$jest_data_file_path" > "$output_file_path.tmp"
+            mv "$output_file_path.tmp" "$output_file_path"
             echo "✅ Jest data merged successfully"
           else
             echo "No Jest data from scheduled run to merge"
           fi
-
-          echo "report_artifact_json: $report_artifact_json"
 
           # prod_support_enabled variable
 
@@ -736,16 +725,14 @@ jobs:
 
           timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          updated_report_artifact_json=$(echo "$report_artifact_json" | \
-            jq --arg repo_name "$repo_name" \
+          jq --arg repo_name "$repo_name" \
             --argjson prod_support "$prod_support_enabled" \
             --arg docs_destination_team_folder "$docs_destination_team_folder" \
             --arg docs_destination_app_folder "$docs_destination_app_folder" \
             --arg docs_branch "$docs_branch" \
             --arg timestamp "$timestamp" \
-            '.[$repo_name] |= . + {prod_support_enabled: $prod_support, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}')
-          echo "$updated_report_artifact_json" > collection-report/report.json
-          report_artifact_json=$(cat collection-report/report.json)
+            '.[$repo_name] |= . + {prod_support_enabled: $prod_support, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}' \
+            "$output_file_path" > collection-report/report.json
 
           # Push artifact report to existing report.json
           mkdir -p "$data_folder"
@@ -755,20 +742,20 @@ jobs:
               echo "{}" > "$data_folder"/report.json
           fi
 
-          jq --argjson new_report "$report_artifact_json" \
-            '. * $new_report' "$data_folder"/report.json > tmp_report.json
+          jq -s '.[0] * .[1]' "$data_folder"/report.json collection-report/report.json > tmp_report.json
 
           mv tmp_report.json "$data_folder"/report.json
 
           mkdir -p "$per_repo_folder"
           safe_repo_name=$(echo "$repo_name" | tr '/@ ' '___')
           per_repo_file="$per_repo_folder/$safe_repo_name.json"
-          repo_snapshot=$(echo "$report_artifact_json" | jq --arg repo_name "$repo_name" '.[$repo_name]')
-
-          if [ -z "$repo_snapshot" ] || [ "$repo_snapshot" = "null" ]; then
+          repo_snapshot_file="$per_repo_file.tmp"
+          jq --arg repo_name "$repo_name" '.[$repo_name]' collection-report/report.json > "$repo_snapshot_file"
+          if [[ ! -s "$repo_snapshot_file" ]] || [[ "$(cat "$repo_snapshot_file")" = "null" ]]; then
             echo "{}" > "$per_repo_file"
+            rm -f "$repo_snapshot_file"
           else
-            echo "$repo_snapshot" > "$per_repo_file"
+            mv "$repo_snapshot_file" "$per_repo_file"
           fi
 
       - name: Upload final report
