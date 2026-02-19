@@ -21,13 +21,11 @@ MSI and VWGOA behavior is profile-driven by `app_type`.
   - `feature_app`
   - `backend_service`
   - `mobile_app`
-  - `graph_service`
   - `special_app`
 - Legacy input: `project_type` (deprecated)
   - `frontend-app` -> `feature_app`
   - `backend-service` -> `backend_service`
   - `mobile-app` -> `mobile_app`
-  - `graph-service` -> `graph_service`
   - `special-app` -> `special_app`
   - `auto-detect` (deprecated fallback)
 

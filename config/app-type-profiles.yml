@@ -21,16 +21,8 @@ mobile_app:
     base_path: "docs/feature_apps_v2/{app}"
     branch: "docs-sync/mobile-apps"
   msi:
-    parent_page_id: "1838482057"
+    parent_page_id: "1852703992"
     path_mode: "mobile_apps"
-
-graph_service:
-  red_docs:
-    base_path: "docs/feature_apps_v2/{app}"
-    branch: "docs-sync/graph-services"
-  msi:
-    parent_page_id: "1838482057"
-    path_mode: "graph_services"
 
 special_app:
   red_docs:

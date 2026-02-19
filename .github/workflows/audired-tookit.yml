@@ -78,7 +78,7 @@ on:
         required: false
         default: false
       app_type:
-        description: "Preferred profile key. Supported values: feature_app, backend_service, mobile_app, graph_service, special_app."
+        description: "Preferred profile key. Supported values: feature_app, backend_service, mobile_app, special_app."
         type: string
         required: false
       project_type:
@@ -132,7 +132,6 @@ jobs:
               frontend-app|frontend_app) echo "feature_app" ;;
               backend-service|backend_service) echo "backend_service" ;;
               mobile-app|mobile_app) echo "mobile_app" ;;
-              graph-service|graph_service) echo "graph_service" ;;
               special-app|special_app) echo "special_app" ;;
               *) echo "" ;;
             esac
@@ -140,7 +139,7 @@ jobs:
 
           validate_app_type() {
             case "$1" in
-              feature_app|backend_service|mobile_app|graph_service|special_app) return 0 ;;
+              feature_app|backend_service|mobile_app|special_app) return 0 ;;
               *) return 1 ;;
             esac
           }
@@ -148,7 +147,7 @@ jobs:
           # app_type takes precedence when set
           if [[ -n "$INPUT_APP_TYPE" ]]; then
             if ! validate_app_type "$INPUT_APP_TYPE"; then
-              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, graph_service, special_app"
+              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, special_app"
               exit 1
             fi
             RESOLVED_APP_TYPE="$INPUT_APP_TYPE"
@@ -250,7 +249,6 @@ jobs:
               "frontend_app" => "feature_app",
               "backend_service" => "backend_service",
               "mobile_app" => "mobile_app",
-              "graph_service" => "graph_service",
               "special_app" => "special_app"
             }
             candidate = alias_map.fetch(normalized, normalized)
@@ -624,7 +622,6 @@ jobs:
               "frontend_app" => "feature_app",
               "backend_service" => "backend_service",
               "mobile_app" => "mobile_app",
-              "graph_service" => "graph_service",
               "special_app" => "special_app"
             }
             candidate = alias_map.fetch(normalized, normalized)
@@ -790,7 +787,6 @@ jobs:
               "frontend_app" => "feature_app",
               "backend_service" => "backend_service",
               "mobile_app" => "mobile_app",
-              "graph_service" => "graph_service",
               "special_app" => "special_app"
             }
             candidate = alias_map.fetch(normalized, normalized)
