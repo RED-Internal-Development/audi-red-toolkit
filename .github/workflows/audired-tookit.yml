@@ -802,6 +802,27 @@ jobs:
             exit 1
           fi
 
+          special_docs_path=""
+          if [[ "$profile_key" == "special_app" ]]; then
+            custom_path="${{ inputs.red_docs_portal_path_override }}"
+            if [[ -n "$custom_path" ]]; then
+              if [[ "$custom_path" != docs/* ]]; then
+                echo "::error::Invalid red_docs_portal_path_override. It must start with 'docs/'"
+                exit 1
+              fi
+              if [[ "$custom_path" == *".."* ]]; then
+                echo "::error::Invalid red_docs_portal_path_override. '..' is not allowed."
+                exit 1
+              fi
+              custom_path="${custom_path%/}"
+              if [[ "$custom_path" == *"{app}"* ]]; then
+                special_docs_path=$(echo "$custom_path" | sed "s|{app}|$app_name|g")
+              else
+                special_docs_path="$custom_path/$app_name"
+              fi
+            fi
+          fi
+
           vwgoa_parent_page_id=$(ruby -ryaml -e '
             data = YAML.load_file(ARGV[0])
             profile = data[ARGV[1]] || {}
@@ -809,26 +830,28 @@ jobs:
             puts(vwgoa["parent_page_id"].to_s)
           ' "$profile_file" "$profile_key")
           
-          # NOTE: Config files are ONLY created for VWGOA deployments.
-          # MSI parent placement is now determined by project_type in the MSI workflow,
-          # so per-app MSI config is no longer required.
-
-          if [[ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "false" ]]; then
+          # NOTE: Config files are created only when app-specific deployment metadata is required:
+          # - VWGOA deployment metadata
+          # - special_app custom docs path override metadata
+          if [[ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "false" && -z "$special_docs_path" ]]; then
             if [[ -f "$config_file" ]]; then
               rm "$config_file"
             fi
           else
-            if [[ -z "$vwgoa_parent_page_id" ]]; then
+            if [[ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" && -z "$vwgoa_parent_page_id" ]]; then
               echo "::error::VWGOA sync is not available for project_type '$project_type' (profile key '$profile_key'). Define 'vwgoa.parent_page_id' in app-type profile to enable."
               exit 1
             fi
 
             echo '{}' > "$config_file"
+            jq '.app_name = "'"$app_name"'" | .project_type = "'"$project_type"'"' "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+
             if [ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" ]; then
-              vwgoa_enabled=true
-              vwgoa_jq_string=".vwgoa_enabled = $vwgoa_enabled | "
+              jq '.vwgoa_enabled = true | .vwgoa_parent_page_id = "'"$vwgoa_parent_page_id"'"' "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
             fi
-            jq "$vwgoa_jq_string.app_name = \"$app_name\" | .project_type = \"$project_type\" | .vwgoa_parent_page_id = \"$vwgoa_parent_page_id\"" "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+            if [[ -n "$special_docs_path" ]]; then
+              jq '.special_docs_path = "'"$special_docs_path"'"' "$config_file" > "$config_file.tmp" && mv "$config_file.tmp" "$config_file"
+            fi
             echo "config file:"
             cat "$config_file"
           fi
