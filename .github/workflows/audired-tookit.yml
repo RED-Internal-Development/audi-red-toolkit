@@ -226,7 +226,7 @@ jobs:
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           ref: simplified-docs-sync
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DOC_SYNC_KEY }}
           path: toolkit-config
 
       - name: Resolve docs sync target from profile
@@ -567,7 +567,7 @@ jobs:
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           ref: simplified-docs-sync
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DOC_SYNC_KEY }}
           path: toolkit-config
 
       - name: Download metadata artifact
