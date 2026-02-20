@@ -18,7 +18,7 @@ backend_service:
 
 mobile_app:
   red_docs:
-    base_path: "docs/feature_apps_v2/{app}"
+    base_path: "docs/mobile_apps_v2/{app}"
     branch: "docs-sync/mobile-apps"
   msi:
     parent_page_id: "1852703992"
