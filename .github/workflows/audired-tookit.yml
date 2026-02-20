@@ -36,6 +36,11 @@ on:
         description: "Destination branch to create for this commit"
         type: string
         required: false
+      sync_queue_branch:
+        description: "Queue branch used for metadata/report updates in destination repository"
+        type: string
+        required: false
+        default: "doc-sync-queue"
       commit_message:
         description: "A custom message for the commit"
         type: string
@@ -373,12 +378,45 @@ jobs:
   data_sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate destination repository access for DOC_SYNC_KEY
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination_repo="${{ inputs.destination_repo }}"
+          sync_queue_branch="${{ inputs.sync_queue_branch }}"
+
+          repo_api_url="https://api.github.com/repos/${destination_repo}"
+          repo_response=$(curl -sS -o repo_response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" \
+            -H "Accept: application/vnd.github+json" \
+            "$repo_api_url")
+
+          if [ "$repo_response" -ne 200 ]; then
+            echo "DOC_SYNC_KEY cannot access destination repository '${destination_repo}' (HTTP ${repo_response})."
+            echo "Verify repository name, token permissions, and SSO authorization for the destination org."
+            [ -s repo_response.json ] && cat repo_response.json
+            exit 1
+          fi
+
+          branch_api_url="https://api.github.com/repos/${destination_repo}/branches/${sync_queue_branch}"
+          branch_response=$(curl -sS -o branch_response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" \
+            -H "Accept: application/vnd.github+json" \
+            "$branch_api_url")
+
+          if [ "$branch_response" -ne 200 ]; then
+            echo "Sync queue branch '${sync_queue_branch}' was not found in '${destination_repo}' (HTTP ${branch_response})."
+            echo "Create the branch in destination repository or override inputs.sync_queue_branch."
+            [ -s branch_response.json ] && cat branch_response.json
+            exit 1
+          fi
+
       - name: Checkout AudiRed Doc Sync repository
         uses: actions/checkout@v3
         with:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
-          ref: doc-sync-queue   
+          ref: ${{ inputs.sync_queue_branch }}
 
       - name: Dynamically create docs destination folder variables
         id: create-docs-folders
