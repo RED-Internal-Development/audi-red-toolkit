@@ -464,7 +464,11 @@ jobs:
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
           git add data/report.json
-          git add deployment/
+          if [ -d deployment ]; then
+            git add deployment/
+          else
+            echo "Skipping deployment/ staging because directory does not exist in destination repository."
+          fi
           if ! git diff-index --quiet HEAD; then
               echo "commiting changes"
               git commit -m "Update report.json and deployment config from ${{ inputs.destination_branch }}"
