@@ -1,0 +1,30 @@
+feature_app:
+  red_docs:
+    base_path: "docs/feature_apps_v2/{app}"
+    branch: "docs-sync/feature-apps"
+  msi:
+    parent_page_id: "1838482057"
+    path_mode: "feature_apps"
+  vwgoa:
+    parent_page_id: "2160066751"
+
+backend_service:
+  red_docs:
+    base_path: "docs/backend_services_v2/{app}"
+    branch: "docs-sync/backend-services"
+  msi:
+    parent_page_id: "1838482076"
+    path_mode: "backend_services"
+
+mobile_app:
+  red_docs:
+    base_path: "docs/mobile_apps_v2/{app}"
+    branch: "docs-sync/mobile-apps"
+  msi:
+    parent_page_id: "1852703992"
+    path_mode: "mobile_apps"
+
+special_app:
+  red_docs:
+    base_path: "docs/special_apps_v2/{app}"
+    branch: "docs-sync/special-apps"
