@@ -1178,13 +1178,35 @@ jobs:
     needs: [validate_inputs, detect_project, cypress_sync, jest_sync, doc_sync, data_sync]
     timeout-minutes: 10
     steps:
-      - name: Build dynamic run-report.json and summary
+      - name: Build run-context.json and run-report.json
         shell: bash
+        env:
+          DETECT_STATUS: ${{ needs.detect_project.result }}
+          CYPRESS_STATUS: ${{ needs.cypress_sync.result }}
+          JEST_STATUS: ${{ needs.jest_sync.result }}
+          DOC_SYNC_STATUS_RAW: ${{ needs.doc_sync.result }}
+          DATA_SYNC_STATUS_RAW: ${{ needs.data_sync.result }}
+          RESOLVED_APP_TYPE: ${{ needs.detect_project.outputs.app_type }}
+          RESOLVED_PROJECT_TYPE: ${{ needs.detect_project.outputs.project_type }}
+          DOCS_BASE_PATH: ${{ needs.detect_project.outputs.docs_base_path }}
+          DOCS_BRANCH_DOC: ${{ needs.doc_sync.outputs.docs_branch }}
+          DOCS_APP_DOC: ${{ needs.doc_sync.outputs.docs_destination_app_folder }}
+          DOCS_BRANCH_DATA: ${{ needs.data_sync.outputs.docs_branch }}
+          DOCS_APP_DATA: ${{ needs.data_sync.outputs.docs_destination_app_folder }}
         run: |
           set -euo pipefail
 
           RUN_ID="${{ github.run_id }}-${{ github.run_attempt }}"
           API_BASE="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100"
+          RUN_API="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          normalize_status() {
+            case "$1" in
+              success) echo "success" ;;
+              skipped) echo "skipped" ;;
+              *) echo "failure" ;;
+            esac
+          }
 
           fetch_jobs() {
             local page=1
@@ -1218,6 +1240,20 @@ jobs:
             done
           }
 
+          fetch_run_start() {
+            local response
+            if ! response=$(curl -fsSL \
+              --connect-timeout 10 \
+              --max-time 30 \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$RUN_API"); then
+              date -u +"%Y-%m-%dT%H:%M:%SZ"
+              return 0
+            fi
+            echo "$response" | jq -r '.run_started_at // .created_at // empty'
+          }
+
           all_jobs=$(fetch_jobs)
           jobs_for_report=$(echo "$all_jobs" | jq '
             [.[] | select(.name != "observability_summary") | {
@@ -1232,39 +1268,106 @@ jobs:
           FAILED_JOB=$(echo "$failed_jobs" | jq -r '.[0].name // ""')
           FAILED_STEP=$(echo "$failed_jobs" | jq -r '.[0].failed_step // ""')
 
+          RUN_START=$(fetch_run_start)
+          RUN_END=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          if [[ -z "$RUN_START" ]]; then
+            RUN_START="$RUN_END"
+          fi
+
+          DETECT_STATUS=$(normalize_status "$DETECT_STATUS")
+          CYPRESS_STATUS=$(normalize_status "$CYPRESS_STATUS")
+          JEST_STATUS=$(normalize_status "$JEST_STATUS")
+          DOC_SYNC_STATUS=$(normalize_status "$DOC_SYNC_STATUS_RAW")
+          DATA_SYNC_STATUS=$(normalize_status "$DATA_SYNC_STATUS_RAW")
+
+          DOCS_APP_FOLDER="${DOCS_APP_DOC:-$DOCS_APP_DATA}"
+          DOCS_BRANCH="${DOCS_BRANCH_DOC:-$DOCS_BRANCH_DATA}"
+          DOCS_ROOT_FOLDER=""
+          if [[ -n "$DOCS_APP_FOLDER" ]]; then
+            DOCS_ROOT_FOLDER=$(dirname "$DOCS_APP_FOLDER")
+          fi
+
+          errors_json=$(echo "$failed_jobs" | jq '
+            map({
+              code: (
+                if .conclusion == "cancelled" then "JOB_CANCELLED"
+                elif .conclusion == "timed_out" then "JOB_TIMED_OUT"
+                elif .conclusion == "action_required" then "JOB_ACTION_REQUIRED"
+                else "JOB_FAILED"
+                end
+              ),
+              message: (
+                if .failed_step != "" then "Job failed. See step: " + .failed_step
+                else "Job failed. Check workflow logs."
+                end
+              ),
+              job: .name,
+              step: (if .failed_step != "" then .failed_step else .name end)
+            })
+          ')
+
           jq -n \
             --arg run_id "$RUN_ID" \
-            --arg generated_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-            --arg failed_job "$FAILED_JOB" \
-            --arg failed_step "$FAILED_STEP" \
-            --argjson jobs "$jobs_for_report" \
+            --arg repo "${{ github.repository }}" \
+            --arg branch "${{ github.ref_name }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg workflow "${{ github.workflow }}" \
+            --arg app_type "${RESOLVED_APP_TYPE:-unknown}" \
+            --arg project_type "${RESOLVED_PROJECT_TYPE:-}" \
+            --arg docs_branch "${DOCS_BRANCH:-}" \
+            --arg docs_base_path "${DOCS_BASE_PATH:-}" \
+            --arg start "$RUN_START" \
             '{
+              schema_version: "red-run-context-v1",
               run_id: $run_id,
-              jobs: $jobs,
-              failed_job: $failed_job,
-              failed_step: $failed_step,
-              generated_at: $generated_at
+              repo: $repo,
+              branch: $branch,
+              actor: $actor,
+              workflow: $workflow,
+              app_type: $app_type,
+              project_type: $project_type,
+              docs_branch: $docs_branch,
+              docs_base_path: $docs_base_path,
+              doc_targets: ["github-doc-repo", "confluence"],
+              timestamps: {
+                start: $start
+              }
+            }' > run-context.json
+
+          jq -n \
+            --arg run_id "$RUN_ID" \
+            --arg doc_sync_status "$DOC_SYNC_STATUS" \
+            --arg data_sync_status "$DATA_SYNC_STATUS" \
+            --arg docs_destination_root_folder "$DOCS_ROOT_FOLDER" \
+            --arg docs_destination_app_folder "$DOCS_APP_FOLDER" \
+            --arg docs_branch "$DOCS_BRANCH" \
+            --arg start "$RUN_START" \
+            --arg end "$RUN_END" \
+            --argjson errors "$errors_json" \
+            '{
+              schema_version: "red-run-report-v1",
+              run_id: $run_id,
+              doc_sync_status: $doc_sync_status,
+              data_sync_status: $data_sync_status,
+              errors: $errors,
+              docs_paths: {
+                docs_destination_root_folder: ($docs_destination_root_folder // ""),
+                docs_destination_app_folder: ($docs_destination_app_folder // ""),
+                docs_branch: ($docs_branch // "")
+              },
+              timestamps: {
+                start: $start,
+                end: $end
+              }
             }' > run-report.json
 
-          {
-            echo "# RED Toolkit Run Summary"
-            echo ""
-            echo "- Run: $RUN_ID"
-            echo "- Repository: ${{ github.repository }}"
-            echo "- Branch: ${{ github.ref_name }}"
-            echo ""
-            echo "## Job Status"
-            echo "| Job | Status | Failed Step |"
-            echo "| --- | --- | --- |"
-            echo "$jobs_for_report" | jq -r '.[] | "| \(.name) | \(if .conclusion != "" then .conclusion else .status end) | \(if .failed_step != "" then .failed_step else "n/a" end) |"'
-            echo ""
-            echo "## Failure"
-            echo "- Failed job: ${FAILED_JOB:-none}"
-            echo "- Failed step: ${FAILED_STEP:-none}"
-            echo ""
-            echo "## Artifacts"
-            echo "- run-report.json"
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload run context artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-context
+          path: run-context.json
+          retention-days: 7
 
       - name: Upload run report artifact
         if: always()
