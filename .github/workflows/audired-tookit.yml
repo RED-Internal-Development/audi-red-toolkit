@@ -13,7 +13,7 @@ on:
         required: false
         default: "RED-Internal-Development/audi-red-documentation"
       destination_folder:
-        description: "Directory to push the file to"
+        description: "[Deprecated] Ignored. Destination path is profile-driven by app type. Use red_docs_portal_path_override (special_app only) to override path."
         type: string
         required: false
       user_email:
@@ -41,7 +41,7 @@ on:
         type: string
         required: false
       rename:
-        description: "Rename the destination file"
+        description: "[Deprecated] Ignored. Destination path is profile-driven. Use red_docs_portal_path_override (special_app only) to override path."
         type: string
         required: false
       use_rsync:
@@ -255,7 +255,6 @@ jobs:
     outputs:
       status: ${{ steps.doc_sync_observability.outputs.status }}
       failed_step: ${{ steps.doc_sync_observability.outputs.failed_step }}
-      docs_destination_team_folder: ${{ steps.resolve_target.outputs.docs_destination_team_folder }}
       docs_destination_app_folder: ${{ steps.resolve_target.outputs.docs_destination_app_folder }}
       docs_branch: ${{ steps.resolve_target.outputs.docs_branch }}
     steps:
@@ -322,10 +321,8 @@ jobs:
             fi
           fi
 
-          docs_destination_team_folder=$(dirname "$docs_destination_app_folder")
           echo "app_name=$app_name" >> "$GITHUB_OUTPUT"
           echo "docs_branch=$docs_branch" >> "$GITHUB_OUTPUT"
-          echo "docs_destination_team_folder=$docs_destination_team_folder" >> "$GITHUB_OUTPUT"
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> "$GITHUB_OUTPUT"
 
       - name: Check if branch exists
@@ -573,9 +570,8 @@ jobs:
         with:
           source_file: ${{ steps.prepare_source.outputs.source_path }}
           destination_repo: ${{ inputs.destination_repo }}
-          destination_folder: ${{ steps.resolve_target.outputs.docs_destination_team_folder || inputs.destination_folder }}
+          destination_folder: ${{ steps.resolve_target.outputs.docs_destination_app_folder }}
           destination_branch: ${{ steps.resolve_target.outputs.docs_branch }}
-          rename: ${{ steps.resolve_target.outputs.app_name || inputs.rename }}
           user_email: ${{ inputs.user_email }}
           user_name: ${{ inputs.user_name }}
           user_actor: ${{ github.actor }}
@@ -603,7 +599,6 @@ jobs:
     outputs:
       status: ${{ steps.data_sync_observability.outputs.status }}
       failed_step: ${{ steps.data_sync_observability.outputs.failed_step }}
-      docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
       docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
       app_name: ${{ steps.create-docs-folders.outputs.app_name }}
       docs_branch: ${{ steps.create-docs-folders.outputs.docs_branch }}
@@ -725,20 +720,15 @@ jobs:
             fi
           fi
 
-          docs_destination_team_folder=$(dirname "$docs_destination_app_folder")
-
-          echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_OUTPUT
           echo "app_name=$app_name" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_ENV
-          echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_ENV
           
           echo "📁 Project type: $project_type"
           echo "📁 Profile key: $profile_key"
-          echo "📁 Docs destination folder: $docs_destination_team_folder"
-          echo "📁 App/Service folder: $docs_destination_app_folder"
+          echo "📁 Docs destination app folder: $docs_destination_app_folder"
 
       - name: Update data/report.json with additional metadata
         id: update_data_report
@@ -794,11 +784,10 @@ jobs:
 
           jq --arg repo_name "$repo_name" \
             --argjson prod_support "$prod_support_enabled" \
-            --arg docs_destination_team_folder "$docs_destination_team_folder" \
             --arg docs_destination_app_folder "$docs_destination_app_folder" \
             --arg docs_branch "$docs_branch" \
             --arg timestamp "$timestamp" \
-            '.[$repo_name] |= . + {prod_support_enabled: $prod_support, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}' \
+            '.[$repo_name] |= . + {prod_support_enabled: $prod_support, docs: {docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}' \
             "$output_file_path" > collection-report/report.json
 
           # Push artifact report to existing report.json

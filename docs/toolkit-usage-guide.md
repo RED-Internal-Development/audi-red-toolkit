@@ -80,7 +80,9 @@ These inputs remain defined but are ignored by runtime logic:
 
 - `destination_branch`
 - `destination_branch_create`
+- `destination_folder`
 - `msiParentPageIds`
+- `rename`
 
 ## Minimal Example
 
