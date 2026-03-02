@@ -1175,6 +1175,8 @@ jobs:
   observability_summary:
     runs-on: ubuntu-latest
     if: ${{ always() }}
+    needs: [validate_inputs, detect_project, cypress_sync, jest_sync, doc_sync, data_sync]
+    timeout-minutes: 10
     steps:
       - name: Build dynamic run-report.json and summary
         shell: bash
@@ -1182,7 +1184,6 @@ jobs:
           set -euo pipefail
 
           RUN_ID="${{ github.run_id }}-${{ github.run_attempt }}"
-          SELF_JOB_NAME="${GITHUB_JOB}"
           API_BASE="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100"
 
           fetch_jobs() {
@@ -1191,6 +1192,8 @@ jobs:
             while true; do
               local response
               if ! response=$(curl -fsSL \
+                --connect-timeout 10 \
+                --max-time 30 \
                 -H "Authorization: Bearer $GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
                 "${API_BASE}&page=${page}"); then
@@ -1215,29 +1218,9 @@ jobs:
             done
           }
 
-          attempts=0
-          max_attempts=180
-          sleep_seconds=10
-
-          while true; do
-            attempts=$((attempts + 1))
-            all_jobs=$(fetch_jobs)
-
-            pending_count=$(echo "$all_jobs" | jq --arg self "$SELF_JOB_NAME" '[.[] | select(.name != $self and .status != "completed")] | length')
-            if [[ "$pending_count" -eq 0 ]]; then
-              break
-            fi
-
-            if [[ "$attempts" -ge "$max_attempts" ]]; then
-              echo "::warning::OBSERVABILITY_SUMMARY_TIMEOUT | observability_summary | Timed out waiting for all jobs to complete."
-              break
-            fi
-
-            sleep "$sleep_seconds"
-          done
-
-          jobs_for_report=$(echo "$all_jobs" | jq --arg self "$SELF_JOB_NAME" '
-            [.[] | select(.name != $self) | {
+          all_jobs=$(fetch_jobs)
+          jobs_for_report=$(echo "$all_jobs" | jq '
+            [.[] | select(.name != "observability_summary") | {
               name: .name,
               status: .status,
               conclusion: (.conclusion // ""),
