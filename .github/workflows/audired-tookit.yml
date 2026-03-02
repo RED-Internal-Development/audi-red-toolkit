@@ -102,8 +102,41 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  validate_inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+
+      - name: Validate required inputs and secrets
+        shell: bash
+        run: |
+          fail() {
+            local code="$1"
+            local step="$2"
+            local reason="$3"
+            echo "::error::$code | $step | $reason"
+            exit 1
+          }
+
+          SOURCE_PATH="${{ inputs.source_file }}"
+          if [[ -z "$SOURCE_PATH" ]]; then
+            fail "DOCSYNC_INVALID_INPUT" "validate_inputs" "source_file is required."
+          fi
+
+          if [[ ! -e "$SOURCE_PATH" ]]; then
+            fail "DOCSYNC_INVALID_INPUT" "validate_inputs" "source_file '$SOURCE_PATH' does not exist in repository."
+          fi
+
+          if [[ "${{ inputs.enable_doc_sync }}" == "true" && -z "${{ secrets.DOC_SYNC_KEY }}" ]]; then
+            fail "DOCSYNC_MISSING_SECRET" "validate_inputs" "DOC_SYNC_KEY is required when enable_doc_sync=true."
+          fi
+
+          echo "Input validation completed."
+
   detect_project:
     runs-on: ubuntu-latest
+    needs: [validate_inputs]
     outputs:
       app_type: ${{ steps.detect.outputs.app_type }}
       project_type: ${{ steps.detect.outputs.project_type }}
@@ -147,7 +180,7 @@ jobs:
           # app_type takes precedence when set
           if [[ -n "$INPUT_APP_TYPE" ]]; then
             if ! validate_app_type "$INPUT_APP_TYPE"; then
-              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, special_app"
+              echo "::error::APP_TYPE_UNSUPPORTED | detect_project | Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, special_app"
               exit 1
             fi
             RESOLVED_APP_TYPE="$INPUT_APP_TYPE"
@@ -155,7 +188,7 @@ jobs:
           elif [[ "$INPUT_TYPE" != "auto-detect" ]]; then
             RESOLVED_APP_TYPE="$(map_legacy_project_type "$INPUT_TYPE")"
             if [[ -z "$RESOLVED_APP_TYPE" ]]; then
-              echo "::error::Invalid project_type '$INPUT_TYPE'. Use app_type instead."
+              echo "::error::APP_TYPE_UNSUPPORTED | detect_project | Invalid project_type '$INPUT_TYPE'. Use app_type instead."
               exit 1
             fi
             DETECTION_MODE="project_type (deprecated)"
@@ -219,8 +252,15 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ always() && inputs.enable_doc_sync }}
     needs: [detect_project]
+    outputs:
+      status: ${{ steps.doc_sync_observability.outputs.status }}
+      failed_step: ${{ steps.doc_sync_observability.outputs.failed_step }}
+      docs_destination_team_folder: ${{ steps.resolve_target.outputs.docs_destination_team_folder }}
+      docs_destination_app_folder: ${{ steps.resolve_target.outputs.docs_destination_app_folder }}
+      docs_branch: ${{ steps.resolve_target.outputs.docs_branch }}
     steps:
       - name: Checkout toolkit config
+        id: checkout_toolkit_config
         uses: actions/checkout@v4
         with:
           repository: RED-Internal-Development/audi-red-toolkit
@@ -236,7 +276,7 @@ jobs:
           profile_file="toolkit-config/config/app-type-profiles.yml"
 
           if [[ ! -f "$profile_file" ]]; then
-            echo "Profile file not found: $profile_file"
+            echo "::error::PROFILE_FILE_MISSING | resolve_target | app-type-profiles.yml not found at $profile_file."
             exit 1
           fi
 
@@ -252,7 +292,7 @@ jobs:
             }
             candidate = alias_map.fetch(normalized, normalized)
             unless data.key?(candidate)
-              warn "Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
+              warn "APP_TYPE_UNSUPPORTED | resolve_target | Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
               exit 1
             end
             puts candidate
@@ -266,11 +306,11 @@ jobs:
             custom_path="${{ inputs.red_docs_portal_path_override }}"
             if [[ -n "$custom_path" ]]; then
               if [[ "$custom_path" != docs/* ]]; then
-                echo "::error::Invalid red_docs_portal_path_override. It must start with 'docs/'"
+                echo "::error::SPECIAL_APP_PATH_INVALID | resolve_target | red_docs_portal_path_override must start with 'docs/'."
                 exit 1
               fi
               if [[ "$custom_path" == *".."* ]]; then
-                echo "::error::Invalid red_docs_portal_path_override. '..' is not allowed."
+                echo "::error::SPECIAL_APP_PATH_INVALID | resolve_target | red_docs_portal_path_override must not contain '..'."
                 exit 1
               fi
               custom_path="${custom_path%/}"
@@ -286,6 +326,7 @@ jobs:
           echo "app_name=$app_name" >> "$GITHUB_OUTPUT"
           echo "docs_branch=$docs_branch" >> "$GITHUB_OUTPUT"
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> "$GITHUB_OUTPUT"
+          echo "docs_destination_app_folder=$docs_destination_app_folder" >> "$GITHUB_OUTPUT"
 
       - name: Check if branch exists
         id: check_branch
@@ -307,17 +348,21 @@ jobs:
           fi
 
       - name: Checkout
+        id: checkout_repo
         uses: actions/checkout@v4
 
       - name: Eslint check for Docusaurus build compatibility
+        id: eslint_check
         run: |
           cd ${{ inputs.source_file }}
           npx docusaurus-mdx-checker
 
       - name: Install mermaid CLI for parsing
+        id: install_mermaid
         run: npm install -g @mermaid-js/mermaid-cli
 
       - name: Validate mermaid.js code can be parsed
+        id: validate_mermaid
         run: |
           mkdir -p diagrams
           folder=${{ inputs.source_file }}
@@ -361,9 +406,11 @@ jobs:
           echo "✅ All Mermaid blocks are valid!"
 
       - name: Create images from structurizr dsl files
+        id: create_structurizr_images
         uses: RED-Internal-Development/audired_structurizr_action@main
 
       - name: Check if referenced images exist
+        id: check_images
         run: |
           find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
                 echo "Checking file: $md_file"
@@ -391,6 +438,7 @@ jobs:
             echo "All images are properly referenced and exist!"
 
       - name: Download collection report artifact
+        id: download_collection_report
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -398,6 +446,7 @@ jobs:
           path: data-report
 
       - name: Verify artifact and create fallback if needed
+        id: verify_artifact
         run: |
           if [ -f "data-report/report.json" ]; then
             echo "✅ Artifact downloaded successfully"
@@ -409,6 +458,7 @@ jobs:
           fi
 
       - name: Create or update project metrics with report data
+        id: update_project_metrics
         run: |
           FILE_PATH="${{ inputs.source_file }}/project_metrics.mdx"
           report_file="data-report/report.json"
@@ -516,6 +566,7 @@ jobs:
           echo "Using source path: $SOURCE"
 
       - name: Push documentation to Audi RED Portal for syndication
+        id: push_docs
         uses: RED-Internal-Development/audred_docsync_action@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
@@ -531,17 +582,34 @@ jobs:
           use_rsync: true
           destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
 
+      - name: Capture doc_sync observability
+        id: doc_sync_observability
+        if: always()
+        shell: bash
+        run: |
+          failed_step=$(echo '${{ toJson(steps) }}' | jq -r 'to_entries | map(select(.value.outcome == "failure")) | .[0].key // ""')
+          status="success"
+          if [[ -n "$failed_step" ]]; then
+            status="failure"
+          fi
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "failed_step=$failed_step" >> "$GITHUB_OUTPUT"
+
   data_sync:
     runs-on: ubuntu-latest
     if: ${{ always() && inputs.enable_data_sync }}
     needs: [detect_project, cypress_sync, jest_sync]
     outputs:
+      status: ${{ steps.data_sync_observability.outputs.status }}
+      failed_step: ${{ steps.data_sync_observability.outputs.failed_step }}
       docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
       docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
       app_name: ${{ steps.create-docs-folders.outputs.app_name }}
       docs_branch: ${{ steps.create-docs-folders.outputs.docs_branch }}
     steps:
       - name: Checkout Repository
+        id: checkout_repository
         uses: actions/checkout@v4
 
       - name: Collection of metadata from repository
@@ -553,6 +621,7 @@ jobs:
           workflow_run_id: ${{ github.event.workflow_run.id }}
 
       - name: Checkout AudiRed Doc Sync repository
+        id: checkout_destination_repo
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.destination_repo }}
@@ -560,6 +629,7 @@ jobs:
           ref: doc-sync-queue
 
       - name: Checkout toolkit config
+        id: checkout_toolkit_config
         uses: actions/checkout@v4
         with:
           repository: RED-Internal-Development/audi-red-toolkit
@@ -567,6 +637,7 @@ jobs:
           path: toolkit-config
 
       - name: Download metadata artifact
+        id: download_metadata_artifact
         uses: actions/download-artifact@v4
         with:
           name: metadata-report
@@ -606,7 +677,7 @@ jobs:
           profile_file="toolkit-config/config/app-type-profiles.yml"
           
           if [[ ! -f "$profile_file" ]]; then
-            echo "Profile file not found: $profile_file"
+            echo "::error::PROFILE_FILE_MISSING | create-docs-folders | app-type-profiles.yml not found at $profile_file."
             exit 1
           fi
 
@@ -624,7 +695,7 @@ jobs:
             }
             candidate = alias_map.fetch(normalized, normalized)
             unless data.key?(candidate)
-              warn "Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
+              warn "APP_TYPE_UNSUPPORTED | create-docs-folders | Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
               exit 1
             end
             puts candidate
@@ -638,11 +709,11 @@ jobs:
             custom_path="${{ inputs.red_docs_portal_path_override }}"
             if [[ -n "$custom_path" ]]; then
               if [[ "$custom_path" != docs/* ]]; then
-                echo "::error::Invalid red_docs_portal_path_override. It must start with 'docs/'"
+                echo "::error::SPECIAL_APP_PATH_INVALID | create-docs-folders | red_docs_portal_path_override must start with 'docs/'."
                 exit 1
               fi
               if [[ "$custom_path" == *".."* ]]; then
-                echo "::error::Invalid red_docs_portal_path_override. '..' is not allowed."
+                echo "::error::SPECIAL_APP_PATH_INVALID | create-docs-folders | red_docs_portal_path_override must not contain '..'."
                 exit 1
               fi
               custom_path="${custom_path%/}"
@@ -670,6 +741,7 @@ jobs:
           echo "📁 App/Service folder: $docs_destination_app_folder"
 
       - name: Update data/report.json with additional metadata
+        id: update_data_report
         run: |
           data_folder="data"
           per_repo_folder="$data_folder/per-repo"
@@ -763,6 +835,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Create Repo Configuration File for MSI/Cloud Deployments
+        id: create_repo_config
         run: |
           app_name=$(basename "${{ github.repository }}")
           project_type="${{ needs.detect_project.outputs.project_type }}"
@@ -773,7 +846,7 @@ jobs:
           mkdir -p "$(dirname "$config_file")"
 
           if [[ ! -f "$profile_file" ]]; then
-            echo "Profile file not found: $profile_file"
+            echo "::error::PROFILE_FILE_MISSING | create_repo_config | app-type-profiles.yml not found at $profile_file."
             exit 1
           fi
 
@@ -789,14 +862,14 @@ jobs:
             }
             candidate = alias_map.fetch(normalized, normalized)
             unless data.key?(candidate)
-              warn "Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
+              warn "APP_TYPE_UNSUPPORTED | create_repo_config | Unsupported project_type/profile mapping: #{raw} -> #{candidate}"
               exit 1
             end
             puts candidate
           ' "$profile_file" "$project_type")
 
           if [[ "$profile_key" == "special_app" && "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" ]]; then
-            echo "::error::VWGOA deployment is not supported for project_type '$project_type' (special_app)."
+            echo "::error::VWGOA_PROFILE_MISSING | create_repo_config | VWGOA deployment is not supported for special_app."
             exit 1
           fi
 
@@ -805,11 +878,11 @@ jobs:
             custom_path="${{ inputs.red_docs_portal_path_override }}"
             if [[ -n "$custom_path" ]]; then
               if [[ "$custom_path" != docs/* ]]; then
-                echo "::error::Invalid red_docs_portal_path_override. It must start with 'docs/'"
+                echo "::error::SPECIAL_APP_PATH_INVALID | create_repo_config | red_docs_portal_path_override must start with 'docs/'."
                 exit 1
               fi
               if [[ "$custom_path" == *".."* ]]; then
-                echo "::error::Invalid red_docs_portal_path_override. '..' is not allowed."
+                echo "::error::SPECIAL_APP_PATH_INVALID | create_repo_config | red_docs_portal_path_override must not contain '..'."
                 exit 1
               fi
               custom_path="${custom_path%/}"
@@ -837,7 +910,7 @@ jobs:
             fi
           else
             if [[ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" && -z "$vwgoa_parent_page_id" ]]; then
-              echo "::error::VWGOA sync is not available for project_type '$project_type' (profile key '$profile_key'). Define 'vwgoa.parent_page_id' in app-type profile to enable."
+              echo "::error::VWGOA_PROFILE_MISSING | create_repo_config | vwgoa.parent_page_id is missing for profile key '$profile_key'."
               exit 1
             fi
 
@@ -855,6 +928,7 @@ jobs:
           fi
 
       - name: Commit and push changes
+        id: commit_and_push
         run: |
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
@@ -870,6 +944,20 @@ jobs:
           else
               echo "No changes to push"
           fi
+
+      - name: Capture data_sync observability
+        id: data_sync_observability
+        if: always()
+        shell: bash
+        run: |
+          failed_step=$(echo '${{ toJson(steps) }}' | jq -r 'to_entries | map(select(.value.outcome == "failure")) | .[0].key // ""')
+          status="success"
+          if [[ -n "$failed_step" ]]; then
+            status="failure"
+          fi
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "failed_step=$failed_step" >> "$GITHUB_OUTPUT"
 
   jest_sync:
     runs-on: ubuntu-latest
@@ -1023,7 +1111,7 @@ jobs:
                 $RAW_BRANCHES   == Unknown && \
                 $RAW_FUNCTIONS  == Unknown && \
                 $RAW_LINES      == Unknown ]]; then
-              echo "::error::Coverage summary returned 'Unknown' for all metrics – cannot proceed."
+              echo "::error::CYPRESS_COVERAGE_UNKNOWN | cypress_coverage_collection | Coverage summary returned Unknown for all metrics."
               exit 1
             fi
 
@@ -1094,3 +1182,122 @@ jobs:
         with:
           name: audired-cypress-report
           path: audired-cypress-report.json
+
+  observability_summary:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Build dynamic run-report.json and summary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RUN_ID="${{ github.run_id }}-${{ github.run_attempt }}"
+          SELF_JOB_NAME="${GITHUB_JOB}"
+          API_BASE="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100"
+
+          fetch_jobs() {
+            local page=1
+            local merged='[]'
+            while true; do
+              local response
+              if ! response=$(curl -fsSL \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "${API_BASE}&page=${page}"); then
+                echo "::error::OBSERVABILITY_API_FAILED | observability_summary | Unable to fetch run jobs from GitHub API."
+                echo '[]'
+                return 1
+              fi
+
+              local page_jobs
+              local total_count
+              local current_count
+              page_jobs=$(echo "$response" | jq '.jobs')
+              merged=$(jq -n --argjson a "$merged" --argjson b "$page_jobs" '$a + $b')
+              total_count=$(echo "$response" | jq '.total_count')
+              current_count=$(echo "$merged" | jq 'length')
+
+              if [[ "$current_count" -ge "$total_count" || "$total_count" -eq 0 ]]; then
+                echo "$merged"
+                return 0
+              fi
+              page=$((page + 1))
+            done
+          }
+
+          attempts=0
+          max_attempts=180
+          sleep_seconds=10
+
+          while true; do
+            attempts=$((attempts + 1))
+            all_jobs=$(fetch_jobs)
+
+            pending_count=$(echo "$all_jobs" | jq --arg self "$SELF_JOB_NAME" '[.[] | select(.name != $self and .status != "completed")] | length')
+            if [[ "$pending_count" -eq 0 ]]; then
+              break
+            fi
+
+            if [[ "$attempts" -ge "$max_attempts" ]]; then
+              echo "::warning::OBSERVABILITY_SUMMARY_TIMEOUT | observability_summary | Timed out waiting for all jobs to complete."
+              break
+            fi
+
+            sleep "$sleep_seconds"
+          done
+
+          jobs_for_report=$(echo "$all_jobs" | jq --arg self "$SELF_JOB_NAME" '
+            [.[] | select(.name != $self) | {
+              name: .name,
+              status: .status,
+              conclusion: (.conclusion // ""),
+              failed_step: ((.steps // [] | map(select(.conclusion == "failure")) | .[0].name) // "")
+            }]
+          ')
+
+          failed_jobs=$(echo "$jobs_for_report" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out" or .conclusion == "action_required")]')
+          FAILED_JOB=$(echo "$failed_jobs" | jq -r '.[0].name // ""')
+          FAILED_STEP=$(echo "$failed_jobs" | jq -r '.[0].failed_step // ""')
+
+          jq -n \
+            --arg run_id "$RUN_ID" \
+            --arg generated_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --arg failed_job "$FAILED_JOB" \
+            --arg failed_step "$FAILED_STEP" \
+            --argjson jobs "$jobs_for_report" \
+            '{
+              run_id: $run_id,
+              jobs: $jobs,
+              failed_job: $failed_job,
+              failed_step: $failed_step,
+              generated_at: $generated_at
+            }' > run-report.json
+
+          {
+            echo "# RED Toolkit Run Summary"
+            echo ""
+            echo "- Run: $RUN_ID"
+            echo "- Repository: ${{ github.repository }}"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo ""
+            echo "## Job Status"
+            echo "| Job | Status | Failed Step |"
+            echo "| --- | --- | --- |"
+            echo "$jobs_for_report" | jq -r '.[] | "| \(.name) | \(if .conclusion != "" then .conclusion else .status end) | \(if .failed_step != "" then .failed_step else "n/a" end) |"'
+            echo ""
+            echo "## Failure"
+            echo "- Failed job: ${FAILED_JOB:-none}"
+            echo "- Failed step: ${FAILED_STEP:-none}"
+            echo ""
+            echo "## Artifacts"
+            echo "- run-report.json"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload run report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-report
+          path: run-report.json
+          retention-days: 7
