@@ -131,3 +131,4 @@ dist
 
 # Structurizr unwanted files
 /docs/arb/structurizr/.structurizr
+**.DS_Store
