@@ -1,0 +1,28 @@
+name: Audi RED Toolkit for Docs Sync
+# This workflow is responsible for syncing the documentation of the Audi RED Toolkit to the RED Docs Portal.
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+
+  # Auto-sync on every push to main
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+
+jobs:
+  audired-toolkit:
+    uses: ./.github/workflows/audired-tookit.yml
+    with:
+      source_file: "docs"
+      app_type: "special_app"
+      red_docs_portal_path_override: "docs/development/tools/toolkit_service/services"
+      enable_doc_sync: true
+      enable_data_sync: false
+      enable_vwgoa_prod_support_deployment: false
+      user_email: "redsys1@audired.ca"
+      user_name: "audired"
+      user_actor: ${{ github.actor }}
+    secrets:
+      DOC_SYNC_KEY: ${{ secrets.DOC_SYNC_KEY }}
