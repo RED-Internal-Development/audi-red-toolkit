@@ -1,3 +1,30 @@
+---
+discipline: development
+lifecycle_stage: build
+artifact_type: red-toolkit
+owner: engineering-enablement
+roles:
+  - platform-engineer
+  - architect
+  - frontend-engineer
+  - backend-engineer
+  - quality-engineer
+  - app-engineer
+  - content-author
+  - product-manager
+systems:
+  - red-toolkit
+last_reviewed: "2026-02-20"
+tags:
+  - "discipline:development"
+  - "stage:build"
+  - "artifact:red-toolkit"
+  - "owner:engineering-enablement"
+  - "collection:development"
+  - "topic:red-toolkit"
+  - "system:red-toolkit"
+---
+
 # Audi RED Toolkit Usage Guide
 
 ## Purpose
