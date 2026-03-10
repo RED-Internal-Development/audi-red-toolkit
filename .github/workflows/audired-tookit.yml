@@ -762,6 +762,41 @@ jobs:
           retention-days: 1
           if-no-files-found: warn
 
+      - name: Commit and push changes
+        run: |
+          git config --global user.email ${{ inputs.user_email }}
+          git config --global user.name ${{ inputs.user_name }}
+          git add data/report.json
+          if [ -d data/per-repo ]; then
+              git add data/per-repo/
+          fi
+          if ! git diff-index --quiet HEAD; then
+              echo "commiting changes"
+              git commit -m "Update report.json from $docs_branch"
+              git push
+          else
+              echo "No changes to push"
+          fi
+
+  deployment_config_sync:
+    runs-on: ubuntu-latest
+    needs: [detect_project, doc_sync, data_sync]
+    if: ${{ always() && inputs.enable_doc_sync && needs.doc_sync.result == 'success' && (needs.data_sync.result == 'success' || needs.data_sync.result == 'skipped') }}
+    steps:
+      - name: Checkout AudiRed Doc Sync repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.destination_repo }}
+          token: ${{ secrets.DOC_SYNC_KEY }}
+          ref: doc-sync-queue
+
+      - name: Checkout toolkit config
+        uses: actions/checkout@v4
+        with:
+          repository: RED-Internal-Development/audi-red-toolkit
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
+
       - name: Create Repo Configuration File for MSI/Cloud Deployments
         run: |
           app_name=$(basename "${{ github.repository }}")
@@ -854,21 +889,17 @@ jobs:
             cat "$config_file"
           fi
 
-      - name: Commit and push changes
+      - name: Commit and push deployment config changes
         run: |
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
-          git add data/report.json
-          if [ -d data/per-repo ]; then
-              git add data/per-repo/
-          fi
           git add deployment/
           if ! git diff-index --quiet HEAD; then
               echo "commiting changes"
-              git commit -m "Update report.json and deployment config from $docs_branch"
+              git commit -m "Update deployment config from docs sync pipeline"
               git push
           else
-              echo "No changes to push"
+              echo "No deployment config changes to push"
           fi
 
   jest_sync:
