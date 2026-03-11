@@ -1,0 +1,158 @@
+---
+sidebar_position: 1
+id: security_handling
+title: Security Handling
+---
+
+# Security and Safety Overview
+
+The AudiRED Toolkit Orchestrator is a backend automation system that orchestrates data collection, transformation, and synchronization across team repositories and the Audi RED Documentation Portal. This document covers the end-to-end security posture including authentication, authorization, PII handling, and token exchange.
+
+## Authentication and Authorization
+
+### User Authentication Model
+
+- **Primary**: GitHub OIDC Federation
+  - Workflows authenticate to GitHub via OIDC token (workload identity federation)
+  - No long-lived credentials stored in repository secrets for GitHub interactions
+  - Fallback: Personal Access Token (if OIDC unavailable) stored as repository secret
+
+- **Secondary**: Deploy Key Strategy (for doc sync push)
+  - SSH deploy key stored in source repository as `DOC_SYNC_KEY` secret
+  - Scoped narrowly to `audi-red-documentation` repository
+  - Read/write permissions limited to designated team branch (`docs-sync/feature-apps`, etc.)
+  - Separate deploy key per consuming app type (feature app, backend service, mobile app)
+
+### Service-to-Service Authentication Model
+
+- **GitHub Actions → GitHub API**: OIDC Token (workload identity)
+- **GitHub Actions → MSI/VWGOA Confluence Cloud**: API Token + Basic Auth (stored in secrets)
+
+### Authorization Model
+
+- **Repository-level RBAC**: GitHub branch protection rules on team branches in `audi-red-documentation`
+  - Pull requests require approval before merge
+  - Status checks validate doc format and completeness
+  - Admins can override for emergency hotfixes
+
+- **Action-level RBAC**: GitHub Actions job permissions scoped to minimal required
+  - Orchestrator job: read repository content + workflow status
+  - Doc sync action: push to designated branch only
+  - Confluence action: update pages under designated parent pageId only
+
+## PII and Data Classification
+
+### PII Elements Handled
+As toolkit is internal DevOps automation, it does not process customer PII. 
+
+### The toolkit processes:
+
+1. **Repository Metadata**: Package names, versions, dependency URLs (non-sensitive)
+2. **Documentation**: ARB docs, README files, architecture diagrams (may contain internal context but not user PII)
+3. **Dependency Data**: Parsed from package.json, .pom\*, requirements.txt (versions, names, no PII)
+4. **Security Scan Results**: CVE references, license compliance (no user data exposed)
+5. **Git Commit Metadata**: Author, email, message (internal Audi developers only, not end-users)
+
+### Data Classification
+
+- **Confidential**: internal architecture diagrams
+- **Internal**: Portal-published documentation, general tech radar guidance, dependency reports, test coverage data
+
+### Retention and Storage Behavior
+
+- **Archive Data**: Historical snapshots preserved in `/data/archive/` for trend analysis (to be auto-archived per retention policy)
+- **Git-Backed**: All committed data recoverable via GitHub audit logs
+- **Secrets Storage**: Repository secrets encrypted at rest by GitHub (AES-256); accessible only during workflow execution
+- **Transient**: Temporary files deleted after upload; workflow logs retained per GitHub minimum (90 days default)
+
+## Token Exchange and Trust Boundaries
+
+### Token Sources
+
+1. **GitHub OIDC Token**
+   - Issued by GitHub during workflow execution
+   - Contains claims: repository, actor, event, timestamp
+   - Used to authenticate to GitHub API (no exchange needed)
+
+2. **Deploy Key (SSH)**
+   - Private key stored as encrypted repository secret
+   - Public key registered on destination repository
+   - SSL/TLS used for SSH transport to GitHub
+
+3. **Confluence API Token**
+   - Issued by Confluence Cloud admin
+   - Encrypted as repository secret
+   - Combined with basic auth (username + token) for REST calls
+
+### Exchange Mechanism
+
+- **No token exchange flows**: Toolkit does not perform OAuth 2.0 token exchange or refresh token grants
+
+### Caching and Expiry Handling
+
+- **GitHub OIDC Token**: Ephemeral (~1 hour, managed by GitHub Actions runtime)
+  - Rotated per workflow execution; no caching across runs
+  - Workflow fails if token expires mid-execution (typically not an issue for < 1hr jobs)
+
+- **Deploy Key (SSH)**: 365-day expiry; persistent per repository
+  - Revoked if compromised via GitHub web UI
+  - Audit trail: GitHub logs all SSH key usage
+
+- **Confluence API Token**: No built-in expiry (check Atlassian SLA)
+  - Admin can revoke from Confluence admin console
+  - Store as encrypted secret; rotate annually
+
+## Consent Flow
+
+Not applicable to toolkit (no end-user consent required). Toolkit processes internal developer docs and metadata, not user data.
+
+## Security Controls
+
+### Secrets Handling
+
+- **Storage**: GitHub repository secrets (AES-256 encryption at rest)
+- **Access**: Encrypted in memory only during workflow execution
+- **Rotation**: Manual via GitHub web UI or API
+  - Policy: Rotate every 6-12 months for external API keys
+  - Emergency: Revoke and issue new key if compromise suspected
+  - Audit: GitHub logs all secret access (via audit log)
+
+- **Logging**: No secrets logged to workflow console or GitHub Actions logs
+  - Structured output redacts sensitive values (GitHub auto-masking)
+
+### Logging and Audit Constraints
+
+- **Workflow Logs**: GitHub Actions logs retained for 90 days (org setting configurable)
+  - Logs contain: step names, duration, exit codes, console output (redacted of secrets)
+  - Not sensitive GDPR data; internal audit trail only
+
+- **Audit Trail**: GitHub audit log captures
+  - Workflow execution events (trigger, status, actor)
+  - Secret access (if audit logging enabled in organization)
+  - Repository modifications (commits, PRs)
+
+- **Redaction Policy**:
+  - Do not log API keys, tokens, SSH private keys
+  - Do not log repository credentials
+  - Safe to log: branch names, commit SHAs, action names, status codes
+
+- **Data Integrity**:
+  - Git commits signed (optional, recommended for emergency hotfixes)
+  - Checksums optional; Git SHA1 provides commit integrity
+  - No in-flight encryption needed (GitHub < - > Actions container over private network)
+
+### Third-Party Risks
+
+- **GitHub**: Microsoft-backed; mature security program. Standard uptime SLA. No alternatives evaluated since toolkit is GitHub-native.
+- **Structurizr**: On-premise CLI; no external risk. Community license acceptable.
+- **Confluence**: Atlassian Cloud; standard enterprise security. Standard uptime SLA.
+
+### Threat Model Summary
+
+| Threat                              | Impact                                | Mitigation                                                                                    |
+| ----------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Compromised Deploy Key              | Unauthorized doc sync, malicious PRs  | Scoped to team branch; PR review gate; key rotation                                           |
+| GitHub Actions Container Compromise | Full toolkit compromise, secret theft | GitHub Actions security; no local privilege escalation; ephemeral runners                     |
+| Malicious Documentation Sync        | Poisoned portal content               | Git branch protection; PR review; status checks validate format                               |
+| Man-in-the-Middle (MitM)            | Token/credential theft                | HTTPS/TLS for all external APIs; SSH for Git; GitHub OIDC over secure channel                 |
+| Replay Attack                       | Reuse stale tokens                    | GitHub OIDC token ephemeral (~1 hour); deploy key tied to Git SSH (protocol-level protection) |
