@@ -1,0 +1,151 @@
+---
+sidebar_position: 2
+id: arb-decision-logs-audired-toolkit-orchestrator
+title: Architecture Decision Log of AudiRED Toolkit Orchestrator
+sidebar_label: Architecture Decision Log
+discipline: development
+lifecycle_stage: build
+artifact_type: arb-docs
+owner: engineering-enablement
+roles:
+  - platform-engineer
+  - architect
+  - frontend-engineer
+  - backend-engineer
+  - quality-engineer
+  - app-engineer
+  - content-author
+  - product-manager
+systems:
+  - audired-toolkit
+last_reviewed: "2026-03-06"
+tags:
+  - "discipline:development"
+  - "stage:build"
+  - "artifact:arb-docs"
+  - "owner:engineering-enablement"
+  - "collection:development"
+  - "section:tools"
+  - "topic:audired-toolkit"
+  - "system:audired-toolkit"
+  - "role:architect"
+---
+
+Capture all significant architecture reviews, decisions, and follow-ups.
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Status</th>
+      <th>Owner</th>
+      <th>Stakeholders</th>
+      <th>Due Date</th>
+      <th>Action Items</th>
+      <th>Outcome</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Toolkit Orchestration Architecture</td>
+      <td>
+        Design of centralized workflow orchestrator to coordinate doc sync, test metadata collection, and Structurizr diagram
+        generation across all team repositories.
+      </td>
+      <td>Complete</td>
+      <td>AudiRED Architecture Team</td>
+      <td>Product Teams, AudiRED IT&S</td>
+      <td>2024-Q2</td>
+      <td>
+        Establish reusable workflow (`audired-toolkit.yml`), define input/output
+        contracts, document integration guide for consuming teams.
+      </td>
+      <td>
+        Orchestrator deployed; teams integrating via workflow_call. Supports
+        scheduled, CI/CD-triggered, and manual dispatch modes.
+      </td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Doc Sync Strategy: Pull vs. Push</td>
+      <td>
+        Decision on whether toolkit should pull documentation from source repos
+        or push documentation to central portal.
+      </td>
+      <td>Complete</td>
+      <td>AudiRED Architecture Team</td>
+      <td>AudiRED Architecture Team</td>
+      <td>2024-Q2</td>
+      <td>
+        Evaluate push model (toolkit initiates sync to audi-red-documentation);
+        implement with deploy key authentication and PR workflow.
+      </td>
+      <td>
+        Push model chosen: simplified CI/CD, decoupled source repos from portal
+        infrastructure, PR review gates for doc quality.
+      </td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>App-Type Profile Configuration</td>
+      <td>
+        Strategy for handling heterogeneous app types (feature apps, backend
+        services, mobile apps, special tools) in portals and Confluence.
+      </td>
+      <td>Complete</td>
+      <td>AudiRED Architecture Team</td>
+      <td>OneAudi Pilot Teams</td>
+      <td>2024-Q4</td>
+      <td>
+        Define app-type profiles in config YAML; map each type to destination
+        branch and Confluence parent page; implement in doc sync action.
+      </td>
+      <td>
+        Config-driven model implemented in app-type-profiles.yml; toolkit routes
+        docs to feature_apps_v2, backend_services_v2, mobile_apps_v2 per type.
+      </td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Data Retention & Archival Policy</td>
+      <td>
+        Decision on how long to retain metadata, and test result snapshots;
+        archival strategy for historical analysis.
+      </td>
+      <td>In Progress</td>
+      <td>AudiRED Architecture Team</td>
+      <td>Security, Compliance, AudiRED IT&S</td>
+      <td>2025-Q2</td>
+      <td>
+        Define retention period (e.g., 90 days live, 1 year archive); automate
+        snapshot to /data/archive/; establish cleanup schedule.
+      </td>
+      <td>
+        TBD - awaiting compliance sign-off on data retention. Interim: all data
+        retained indefinitely.
+      </td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Idempotency & Duplicate Prevention</td>
+      <td>
+        Ensure toolkit re-runs and parallel invocations do not produce duplicate
+        commits, PRs, or data.
+      </td>
+      <td>Complete</td>
+      <td>AudiRED Architecture Team</td>
+      <td>AudiRED IT&S</td>
+      <td>2025-Q1</td>
+      <td>
+        Implement idempotent doc sync (check for existing PR before creating); tag images with commit SHA.
+      </td>
+      <td>
+        Idempotency checks in place; duplicate PRs prevented; re-runs safely
+        update existing branches.
+      </td>
+    </tr>
+  </tbody>
+</table>

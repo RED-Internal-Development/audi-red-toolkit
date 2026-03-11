@@ -1,0 +1,191 @@
+---
+sidebar_position: 3
+id: arb-interface-listing-audired-toolkit-orchestrator
+title: Interface Listing of AudiRED Toolkit Orchestrator
+sidebar_label: Interface Listing
+discipline: development
+lifecycle_stage: build
+artifact_type: arb-docs
+owner: engineering-enablement
+roles:
+  - platform-engineer
+  - architect
+  - frontend-engineer
+  - backend-engineer
+  - quality-engineer
+  - app-engineer
+  - content-author
+  - product-manager
+systems:
+  - audired-toolkit
+last_reviewed: "2026-03-06"
+tags:
+  - "discipline:development"
+  - "stage:build"
+  - "artifact:arb-docs"
+  - "owner:engineering-enablement"
+  - "collection:development"
+  - "section:tools"
+  - "topic:audired-toolkit"
+  - "system:audired-toolkit"
+  - "role:architect"
+---
+
+List all services and APIs connected to this application.
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Interface Type (sync / async)</th>
+      <th>Protocol (SOAP, REST, GraphQL, etc)</th>
+      <th>Service Provider</th>
+      <th>Service Consumer</th>
+      <th>Request Type (individual / bulk)</th>
+      <th>Request Format</th>
+      <th>Response Format</th>
+      <th>Data Classification (Secret, Confidential, Internal, Public)</th>
+      <th>Authentication/Authorization</th>
+      <th>SLA / Support Level</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>GitHub API (Workflow Dispatch & Status)</td>
+      <td>
+        GitHub Actions REST API for querying workflow status, retrieving
+        repository metadata, and listing commits.
+      </td>
+      <td>Sync</td>
+      <td>REST</td>
+      <td>GitHub (Microsoft)</td>
+      <td>AudiRED Toolkit (Workflow Orchestrator)</td>
+      <td>Individual</td>
+      <td>JSON</td>
+      <td>JSON</td>
+      <td>Internal</td>
+      <td>
+        GitHub OIDC Token (federated identity) + Personal Access Token
+        (fallback)
+      </td>
+      <td>GitHub standard SLA (~99.9%); documented at status.github.com</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Structurizr CLI (DSL Processing)</td>
+      <td>
+        Local command-line tool for parsing Structurizr DSL workspace files and
+        exporting to JSON + PNG formats. Runs in-process in GitHub Actions
+        container.
+      </td>
+      <td>Sync</td>
+      <td>File I/O + CLI</td>
+      <td>Structurizr.com (on-premise execution)</td>
+      <td>AudiRED Toolkit (Structurizr Action)</td>
+      <td>Individual (per workspace.dsl file)</td>
+      <td>Structurizr DSL (text format)</td>
+      <td>JSON + PNG images</td>
+      <td>Internal</td>
+      <td>
+        No authentication (CLI runs locally with workspace license key embedded
+        in export)
+      </td>
+      <td>
+        Community/on-premise tier; deterministic builds; best-effort support via
+        Structurizr forum.
+      </td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Git Repository (audi-red-documentation)</td>
+      <td>
+        Central Git repository that serves as the destination portal for synced
+        documentation, test results, and generated metadata. Toolkit performs
+        authenticated pushes and creates pull requests.
+      </td>
+      <td>Sync</td>
+      <td>Git (SSH)</td>
+      <td>GitHub (audi-red-documentation repo)</td>
+      <td>AudiRED Toolkit (Doc Sync Action)</td>
+      <td>Bulk (documentation batch + metadata JSON)</td>
+      <td>Git commits + Markdown/MDX files + JSON</td>
+      <td>Git commits + Pull Requests</td>
+      <td>
+        Confidential (documentation may contain internal architecture, secrets
+        as placeholders)
+      </td>
+      <td>
+        SSH deploy key (DOC_SYNC_KEY secret) scoped to destination repository
+      </td>
+      <td>GitHub standard SLA; team branch protection rules for PR review.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Upstream Team Repositories (Pull Source)</td>
+      <td>
+        Feature apps, backend services, and mobile app repositories that trigger
+        the toolkit and provide documentation, metadata, and source code for
+        scanning.
+      </td>
+      <td>Sync</td>
+      <td>Git (SSH/HTTPS)</td>
+      <td>Team repositories (multiple)</td>
+      <td>AudiRED Toolkit (Metadata Kit, Doc Sync Action)</td>
+      <td>Individual</td>
+      <td>File system (package.json, docs/arb/*, .github/config/)</td>
+      <td>Extracted metadata + documentation paths</td>
+      <td>Internal</td>
+      <td>
+        GitHub default actions context or GITHUB_TOKEN (provided by GitHub
+        Actions)
+      </td>
+      <td>
+        Inherited from source repositories; toolkit operates read-only on
+        source.
+      </td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Confluence Cloud (MSI & VWGOA)</td>
+      <td>
+        Enterprise wiki spaces where toolkit can optionally sync documentation,
+        creating or updating pages under configured parent pages for each app
+        type.
+      </td>
+      <td>Sync</td>
+      <td>REST</td>
+      <td>Atlassian Confluence Cloud</td>
+      <td>AudiRED Toolkit (Confluence Sync Action)</td>
+      <td>Bulk (multi-page sync)</td>
+      <td>JSON (Confluence Page/Space API)</td>
+      <td>JSON (page IDs, metadata)</td>
+      <td>Confidential (internal documentation)</td>
+      <td>Confluence API token (from secrets) + basic auth</td>
+      <td>
+        Atlassian standard SLA; rate limits apply (typically 100 req/min).
+      </td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Portal Build & Deploy Pipeline</td>
+      <td>
+        CI/CD pipeline in audi-red-documentation that triggers on doc sync
+        PRs/commits, rebuilds static site (Docusaurus), and generates derived
+        datasets (enhancedInsights.json).
+      </td>
+      <td>Async</td>
+      <td>GitHub Actions Webhook</td>
+      <td>audi-red-documentation repository (workflow)</td>
+      <td>AudiRED Toolkit (indirect via doc sync commits)</td>
+      <td>N/A (event-driven)</td>
+      <td>Git push event</td>
+      <td>Static HTML site + JSON data exports</td>
+      <td>Public</td>
+      <td>GitHub OIDC + deploy keys (contained within portal repo)</td>
+      <td>Team-managed; no external SLA. Typical rebuild: 5-10 minutes.</td>
+    </tr>
+  </tbody>
+</table>
