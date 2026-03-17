@@ -78,7 +78,7 @@ on:
         required: false
         default: false
       app_type:
-        description: "Preferred profile key. Supported values: feature_app, backend_service, mobile_app, special_app."
+        description: "Preferred profile key. Supported values: feature_app, backend_service, mobile_app, audired_service, special_app."
         type: string
         required: false
       project_type:
@@ -127,30 +127,32 @@ jobs:
           RESOLVED_APP_TYPE=""
           DOCS_PATH="feature_apps"
 
-          map_legacy_project_type() {
+          resolve_profile_key() {
             case "$1" in
-              frontend-app|frontend_app) echo "feature_app" ;;
+              frontend-app|frontend_app|feature-app|feature_app) echo "feature_app" ;;
               backend-service|backend_service) echo "backend_service" ;;
               mobile-app|mobile_app) echo "mobile_app" ;;
+              audired_service) echo "audired_service" ;;
               special-app|special_app) echo "special_app" ;;
               *) echo "" ;;
             esac
           }
 
+          map_legacy_project_type() {
+            resolve_profile_key "$1"
+          }
+
           validate_app_type() {
-            case "$1" in
-              feature_app|backend_service|mobile_app|special_app) return 0 ;;
-              *) return 1 ;;
-            esac
+            [[ -n "$(resolve_profile_key "$1")" ]]
           }
 
           # app_type takes precedence when set
           if [[ -n "$INPUT_APP_TYPE" ]]; then
             if ! validate_app_type "$INPUT_APP_TYPE"; then
-              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, special_app"
+              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, audired_service, special_app"
               exit 1
             fi
-            RESOLVED_APP_TYPE="$INPUT_APP_TYPE"
+            RESOLVED_APP_TYPE="$(resolve_profile_key "$INPUT_APP_TYPE")"
             DETECTION_MODE="app_type"
           elif [[ "$INPUT_TYPE" != "auto-detect" ]]; then
             RESOLVED_APP_TYPE="$(map_legacy_project_type "$INPUT_TYPE")"
@@ -196,6 +198,8 @@ jobs:
 
           case "$RESOLVED_APP_TYPE" in
             backend_service) DOCS_PATH="backend_services" ;;
+            mobile_app) DOCS_PATH="mobile_apps" ;;
+            audired_service) DOCS_PATH="audired_services" ;;
             special_app) DOCS_PATH="special_apps" ;;
             *) DOCS_PATH="feature_apps" ;;
           esac

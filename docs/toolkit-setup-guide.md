@@ -218,6 +218,7 @@ Use the `app_type` input (preferred):
 | `feature_app`     | Frontend / feature app                       |
 | `backend_service` | Backend service                              |
 | `mobile_app`      | Mobile application                           |
+| `audired_service` | AudiRED service documentation stream         |
 | `special_app`     | Special app (custom path override supported) |
 
 **Legacy support**: `project_type` is deprecated but still accepted and mapped automatically:
@@ -227,6 +228,7 @@ Use the `app_type` input (preferred):
 | `frontend-app`    | `feature_app`       |
 | `backend-service` | `backend_service`   |
 | `mobile-app`      | `mobile_app`        |
+| `audired_service` | `audired_service`   |
 | `special-app`     | `special_app`       |
 | `auto-detect`     | deprecated fallback |
 
@@ -243,6 +245,8 @@ Branch and destination path are selected from `config/app-type-profiles.yml` bas
 - RED docs branch: `red_docs.branch`
 - RED docs base path: `red_docs.base_path`
 - App folder resolved by replacing `{app}` with repository app name
+
+For adding a brand new profile type, use the [Profile Type Onboarding Guide](profile-type-onboarding-guide.md).
 
 ---
 
@@ -392,7 +396,7 @@ flowchart TD
 | Type   | Name                                   | Required    | Description                                                                         |
 | ------ | -------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
 | Input  | `source_file`                          | Yes         | Path to your documentation folder (e.g., `docs/APP_NAME` or `docs/SERVICE_NAME`)    |
-| Input  | `app_type`                             | Recommended | App type profile: `feature_app`, `backend_service`, `mobile_app`, `special_app`     |
+| Input  | `app_type`                             | Recommended | App type profile: `feature_app`, `backend_service`, `mobile_app`, `audired_service`, `special_app` |
 | Input  | `destination_repo`                     | No          | Destination repository (default: `RED-Internal-Development/audi-red-documentation`) |
 | Input  | `user_email`                           | Yes         | Email for git commits (typically `redsys1@audired.ca`)                              |
 | Input  | `user_name`                            | Yes         | Username for git commits (typically `audired`)                                      |
