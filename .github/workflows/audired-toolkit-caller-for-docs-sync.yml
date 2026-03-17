@@ -16,8 +16,7 @@ jobs:
     uses: ./.github/workflows/audired-tookit.yml
     with:
       source_file: "docs"
-      app_type: "special_app"
-      red_docs_portal_path_override: "docs/development/tools/toolkit_service/services"
+      app_type: "audired_service"
       enable_doc_sync: true
       enable_data_sync: false
       enable_vwgoa_prod_support_deployment: false
