@@ -3,11 +3,11 @@
   "description" : "Reusable GitHub Actions workflow orchestrating doc sync, test collection, and metadata aggregation across team repos.",
   "documentation" : { },
   "id" : 1,
-  "lastModifiedDate" : "2026-03-06T21:21:45Z",
+  "lastModifiedDate" : "2026-03-19T12:02:02Z",
   "model" : {
     "customElements" : [ {
       "description" : "Audi MSI Confluence space.",
-      "id" : "6",
+      "id" : "5",
       "metadata" : "Confluence Space",
       "name" : "Audi MSI Confluence",
       "properties" : {
@@ -16,7 +16,7 @@
       "tags" : "Element,External System"
     }, {
       "description" : "VWGOA enterprise Confluence wiki.",
-      "id" : "5",
+      "id" : "4",
       "metadata" : "Confluence Space",
       "name" : "VWGOA Cloud Confluence",
       "properties" : {
@@ -27,89 +27,99 @@
     "deploymentNodes" : [ {
       "children" : [ {
         "containerInstances" : [ {
-          "containerId" : "8",
+          "containerId" : "7",
           "deploymentGroups" : [ "Default" ],
           "environment" : "Production",
-          "id" : "57",
+          "id" : "55",
           "instanceId" : 1,
           "properties" : {
-            "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.3c365a6b-9b4a-45e3-be48-ceec3e5d35ba.585fe358-eeb5-4778-9cf7-077c115a3b5c"
+            "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.739420b5-7795-4eeb-a24f-298a6d30c94d.4f9736d8-10f2-4db4-84d4-a3ae7318dfca"
           },
           "relationships" : [ {
             "description" : "[Triggers] \n After input validation and project type detection \n[GitHub Actions]",
-            "destinationId" : "58",
-            "id" : "60",
-            "linkedRelationshipId" : "34",
-            "sourceId" : "57"
+            "destinationId" : "56",
+            "id" : "58",
+            "linkedRelationshipId" : "32",
+            "sourceId" : "55"
           }, {
             "description" : "[Triggers] \n Parallel to doc sync \n[GitHub Actions]",
-            "destinationId" : "61",
-            "id" : "62",
-            "linkedRelationshipId" : "35",
-            "sourceId" : "57"
+            "destinationId" : "59",
+            "id" : "60",
+            "linkedRelationshipId" : "33",
+            "sourceId" : "55"
           }, {
             "description" : "[Triggers] \n After test collection completes \n[GitHub Actions]",
-            "destinationId" : "63",
+            "destinationId" : "61",
+            "id" : "63",
+            "linkedRelationshipId" : "34",
+            "sourceId" : "55"
+          }, {
+            "description" : "[Triggers] \n After doc sync if enabled \n[GitHub Actions]",
+            "destinationId" : "64",
             "id" : "65",
-            "linkedRelationshipId" : "36",
-            "sourceId" : "57"
+            "linkedRelationshipId" : "35",
+            "sourceId" : "55"
           }, {
             "description" : "[Triggers] \n After doc sync if enabled \n[GitHub Actions]",
             "destinationId" : "66",
             "id" : "67",
-            "linkedRelationshipId" : "37",
-            "sourceId" : "57"
-          }, {
-            "description" : "[Triggers] \n After doc sync if enabled \n[GitHub Actions]",
-            "destinationId" : "68",
-            "id" : "69",
-            "linkedRelationshipId" : "38",
-            "sourceId" : "57"
+            "linkedRelationshipId" : "36",
+            "sourceId" : "55"
           } ],
           "tags" : "Container Instance"
         }, {
-          "containerId" : "13",
+          "containerId" : "12",
           "deploymentGroups" : [ "Default" ],
           "environment" : "Production",
-          "id" : "58",
+          "id" : "56",
           "instanceId" : 1,
           "properties" : {
-            "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.3c365a6b-9b4a-45e3-be48-ceec3e5d35ba.da641579-9a8c-4eed-9ff4-56e8505cd3c0"
+            "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.739420b5-7795-4eeb-a24f-298a6d30c94d.c6226953-c6a3-4b9e-8564-938dc63c0bb0"
           },
           "relationships" : [ {
             "description" : "[Git commit] \n Pushes docs folder to profile-resolved branch (docs-sync/feature-apps, docs-sync/backend-services, etc.) \n[DOC_SYNC_KEY / rsync + Git]",
-            "destinationId" : "55",
-            "id" : "59",
-            "linkedRelationshipId" : "40",
-            "sourceId" : "58"
+            "destinationId" : "53",
+            "id" : "57",
+            "linkedRelationshipId" : "38",
+            "sourceId" : "56"
           } ],
           "tags" : "Container Instance"
         }, {
-          "containerId" : "18",
+          "containerId" : "17",
+          "deploymentGroups" : [ "Default" ],
+          "environment" : "Production",
+          "id" : "59",
+          "instanceId" : 1,
+          "properties" : {
+            "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.739420b5-7795-4eeb-a24f-298a6d30c94d.5dafbcc7-2593-4d64-a40a-3fe8a587fa22"
+          },
+          "tags" : "Container Instance"
+        }, {
+          "containerId" : "21",
           "deploymentGroups" : [ "Default" ],
           "environment" : "Production",
           "id" : "61",
           "instanceId" : 1,
           "properties" : {
-            "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.3c365a6b-9b4a-45e3-be48-ceec3e5d35ba.785785f2-a0de-47ab-bf0e-1500503ea5fb"
-          },
-          "tags" : "Container Instance"
-        }, {
-          "containerId" : "22",
-          "deploymentGroups" : [ "Default" ],
-          "environment" : "Production",
-          "id" : "63",
-          "instanceId" : 1,
-          "properties" : {
-            "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.3c365a6b-9b4a-45e3-be48-ceec3e5d35ba.2f79f43a-b4d1-4319-a041-d99bd2f56d37"
+            "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.739420b5-7795-4eeb-a24f-298a6d30c94d.c73c1a8f-3619-40e5-9ec7-ebb8aeaf1083"
           },
           "relationships" : [ {
             "description" : "[Git commit] \n Updates report.json entry for this repository \n[DOC_SYNC_KEY / Git]",
-            "destinationId" : "55",
-            "id" : "64",
-            "linkedRelationshipId" : "41",
-            "sourceId" : "63"
+            "destinationId" : "53",
+            "id" : "62",
+            "linkedRelationshipId" : "39",
+            "sourceId" : "61"
           } ],
+          "tags" : "Container Instance"
+        }, {
+          "containerId" : "24",
+          "deploymentGroups" : [ "Default" ],
+          "environment" : "Production",
+          "id" : "64",
+          "instanceId" : 1,
+          "properties" : {
+            "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.739420b5-7795-4eeb-a24f-298a6d30c94d.d674e6f1-8b07-49fa-b366-725cf1063de5"
+          },
           "tags" : "Container Instance"
         }, {
           "containerId" : "25",
@@ -118,111 +128,101 @@
           "id" : "66",
           "instanceId" : 1,
           "properties" : {
-            "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.3c365a6b-9b4a-45e3-be48-ceec3e5d35ba.bd434264-297e-40b5-86ef-34c8c812a230"
-          },
-          "tags" : "Container Instance"
-        }, {
-          "containerId" : "26",
-          "deploymentGroups" : [ "Default" ],
-          "environment" : "Production",
-          "id" : "68",
-          "instanceId" : 1,
-          "properties" : {
-            "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.3c365a6b-9b4a-45e3-be48-ceec3e5d35ba.8ee6936d-de3a-46ec-8c36-24b0391e11f5"
+            "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.739420b5-7795-4eeb-a24f-298a6d30c94d.aa2a11ca-65c3-4fac-b092-6bf55b12d5d2"
           },
           "tags" : "Container Instance"
         } ],
         "environment" : "Production",
-        "id" : "56",
+        "id" : "54",
         "instances" : "1",
         "name" : "AudiRED Github Actions Runners",
         "properties" : {
-          "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.3c365a6b-9b4a-45e3-be48-ceec3e5d35ba"
+          "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.739420b5-7795-4eeb-a24f-298a6d30c94d"
         },
         "tags" : "Element,Deployment Node"
       } ],
       "environment" : "Production",
-      "id" : "54",
+      "id" : "52",
       "instances" : "1",
       "name" : "Audi RED Github Instance",
       "properties" : {
-        "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64"
+        "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46"
       },
       "softwareSystemInstances" : [ {
         "deploymentGroups" : [ "Default" ],
         "environment" : "Production",
-        "id" : "55",
+        "id" : "53",
         "instanceId" : 1,
         "properties" : {
-          "structurizr.dsl.identifier" : "production.4b7fe43f-e514-4c0c-9ce3-90e410ce5d64.78d0f732-8da3-40de-8c6f-042530381115"
+          "structurizr.dsl.identifier" : "production.308fa546-0133-44e6-b4e2-e5eb860b1d46.7579e773-4866-492c-9060-66addc50a444"
         },
-        "softwareSystemId" : "4",
+        "softwareSystemId" : "3",
         "tags" : "Software System Instance"
       } ],
       "tags" : "Element,Deployment Node"
     }, {
       "environment" : "Production",
-      "id" : "70",
+      "id" : "68",
       "instances" : "1",
       "name" : "OneAudi AG Github Instance",
       "properties" : {
-        "structurizr.dsl.identifier" : "production.db03a828-daaa-4b02-874b-3b364177304e"
+        "structurizr.dsl.identifier" : "production.1bce40c7-b6c4-4216-abf9-3f06d03d6e49"
       },
       "softwareSystemInstances" : [ {
         "deploymentGroups" : [ "Default" ],
         "environment" : "Production",
-        "id" : "71",
+        "id" : "69",
         "instanceId" : 1,
         "properties" : {
-          "structurizr.dsl.identifier" : "production.db03a828-daaa-4b02-874b-3b364177304e.c35a5561-f4f5-478a-8463-deab75e6f428"
+          "structurizr.dsl.identifier" : "production.1bce40c7-b6c4-4216-abf9-3f06d03d6e49.1e67c2b8-641f-446c-915a-c65d948af3cc"
         },
         "relationships" : [ {
           "description" : "[Invokes] \n Calls the main workflow orchestrator reusable workflow \n[GitHub Actions]",
-          "destinationId" : "57",
-          "id" : "72",
-          "linkedRelationshipId" : "33",
-          "sourceId" : "71"
+          "destinationId" : "55",
+          "id" : "70",
+          "linkedRelationshipId" : "31",
+          "sourceId" : "69"
         }, {
           "description" : "[workflow_run artifact] \n CI/CD run produces Jest, Cypress, Lighthouse coverage artifacts \n[GitHub Actions Artifact]",
-          "destinationId" : "61",
-          "id" : "73",
-          "linkedRelationshipId" : "39",
-          "sourceId" : "71"
+          "destinationId" : "59",
+          "id" : "71",
+          "linkedRelationshipId" : "37",
+          "sourceId" : "69"
         } ],
-        "softwareSystemId" : "3",
+        "softwareSystemId" : "2",
         "tags" : "Software System Instance"
       } ],
       "tags" : "Element,Deployment Node"
     }, {
       "environment" : "Production",
-      "id" : "74",
+      "id" : "72",
       "instances" : "1",
       "name" : "MyAudi App Github Instance",
       "properties" : {
-        "structurizr.dsl.identifier" : "production.653c236a-4744-4768-95ad-3b6fa7d1a248"
+        "structurizr.dsl.identifier" : "production.7b191f02-6420-4237-8b4f-0d67e5ef0670"
       },
       "softwareSystemInstances" : [ {
         "deploymentGroups" : [ "Default" ],
         "environment" : "Production",
-        "id" : "75",
+        "id" : "73",
         "instanceId" : 1,
         "properties" : {
-          "structurizr.dsl.identifier" : "production.653c236a-4744-4768-95ad-3b6fa7d1a248.526bc44d-8bef-4988-b2c3-0df526f71ebd"
+          "structurizr.dsl.identifier" : "production.7b191f02-6420-4237-8b4f-0d67e5ef0670.5cf9404a-ac01-40a2-a234-3fda96d43c1d"
         },
         "relationships" : [ {
           "description" : "[Invokes] \n Calls the main workflow orchestrator reusable workflow \n[GitHub Actions]",
-          "destinationId" : "57",
-          "id" : "76",
-          "linkedRelationshipId" : "33",
-          "sourceId" : "75"
+          "destinationId" : "55",
+          "id" : "74",
+          "linkedRelationshipId" : "31",
+          "sourceId" : "73"
         }, {
           "description" : "[workflow_run artifact] \n CI/CD run produces Jest, Cypress, Lighthouse coverage artifacts \n[GitHub Actions Artifact]",
-          "destinationId" : "61",
-          "id" : "77",
-          "linkedRelationshipId" : "39",
-          "sourceId" : "75"
+          "destinationId" : "59",
+          "id" : "75",
+          "linkedRelationshipId" : "37",
+          "sourceId" : "73"
         } ],
-        "softwareSystemId" : "3",
+        "softwareSystemId" : "2",
         "tags" : "Software System Instance"
       } ],
       "tags" : "Element,Deployment Node"
@@ -230,66 +230,51 @@
     "people" : [ {
       "description" : "Developer whose CI/CD pipeline invokes the toolkit to sync docs and metrics.",
       "id" : "1",
-      "name" : "Team Developer",
+      "name" : "Audi Developer",
       "properties" : {
-        "structurizr.dsl.identifier" : "teamDev"
+        "structurizr.dsl.identifier" : "developer"
       },
       "relationships" : [ {
         "description" : "[Git push / merge] \n Commits code, documentation, and test results to main branch \n[GitHub]",
-        "destinationId" : "3",
-        "id" : "27",
+        "destinationId" : "2",
+        "id" : "26",
         "sourceId" : "1",
         "tags" : "Relationship"
       } ],
-      "tags" : "Element,Person,Audi User"
-    }, {
-      "description" : "Maintains toolkit workflows and app-type configuration profiles.",
-      "id" : "2",
-      "name" : "Audi RED Platform Team",
-      "properties" : {
-        "structurizr.dsl.identifier" : "platformTeam"
-      },
-      "relationships" : [ {
-        "description" : "[Manages] \n Maintains workflow logic, reusable actions, and app-type profiles \n[GitHub]",
-        "destinationId" : "7",
-        "id" : "29",
-        "sourceId" : "2",
-        "tags" : "Relationship"
-      } ],
-      "tags" : "Element,Person,Authors"
+      "tags" : "Element,Person,Audi Enterprise User"
     } ],
     "softwareSystems" : [ {
       "description" : "Team repositories that invoke the toolkit via workflow_call or daily schedule.",
       "documentation" : { },
-      "id" : "3",
+      "id" : "2",
       "name" : "Team GitHub Repositories",
       "properties" : {
         "structurizr.dsl.identifier" : "teamRepos"
       },
       "relationships" : [ {
         "description" : "[workflow_call / schedule] \n Invokes toolkit as a reusable workflow after CI/CD completion or on daily cron (9pm ET) \n[GitHub Actions]",
-        "destinationId" : "7",
-        "id" : "28",
-        "sourceId" : "3",
+        "destinationId" : "6",
+        "id" : "27",
+        "sourceId" : "2",
         "tags" : "Relationship"
       }, {
         "description" : "[Invokes] \n Calls the main workflow orchestrator reusable workflow \n[GitHub Actions]",
-        "destinationId" : "8",
-        "id" : "33",
-        "sourceId" : "3",
+        "destinationId" : "7",
+        "id" : "31",
+        "sourceId" : "2",
         "tags" : "Relationship"
       }, {
         "description" : "[workflow_run artifact] \n CI/CD run produces Jest, Cypress, Lighthouse coverage artifacts \n[GitHub Actions Artifact]",
-        "destinationId" : "18",
-        "id" : "39",
-        "sourceId" : "3",
+        "destinationId" : "17",
+        "id" : "37",
+        "sourceId" : "2",
         "tags" : "Relationship"
       } ],
       "tags" : "Element,Software System,Internal System"
     }, {
       "description" : "Central hub for standards, security intelligence, dependency tracking, and tech radar within Audi RED.",
       "documentation" : { },
-      "id" : "4",
+      "id" : "3",
       "name" : "Audi RED Documentation Portal",
       "properties" : {
         "structurizr.dsl.identifier" : "redDocsPortal"
@@ -300,16 +285,16 @@
         "components" : [ {
           "description" : "Validates required inputs and secrets before downstream jobs run.",
           "documentation" : { },
-          "id" : "9",
+          "id" : "8",
           "name" : "Input Validation Job",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.workflowOrchestrator.inputValidation"
           },
           "relationships" : [ {
             "description" : "[Triggers] \n Passes validated inputs downstream \n[GitHub Actions]",
-            "destinationId" : "10",
-            "id" : "44",
-            "sourceId" : "9",
+            "destinationId" : "9",
+            "id" : "42",
+            "sourceId" : "8",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -317,16 +302,16 @@
         }, {
           "description" : "Resolves app_type from input or auto-detects from Cypress/Jest config.",
           "documentation" : { },
-          "id" : "10",
+          "id" : "9",
           "name" : "Project Type Detection Job",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.workflowOrchestrator.projectDetection"
           },
           "relationships" : [ {
             "description" : "[Reads] \n Resolves destination path, branch, and MSI parent page ID \n[File System]",
-            "destinationId" : "11",
-            "id" : "45",
-            "sourceId" : "10",
+            "destinationId" : "10",
+            "id" : "43",
+            "sourceId" : "9",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -334,7 +319,7 @@
         }, {
           "description" : "Maps app_type to destination path, branch, and MSI parent page ID.",
           "documentation" : { },
-          "id" : "11",
+          "id" : "10",
           "name" : "App Type Profiles Config",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.workflowOrchestrator.appTypeProfiles"
@@ -344,7 +329,7 @@
         }, {
           "description" : "Captures and emits final status of all workflow jobs.",
           "documentation" : { },
-          "id" : "12",
+          "id" : "11",
           "name" : "Observability Summary Job",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.workflowOrchestrator.observabilitySummary"
@@ -354,40 +339,40 @@
         } ],
         "description" : "Core workflow (audired-tookit.yml). Validates inputs, detects project type, and sequences downstream jobs.",
         "documentation" : { },
-        "id" : "8",
+        "id" : "7",
         "name" : "Workflow Orchestrator",
         "properties" : {
           "structurizr.dsl.identifier" : "toolkitOrchestrator.workflowOrchestrator"
         },
         "relationships" : [ {
           "description" : "[Triggers] \n After input validation and project type detection \n[GitHub Actions]",
-          "destinationId" : "13",
-          "id" : "34",
-          "sourceId" : "8",
+          "destinationId" : "12",
+          "id" : "32",
+          "sourceId" : "7",
           "tags" : "Relationship"
         }, {
           "description" : "[Triggers] \n Parallel to doc sync \n[GitHub Actions]",
-          "destinationId" : "18",
-          "id" : "35",
-          "sourceId" : "8",
+          "destinationId" : "17",
+          "id" : "33",
+          "sourceId" : "7",
           "tags" : "Relationship"
         }, {
           "description" : "[Triggers] \n After test collection completes \n[GitHub Actions]",
-          "destinationId" : "22",
-          "id" : "36",
-          "sourceId" : "8",
+          "destinationId" : "21",
+          "id" : "34",
+          "sourceId" : "7",
+          "tags" : "Relationship"
+        }, {
+          "description" : "[Triggers] \n After doc sync if enabled \n[GitHub Actions]",
+          "destinationId" : "24",
+          "id" : "35",
+          "sourceId" : "7",
           "tags" : "Relationship"
         }, {
           "description" : "[Triggers] \n After doc sync if enabled \n[GitHub Actions]",
           "destinationId" : "25",
-          "id" : "37",
-          "sourceId" : "8",
-          "tags" : "Relationship"
-        }, {
-          "description" : "[Triggers] \n After doc sync if enabled \n[GitHub Actions]",
-          "destinationId" : "26",
-          "id" : "38",
-          "sourceId" : "8",
+          "id" : "36",
+          "sourceId" : "7",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container,Added Entity",
@@ -396,16 +381,16 @@
         "components" : [ {
           "description" : "Validates MDX and Mermaid content before sync.",
           "documentation" : { },
-          "id" : "14",
+          "id" : "13",
           "name" : "MDX Validator",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.docSyncAction.mdxValidator"
           },
           "relationships" : [ {
             "description" : "[Sequences] \n MDX validation must pass before diagram generation \n[GitHub Actions]",
-            "destinationId" : "15",
-            "id" : "46",
-            "sourceId" : "14",
+            "destinationId" : "14",
+            "id" : "44",
+            "sourceId" : "13",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -413,16 +398,16 @@
         }, {
           "description" : "Generates workspace.json and PNG diagrams from workspace.dsl files.",
           "documentation" : { },
-          "id" : "15",
+          "id" : "14",
           "name" : "Structurizr Renderer",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.docSyncAction.structurizrRenderer"
           },
           "relationships" : [ {
             "description" : "[Sequences] \n Diagrams generated before metrics injection \n[GitHub Actions]",
-            "destinationId" : "16",
-            "id" : "47",
-            "sourceId" : "15",
+            "destinationId" : "15",
+            "id" : "45",
+            "sourceId" : "14",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -430,16 +415,16 @@
         }, {
           "description" : "Injects CI coverage scores into project_metrics.mdx.",
           "documentation" : { },
-          "id" : "16",
+          "id" : "15",
           "name" : "Metrics Injector",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.docSyncAction.metricsInjector"
           },
           "relationships" : [ {
             "description" : "[Sequences] \n Enriched docs folder pushed to portal \n[GitHub Actions]",
-            "destinationId" : "17",
-            "id" : "48",
-            "sourceId" : "16",
+            "destinationId" : "16",
+            "id" : "46",
+            "sourceId" : "15",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -447,16 +432,16 @@
         }, {
           "description" : "Copies validated docs to the profile-resolved branch in RED Docs Portal.",
           "documentation" : { },
-          "id" : "17",
+          "id" : "16",
           "name" : "Doc Publisher",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.docSyncAction.docPublisher"
           },
           "relationships" : [ {
             "description" : "[Git commit] \n Pushes validated and enriched docs to portal repository \n[DOC_SYNC_KEY / rsync + Git]",
-            "destinationId" : "4",
-            "id" : "49",
-            "sourceId" : "17",
+            "destinationId" : "3",
+            "id" : "47",
+            "sourceId" : "16",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -464,16 +449,16 @@
         } ],
         "description" : "Validates docs, generates Structurizr diagrams, embeds CI metrics, and pushes to RED Docs Portal.",
         "documentation" : { },
-        "id" : "13",
+        "id" : "12",
         "name" : "Doc Sync Action",
         "properties" : {
           "structurizr.dsl.identifier" : "toolkitOrchestrator.docSyncAction"
         },
         "relationships" : [ {
           "description" : "[Git commit] \n Pushes docs folder to profile-resolved branch (docs-sync/feature-apps, docs-sync/backend-services, etc.) \n[DOC_SYNC_KEY / rsync + Git]",
-          "destinationId" : "4",
-          "id" : "40",
-          "sourceId" : "13",
+          "destinationId" : "3",
+          "id" : "38",
+          "sourceId" : "12",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container,Added Entity",
@@ -482,16 +467,16 @@
         "components" : [ {
           "description" : "Downloads Cypress coverage artifacts for aggregation.",
           "documentation" : { },
-          "id" : "19",
+          "id" : "18",
           "name" : "Cypress Sync Job",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.testCollectionKit.cypressSync"
           },
           "relationships" : [ {
             "description" : "[Provides] \n Cypress coverage artifacts \n[GitHub Actions Artifact]",
-            "destinationId" : "21",
-            "id" : "50",
-            "sourceId" : "19",
+            "destinationId" : "20",
+            "id" : "48",
+            "sourceId" : "18",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -499,16 +484,16 @@
         }, {
           "description" : "Downloads Jest coverage summary for aggregation.",
           "documentation" : { },
-          "id" : "20",
+          "id" : "19",
           "name" : "Jest Sync Job",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.testCollectionKit.jestSync"
           },
           "relationships" : [ {
             "description" : "[Provides] \n Jest coverage artifacts \n[GitHub Actions Artifact]",
-            "destinationId" : "21",
-            "id" : "51",
-            "sourceId" : "20",
+            "destinationId" : "20",
+            "id" : "49",
+            "sourceId" : "19",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -516,7 +501,7 @@
         }, {
           "description" : "Aggregates Jest, Cypress, and Lighthouse results into a unified data-report.",
           "documentation" : { },
-          "id" : "21",
+          "id" : "20",
           "name" : "Collection Kit Action",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.testCollectionKit.collectionKitAction"
@@ -526,7 +511,7 @@
         } ],
         "description" : "Collects Cypress and Jest coverage artifacts and stages them as a data-report.",
         "documentation" : { },
-        "id" : "18",
+        "id" : "17",
         "name" : "Test Collection Kit",
         "properties" : {
           "structurizr.dsl.identifier" : "toolkitOrchestrator.testCollectionKit"
@@ -537,16 +522,16 @@
         "components" : [ {
           "description" : "Reads package.json and resolves team ownership and lifecycle stage.",
           "documentation" : { },
-          "id" : "23",
+          "id" : "22",
           "name" : "Metadata Collector",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.metadataKit.metadataCollector"
           },
           "relationships" : [ {
             "description" : "[Produces] \n Aggregated repository entry for report.json \n[In-memory]",
-            "destinationId" : "24",
-            "id" : "52",
-            "sourceId" : "23",
+            "destinationId" : "23",
+            "id" : "50",
+            "sourceId" : "22",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -554,16 +539,16 @@
         }, {
           "description" : "Commits the aggregated report.json entry to RED Docs Portal.",
           "documentation" : { },
-          "id" : "24",
+          "id" : "23",
           "name" : "Report Publisher",
           "properties" : {
             "structurizr.dsl.identifier" : "toolkitOrchestrator.metadataKit.reportPublisher"
           },
           "relationships" : [ {
             "description" : "[Git commit] \n Commits report.json update \n[DOC_SYNC_KEY / Git]",
-            "destinationId" : "4",
-            "id" : "53",
-            "sourceId" : "24",
+            "destinationId" : "3",
+            "id" : "51",
+            "sourceId" : "23",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component,Added Entity",
@@ -571,16 +556,16 @@
         } ],
         "description" : "Collects repository metadata and aggregates it into report.json.",
         "documentation" : { },
-        "id" : "22",
+        "id" : "21",
         "name" : "Metadata Kit",
         "properties" : {
           "structurizr.dsl.identifier" : "toolkitOrchestrator.metadataKit"
         },
         "relationships" : [ {
           "description" : "[Git commit] \n Updates report.json entry for this repository \n[DOC_SYNC_KEY / Git]",
-          "destinationId" : "4",
-          "id" : "41",
-          "sourceId" : "22",
+          "destinationId" : "3",
+          "id" : "39",
+          "sourceId" : "21",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container,Added Entity",
@@ -588,16 +573,16 @@
       }, {
         "description" : "Syncs documentation pages to VWGOA Confluence Cloud.",
         "documentation" : { },
-        "id" : "25",
+        "id" : "24",
         "name" : "Confluence Sync Action",
         "properties" : {
           "structurizr.dsl.identifier" : "toolkitOrchestrator.confluenceSyncAction"
         },
         "relationships" : [ {
           "description" : "[HTTPS REST] \n Creates or updates documentation pages \n[Confluence API Token]",
-          "destinationId" : "5",
-          "id" : "42",
-          "sourceId" : "25",
+          "destinationId" : "4",
+          "id" : "40",
+          "sourceId" : "24",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container,Added Entity",
@@ -605,16 +590,16 @@
       }, {
         "description" : "Syncs documentation pages to Audi MSI Confluence.",
         "documentation" : { },
-        "id" : "26",
+        "id" : "25",
         "name" : "MSI Sync Action",
         "properties" : {
           "structurizr.dsl.identifier" : "toolkitOrchestrator.msiAction"
         },
         "relationships" : [ {
           "description" : "[HTTPS REST] \n Creates or updates MSI documentation pages \n[MSI API Token]",
-          "destinationId" : "6",
-          "id" : "43",
-          "sourceId" : "26",
+          "destinationId" : "5",
+          "id" : "41",
+          "sourceId" : "25",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container,Added Entity",
@@ -622,28 +607,28 @@
       } ],
       "description" : "Reusable GitHub Actions workflow orchestrating doc sync, test collection, and metadata publishing for team repos.",
       "documentation" : { },
-      "id" : "7",
+      "id" : "6",
       "name" : "AudiRED Toolkit Orchestrator",
       "properties" : {
         "structurizr.dsl.identifier" : "toolkitOrchestrator"
       },
       "relationships" : [ {
         "description" : "[Git commit] \n Pushes synced documentation, architecture diagrams, test metrics, and dependency reports \n[DOC_SYNC_KEY / Git]",
-        "destinationId" : "4",
-        "id" : "30",
-        "sourceId" : "7",
+        "destinationId" : "3",
+        "id" : "28",
+        "sourceId" : "6",
         "tags" : "Relationship"
       }, {
         "description" : "[HTTPS REST] \n Syncs documentation pages to VWGOA Confluence \n[Confluence API Token]",
-        "destinationId" : "5",
-        "id" : "31",
-        "sourceId" : "7",
+        "destinationId" : "4",
+        "id" : "29",
+        "sourceId" : "6",
         "tags" : "Relationship"
       }, {
         "description" : "[HTTPS REST] \n Syncs documentation pages to MSI Confluence \n[MSI API Token]",
-        "destinationId" : "6",
-        "id" : "32",
-        "sourceId" : "7",
+        "destinationId" : "5",
+        "id" : "30",
+        "sourceId" : "6",
         "tags" : "Relationship"
       } ],
       "tags" : "Element,Software System,Added Entity"
@@ -651,8 +636,8 @@
   },
   "name" : "AudiRED Toolkit Orchestrator",
   "properties" : {
-    "structurizr.inspection.error" : "63",
-    "structurizr.dsl" : "d29ya3NwYWNlICJBdWRpUkVEIFRvb2xraXQgT3JjaGVzdHJhdG9yIiAiUmV1c2FibGUgR2l0SHViIEFjdGlvbnMgd29ya2Zsb3cgb3JjaGVzdHJhdGluZyBkb2Mgc3luYywgdGVzdCBjb2xsZWN0aW9uLCBhbmQgbWV0YWRhdGEgYWdncmVnYXRpb24gYWNyb3NzIHRlYW0gcmVwb3MuIiB7CgogICAgIWlkZW50aWZpZXJzIGhpZXJhcmNoaWNhbAoKICAgIG1vZGVsIHsKCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIFBlb3BsZSAvIEFjdG9ycwogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgdGVhbURldiA9IHBlcnNvbiAiVGVhbSBEZXZlbG9wZXIiICJEZXZlbG9wZXIgd2hvc2UgQ0kvQ0QgcGlwZWxpbmUgaW52b2tlcyB0aGUgdG9vbGtpdCB0byBzeW5jIGRvY3MgYW5kIG1ldHJpY3MuIiB7CiAgICAgICAgICAgIHRhZ3MgIkF1ZGkgVXNlciIKICAgICAgICB9CiAgICAgICAgcGxhdGZvcm1UZWFtID0gcGVyc29uICJBdWRpIFJFRCBQbGF0Zm9ybSBUZWFtIiAiTWFpbnRhaW5zIHRvb2xraXQgd29ya2Zsb3dzIGFuZCBhcHAtdHlwZSBjb25maWd1cmF0aW9uIHByb2ZpbGVzLiIgewogICAgICAgICAgICB0YWdzICJBdXRob3JzIgogICAgICAgIH0KCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIEV4dGVybmFsIFN5c3RlbXMgLSBDYWxsZXJzCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICB0ZWFtUmVwb3MgPSBzb2Z0d2FyZVN5c3RlbSAiVGVhbSBHaXRIdWIgUmVwb3NpdG9yaWVzIiAiVGVhbSByZXBvc2l0b3JpZXMgdGhhdCBpbnZva2UgdGhlIHRvb2xraXQgdmlhIHdvcmtmbG93X2NhbGwgb3IgZGFpbHkgc2NoZWR1bGUuIiB7CiAgICAgICAgICAgIHRhZ3MgIkludGVybmFsIFN5c3RlbSIKICAgICAgICB9CgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBFeHRlcm5hbCBTeXN0ZW1zIC0gRGVzdGluYXRpb25zCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICByZWREb2NzUG9ydGFsID0gc29mdHdhcmVTeXN0ZW0gIkF1ZGkgUkVEIERvY3VtZW50YXRpb24gUG9ydGFsIiAiQ2VudHJhbCBodWIgZm9yIHN0YW5kYXJkcywgc2VjdXJpdHkgaW50ZWxsaWdlbmNlLCBkZXBlbmRlbmN5IHRyYWNraW5nLCBhbmQgdGVjaCByYWRhciB3aXRoaW4gQXVkaSBSRUQuIiB7CiAgICAgICAgICAgIHRhZ3MgIkludGVybmFsIFN5c3RlbSIKICAgICAgICB9CgogICAgICAgIHZ3Z29hQ29uZmx1ZW5jZUNsb3VkID0gZWxlbWVudCAiVldHT0EgQ2xvdWQgQ29uZmx1ZW5jZSIgIkNvbmZsdWVuY2UgU3BhY2UiICJWV0dPQSBlbnRlcnByaXNlIENvbmZsdWVuY2Ugd2lraS4iIHsKICAgICAgICAgICAgdGFncyAiRXh0ZXJuYWwgU3lzdGVtIgogICAgICAgIH0KCiAgICAgICAgbXNpQ29uZmx1ZW5jZSA9IGVsZW1lbnQgIkF1ZGkgTVNJIENvbmZsdWVuY2UiICJDb25mbHVlbmNlIFNwYWNlIiAiQXVkaSBNU0kgQ29uZmx1ZW5jZSBzcGFjZS4iIHsKICAgICAgICAgICAgdGFncyAiRXh0ZXJuYWwgU3lzdGVtIgogICAgICAgIH0KCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIE1haW4gU29mdHdhcmUgU3lzdGVtCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yID0gc29mdHdhcmVTeXN0ZW0gIkF1ZGlSRUQgVG9vbGtpdCBPcmNoZXN0cmF0b3IiICJSZXVzYWJsZSBHaXRIdWIgQWN0aW9ucyB3b3JrZmxvdyBvcmNoZXN0cmF0aW5nIGRvYyBzeW5jLCB0ZXN0IGNvbGxlY3Rpb24sIGFuZCBtZXRhZGF0YSBwdWJsaXNoaW5nIGZvciB0ZWFtIHJlcG9zLiIgewogICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiCgogICAgICAgICAgICAjIOKUgOKUgCBDb250YWluZXJzIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAoKICAgICAgICAgICAgd29ya2Zsb3dPcmNoZXN0cmF0b3IgPSBjb250YWluZXIgIldvcmtmbG93IE9yY2hlc3RyYXRvciIgIkNvcmUgd29ya2Zsb3cgKGF1ZGlyZWQtdG9va2l0LnltbCkuIFZhbGlkYXRlcyBpbnB1dHMsIGRldGVjdHMgcHJvamVjdCB0eXBlLCBhbmQgc2VxdWVuY2VzIGRvd25zdHJlYW0gam9icy4iICJHaXRIdWIgQWN0aW9ucyBSZXVzYWJsZSBXb3JrZmxvdyIgewogICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IgoKICAgICAgICAgICAgICAgIGlucHV0VmFsaWRhdGlvbiA9IGNvbXBvbmVudCAiSW5wdXQgVmFsaWRhdGlvbiBKb2IiICJWYWxpZGF0ZXMgcmVxdWlyZWQgaW5wdXRzIGFuZCBzZWNyZXRzIGJlZm9yZSBkb3duc3RyZWFtIGpvYnMgcnVuLiIgIkdpdEh1YiBBY3Rpb25zIEpvYiIgewogICAgICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIsICJDb21wb25lbnQiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBwcm9qZWN0RGV0ZWN0aW9uID0gY29tcG9uZW50ICJQcm9qZWN0IFR5cGUgRGV0ZWN0aW9uIEpvYiIgIlJlc29sdmVzIGFwcF90eXBlIGZyb20gaW5wdXQgb3IgYXV0by1kZXRlY3RzIGZyb20gQ3lwcmVzcy9KZXN0IGNvbmZpZy4iICJHaXRIdWIgQWN0aW9ucyBKb2IiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgYXBwVHlwZVByb2ZpbGVzID0gY29tcG9uZW50ICJBcHAgVHlwZSBQcm9maWxlcyBDb25maWciICJNYXBzIGFwcF90eXBlIHRvIGRlc3RpbmF0aW9uIHBhdGgsIGJyYW5jaCwgYW5kIE1TSSBwYXJlbnQgcGFnZSBJRC4iICJZQU1MIENvbmZpZ3VyYXRpb24iIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgb2JzZXJ2YWJpbGl0eVN1bW1hcnkgPSBjb21wb25lbnQgIk9ic2VydmFiaWxpdHkgU3VtbWFyeSBKb2IiICJDYXB0dXJlcyBhbmQgZW1pdHMgZmluYWwgc3RhdHVzIG9mIGFsbCB3b3JrZmxvdyBqb2JzLiIgIkdpdEh1YiBBY3Rpb25zIEpvYiIgewogICAgICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIsICJDb21wb25lbnQiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIGRvY1N5bmNBY3Rpb24gPSBjb250YWluZXIgIkRvYyBTeW5jIEFjdGlvbiIgIlZhbGlkYXRlcyBkb2NzLCBnZW5lcmF0ZXMgU3RydWN0dXJpenIgZGlhZ3JhbXMsIGVtYmVkcyBDSSBtZXRyaWNzLCBhbmQgcHVzaGVzIHRvIFJFRCBEb2NzIFBvcnRhbC4iICJhdWRyZWRfZG9jc3luY19hY3Rpb24gLyBhdWRpcmVkX3N0cnVjdHVyaXpyX2FjdGlvbiIgewogICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IgoKICAgICAgICAgICAgICAgIG1keFZhbGlkYXRvciA9IGNvbXBvbmVudCAiTURYIFZhbGlkYXRvciIgIlZhbGlkYXRlcyBNRFggYW5kIE1lcm1haWQgY29udGVudCBiZWZvcmUgc3luYy4iICJOb2RlLmpzIC8gQ0xJIiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIHN0cnVjdHVyaXpyUmVuZGVyZXIgPSBjb21wb25lbnQgIlN0cnVjdHVyaXpyIFJlbmRlcmVyIiAiR2VuZXJhdGVzIHdvcmtzcGFjZS5qc29uIGFuZCBQTkcgZGlhZ3JhbXMgZnJvbSB3b3Jrc3BhY2UuZHNsIGZpbGVzLiIgImF1ZGlyZWRfc3RydWN0dXJpenJfYWN0aW9uIiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIG1ldHJpY3NJbmplY3RvciA9IGNvbXBvbmVudCAiTWV0cmljcyBJbmplY3RvciIgIkluamVjdHMgQ0kgY292ZXJhZ2Ugc2NvcmVzIGludG8gcHJvamVjdF9tZXRyaWNzLm1keC4iICJCYXNoIC8ganEiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgZG9jUHVibGlzaGVyID0gY29tcG9uZW50ICJEb2MgUHVibGlzaGVyIiAiQ29waWVzIHZhbGlkYXRlZCBkb2NzIHRvIHRoZSBwcm9maWxlLXJlc29sdmVkIGJyYW5jaCBpbiBSRUQgRG9jcyBQb3J0YWwuIiAiYXVkcmVkX2RvY3N5bmNfYWN0aW9uIiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQoKICAgICAgICAgICAgdGVzdENvbGxlY3Rpb25LaXQgPSBjb250YWluZXIgIlRlc3QgQ29sbGVjdGlvbiBLaXQiICJDb2xsZWN0cyBDeXByZXNzIGFuZCBKZXN0IGNvdmVyYWdlIGFydGlmYWN0cyBhbmQgc3RhZ2VzIHRoZW0gYXMgYSBkYXRhLXJlcG9ydC4iICJhdWRpLXJlZC1jb2xsZWN0aW9uLWtpdCIgewogICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IgoKICAgICAgICAgICAgICAgIGN5cHJlc3NTeW5jID0gY29tcG9uZW50ICJDeXByZXNzIFN5bmMgSm9iIiAiRG93bmxvYWRzIEN5cHJlc3MgY292ZXJhZ2UgYXJ0aWZhY3RzIGZvciBhZ2dyZWdhdGlvbi4iICJHaXRIdWIgQWN0aW9ucyBKb2IiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgamVzdFN5bmMgPSBjb21wb25lbnQgIkplc3QgU3luYyBKb2IiICJEb3dubG9hZHMgSmVzdCBjb3ZlcmFnZSBzdW1tYXJ5IGZvciBhZ2dyZWdhdGlvbi4iICJHaXRIdWIgQWN0aW9ucyBKb2IiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgY29sbGVjdGlvbktpdEFjdGlvbiA9IGNvbXBvbmVudCAiQ29sbGVjdGlvbiBLaXQgQWN0aW9uIiAiQWdncmVnYXRlcyBKZXN0LCBDeXByZXNzLCBhbmQgTGlnaHRob3VzZSByZXN1bHRzIGludG8gYSB1bmlmaWVkIGRhdGEtcmVwb3J0LiIgImF1ZGktcmVkLWNvbGxlY3Rpb24ta2l0IiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQoKICAgICAgICAgICAgbWV0YWRhdGFLaXQgPSBjb250YWluZXIgIk1ldGFkYXRhIEtpdCIgIkNvbGxlY3RzIHJlcG9zaXRvcnkgbWV0YWRhdGEgYW5kIGFnZ3JlZ2F0ZXMgaXQgaW50byByZXBvcnQuanNvbi4iICJhdWRpLXJlZC1hcHAtbWV0YWRhdGEta2l0IiB7CiAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiCgogICAgICAgICAgICAgICAgbWV0YWRhdGFDb2xsZWN0b3IgPSBjb21wb25lbnQgIk1ldGFkYXRhIENvbGxlY3RvciIgIlJlYWRzIHBhY2thZ2UuanNvbiBhbmQgcmVzb2x2ZXMgdGVhbSBvd25lcnNoaXAgYW5kIGxpZmVjeWNsZSBzdGFnZS4iICJhdWRpLXJlZC1hcHAtbWV0YWRhdGEta2l0IiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIHJlcG9ydFB1Ymxpc2hlciA9IGNvbXBvbmVudCAiUmVwb3J0IFB1Ymxpc2hlciIgIkNvbW1pdHMgdGhlIGFnZ3JlZ2F0ZWQgcmVwb3J0Lmpzb24gZW50cnkgdG8gUkVEIERvY3MgUG9ydGFsLiIgIkdpdCAvIEdpdEh1YiBBY3Rpb25zIiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQoKICAgICAgICAgICAgY29uZmx1ZW5jZVN5bmNBY3Rpb24gPSBjb250YWluZXIgIkNvbmZsdWVuY2UgU3luYyBBY3Rpb24iICJTeW5jcyBkb2N1bWVudGF0aW9uIHBhZ2VzIHRvIFZXR09BIENvbmZsdWVuY2UgQ2xvdWQuIiAiYXVkaXJlZF9jb25mbHVlbmNlX2Nsb3VkX2FjdGlvbiIgewogICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IgogICAgICAgICAgICB9CgogICAgICAgICAgICBtc2lBY3Rpb24gPSBjb250YWluZXIgIk1TSSBTeW5jIEFjdGlvbiIgIlN5bmNzIGRvY3VtZW50YXRpb24gcGFnZXMgdG8gQXVkaSBNU0kgQ29uZmx1ZW5jZS4iICJhdWRpcmVkX21zaV9hY3Rpb24iIHsKICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIKICAgICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIFJlbGF0aW9uc2hpcHMgLSBDb250ZXh0IGxldmVsCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgIyBJbnZvY2F0aW9uCiAgICAgICAgdGVhbURldiAtPiB0ZWFtUmVwb3MgIltHaXQgcHVzaCAvIG1lcmdlXSBcbiBDb21taXRzIGNvZGUsIGRvY3VtZW50YXRpb24sIGFuZCB0ZXN0IHJlc3VsdHMgdG8gbWFpbiBicmFuY2ggXG5bR2l0SHViXSIKICAgICAgICB0ZWFtUmVwb3MgLT4gdG9vbGtpdE9yY2hlc3RyYXRvciAiW3dvcmtmbG93X2NhbGwgLyBzY2hlZHVsZV0gXG4gSW52b2tlcyB0b29sa2l0IGFzIGEgcmV1c2FibGUgd29ya2Zsb3cgYWZ0ZXIgQ0kvQ0QgY29tcGxldGlvbiBvciBvbiBkYWlseSBjcm9uICg5cG0gRVQpIFxuW0dpdEh1YiBBY3Rpb25zXSIKCiAgICAgICAgIyBQbGF0Zm9ybSBtYW5hZ2VtZW50CiAgICAgICAgcGxhdGZvcm1UZWFtIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IgIltNYW5hZ2VzXSBcbiBNYWludGFpbnMgd29ya2Zsb3cgbG9naWMsIHJldXNhYmxlIGFjdGlvbnMsIGFuZCBhcHAtdHlwZSBwcm9maWxlcyBcbltHaXRIdWJdIgoKICAgICAgICAjIERlc3RpbmF0aW9ucwogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IgLT4gcmVkRG9jc1BvcnRhbCAiW0dpdCBjb21taXRdIFxuIFB1c2hlcyBzeW5jZWQgZG9jdW1lbnRhdGlvbiwgYXJjaGl0ZWN0dXJlIGRpYWdyYW1zLCB0ZXN0IG1ldHJpY3MsIGFuZCBkZXBlbmRlbmN5IHJlcG9ydHMgXG5bRE9DX1NZTkNfS0VZIC8gR2l0XSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yIC0+IHZ3Z29hQ29uZmx1ZW5jZUNsb3VkICJbSFRUUFMgUkVTVF0gXG4gU3luY3MgZG9jdW1lbnRhdGlvbiBwYWdlcyB0byBWV0dPQSBDb25mbHVlbmNlIFxuW0NvbmZsdWVuY2UgQVBJIFRva2VuXSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yIC0+IG1zaUNvbmZsdWVuY2UgIltIVFRQUyBSRVNUXSBcbiBTeW5jcyBkb2N1bWVudGF0aW9uIHBhZ2VzIHRvIE1TSSBDb25mbHVlbmNlIFxuW01TSSBBUEkgVG9rZW5dIgoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgUmVsYXRpb25zaGlwcyAtIENvbnRhaW5lciBsZXZlbAogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACgogICAgICAgICMgT3JjaGVzdHJhdGlvbiBzZXF1ZW5jZQogICAgICAgIHRlYW1SZXBvcyAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yICJbSW52b2tlc10gXG4gQ2FsbHMgdGhlIG1haW4gd29ya2Zsb3cgb3JjaGVzdHJhdG9yIHJldXNhYmxlIHdvcmtmbG93IFxuW0dpdEh1YiBBY3Rpb25zXSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IuZG9jU3luY0FjdGlvbiAiW1RyaWdnZXJzXSBcbiBBZnRlciBpbnB1dCB2YWxpZGF0aW9uIGFuZCBwcm9qZWN0IHR5cGUgZGV0ZWN0aW9uIFxuW0dpdEh1YiBBY3Rpb25zXSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IudGVzdENvbGxlY3Rpb25LaXQgIltUcmlnZ2Vyc10gXG4gUGFyYWxsZWwgdG8gZG9jIHN5bmMgXG5bR2l0SHViIEFjdGlvbnNdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci5tZXRhZGF0YUtpdCAiW1RyaWdnZXJzXSBcbiBBZnRlciB0ZXN0IGNvbGxlY3Rpb24gY29tcGxldGVzIFxuW0dpdEh1YiBBY3Rpb25zXSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IuY29uZmx1ZW5jZVN5bmNBY3Rpb24gIltUcmlnZ2Vyc10gXG4gQWZ0ZXIgZG9jIHN5bmMgaWYgZW5hYmxlZCBcbltHaXRIdWIgQWN0aW9uc10iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci53b3JrZmxvd09yY2hlc3RyYXRvciAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLm1zaUFjdGlvbiAiW1RyaWdnZXJzXSBcbiBBZnRlciBkb2Mgc3luYyBpZiBlbmFibGVkIFxuW0dpdEh1YiBBY3Rpb25zXSIKCiAgICAgICAgIyBUZWFtIHJlcG8gcHJvdmlkZXMgYXJ0aWZhY3RzIHRvIGNvbGxlY3Rpb24ga2l0CiAgICAgICAgdGVhbVJlcG9zIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IudGVzdENvbGxlY3Rpb25LaXQgIlt3b3JrZmxvd19ydW4gYXJ0aWZhY3RdIFxuIENJL0NEIHJ1biBwcm9kdWNlcyBKZXN0LCBDeXByZXNzLCBMaWdodGhvdXNlIGNvdmVyYWdlIGFydGlmYWN0cyBcbltHaXRIdWIgQWN0aW9ucyBBcnRpZmFjdF0iCgogICAgICAgICMgRG9jIHN5bmMgZGVzdGluYXRpb24KICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLmRvY1N5bmNBY3Rpb24gLT4gcmVkRG9jc1BvcnRhbCAiW0dpdCBjb21taXRdIFxuIFB1c2hlcyBkb2NzIGZvbGRlciB0byBwcm9maWxlLXJlc29sdmVkIGJyYW5jaCAoZG9jcy1zeW5jL2ZlYXR1cmUtYXBwcywgZG9jcy1zeW5jL2JhY2tlbmQtc2VydmljZXMsIGV0Yy4pIFxuW0RPQ19TWU5DX0tFWSAvIHJzeW5jICsgR2l0XSIKCiAgICAgICAgIyBNZXRhZGF0YSBraXQgZGVzdGluYXRpb24KICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLm1ldGFkYXRhS2l0IC0+IHJlZERvY3NQb3J0YWwgIltHaXQgY29tbWl0XSBcbiBVcGRhdGVzIHJlcG9ydC5qc29uIGVudHJ5IGZvciB0aGlzIHJlcG9zaXRvcnkgXG5bRE9DX1NZTkNfS0VZIC8gR2l0XSIKCiAgICAgICAgIyBDb25mbHVlbmNlIHN5bmMgZGVzdGluYXRpb24KICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLmNvbmZsdWVuY2VTeW5jQWN0aW9uIC0+IHZ3Z29hQ29uZmx1ZW5jZUNsb3VkICJbSFRUUFMgUkVTVF0gXG4gQ3JlYXRlcyBvciB1cGRhdGVzIGRvY3VtZW50YXRpb24gcGFnZXMgXG5bQ29uZmx1ZW5jZSBBUEkgVG9rZW5dIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IubXNpQWN0aW9uIC0+IG1zaUNvbmZsdWVuY2UgIltIVFRQUyBSRVNUXSBcbiBDcmVhdGVzIG9yIHVwZGF0ZXMgTVNJIGRvY3VtZW50YXRpb24gcGFnZXMgXG5bTVNJIEFQSSBUb2tlbl0iCgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBSZWxhdGlvbnNoaXBzIC0gQ29tcG9uZW50IGxldmVsCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgIyBPcmNoZXN0cmF0b3IgaW50ZXJuYWwgZmxvdwogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IuaW5wdXRWYWxpZGF0aW9uIC0+IHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IucHJvamVjdERldGVjdGlvbiAiW1RyaWdnZXJzXSBcbiBQYXNzZXMgdmFsaWRhdGVkIGlucHV0cyBkb3duc3RyZWFtIFxuW0dpdEh1YiBBY3Rpb25zXSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yLnByb2plY3REZXRlY3Rpb24gLT4gdG9vbGtpdE9yY2hlc3RyYXRvci53b3JrZmxvd09yY2hlc3RyYXRvci5hcHBUeXBlUHJvZmlsZXMgIltSZWFkc10gXG4gUmVzb2x2ZXMgZGVzdGluYXRpb24gcGF0aCwgYnJhbmNoLCBhbmQgTVNJIHBhcmVudCBwYWdlIElEIFxuW0ZpbGUgU3lzdGVtXSIKCiAgICAgICAgIyBEb2Mgc3luYyBpbnRlcm5hbCBmbG93CiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uLm1keFZhbGlkYXRvciAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLmRvY1N5bmNBY3Rpb24uc3RydWN0dXJpenJSZW5kZXJlciAiW1NlcXVlbmNlc10gXG4gTURYIHZhbGlkYXRpb24gbXVzdCBwYXNzIGJlZm9yZSBkaWFncmFtIGdlbmVyYXRpb24gXG5bR2l0SHViIEFjdGlvbnNdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IuZG9jU3luY0FjdGlvbi5zdHJ1Y3R1cml6clJlbmRlcmVyIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IuZG9jU3luY0FjdGlvbi5tZXRyaWNzSW5qZWN0b3IgIltTZXF1ZW5jZXNdIFxuIERpYWdyYW1zIGdlbmVyYXRlZCBiZWZvcmUgbWV0cmljcyBpbmplY3Rpb24gXG5bR2l0SHViIEFjdGlvbnNdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IuZG9jU3luY0FjdGlvbi5tZXRyaWNzSW5qZWN0b3IgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uLmRvY1B1Ymxpc2hlciAiW1NlcXVlbmNlc10gXG4gRW5yaWNoZWQgZG9jcyBmb2xkZXIgcHVzaGVkIHRvIHBvcnRhbCBcbltHaXRIdWIgQWN0aW9uc10iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uLmRvY1B1Ymxpc2hlciAtPiByZWREb2NzUG9ydGFsICJbR2l0IGNvbW1pdF0gXG4gUHVzaGVzIHZhbGlkYXRlZCBhbmQgZW5yaWNoZWQgZG9jcyB0byBwb3J0YWwgcmVwb3NpdG9yeSBcbltET0NfU1lOQ19LRVkgLyByc3luYyArIEdpdF0iCgogICAgICAgICMgVGVzdCBjb2xsZWN0aW9uIGludGVybmFsIGZsb3cKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLnRlc3RDb2xsZWN0aW9uS2l0LmN5cHJlc3NTeW5jIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IudGVzdENvbGxlY3Rpb25LaXQuY29sbGVjdGlvbktpdEFjdGlvbiAiW1Byb3ZpZGVzXSBcbiBDeXByZXNzIGNvdmVyYWdlIGFydGlmYWN0cyBcbltHaXRIdWIgQWN0aW9ucyBBcnRpZmFjdF0iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci50ZXN0Q29sbGVjdGlvbktpdC5qZXN0U3luYyAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLnRlc3RDb2xsZWN0aW9uS2l0LmNvbGxlY3Rpb25LaXRBY3Rpb24gIltQcm92aWRlc10gXG4gSmVzdCBjb3ZlcmFnZSBhcnRpZmFjdHMgXG5bR2l0SHViIEFjdGlvbnMgQXJ0aWZhY3RdIgoKICAgICAgICAjIE1ldGFkYXRhIGtpdCBpbnRlcm5hbCBmbG93CiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci5tZXRhZGF0YUtpdC5tZXRhZGF0YUNvbGxlY3RvciAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLm1ldGFkYXRhS2l0LnJlcG9ydFB1Ymxpc2hlciAiW1Byb2R1Y2VzXSBcbiBBZ2dyZWdhdGVkIHJlcG9zaXRvcnkgZW50cnkgZm9yIHJlcG9ydC5qc29uIFxuW0luLW1lbW9yeV0iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci5tZXRhZGF0YUtpdC5yZXBvcnRQdWJsaXNoZXIgLT4gcmVkRG9jc1BvcnRhbCAiW0dpdCBjb21taXRdIFxuIENvbW1pdHMgcmVwb3J0Lmpzb24gdXBkYXRlIFxuW0RPQ19TWU5DX0tFWSAvIEdpdF0iCgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBEZXBsb3ltZW50IEVudmlyb25tZW50CiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICBwcm9kdWN0aW9uID0gZGVwbG95bWVudEVudmlyb25tZW50ICJQcm9kdWN0aW9uIiB7CgogICAgICAgICAgICBkZXBsb3ltZW50Tm9kZSAiQXVkaSBSRUQgR2l0aHViIEluc3RhbmNlIiB7CiAgICAgICAgICAgICAgICBzb2Z0d2FyZVN5c3RlbUluc3RhbmNlIHJlZERvY3NQb3J0YWwgCiAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgIGRlcGxveW1lbnROb2RlICJBdWRpUkVEIEdpdGh1YiBBY3Rpb25zIFJ1bm5lcnMiIHsKICAgICAgICAgICAgICAgICAgICBjb250YWluZXJJbnN0YW5jZSB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yCiAgICAgICAgICAgICAgICAgICAgY29udGFpbmVySW5zdGFuY2UgdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uCiAgICAgICAgICAgICAgICAgICAgY29udGFpbmVySW5zdGFuY2UgdG9vbGtpdE9yY2hlc3RyYXRvci50ZXN0Q29sbGVjdGlvbktpdAogICAgICAgICAgICAgICAgICAgIGNvbnRhaW5lckluc3RhbmNlIHRvb2xraXRPcmNoZXN0cmF0b3IubWV0YWRhdGFLaXQKICAgICAgICAgICAgICAgICAgICBjb250YWluZXJJbnN0YW5jZSB0b29sa2l0T3JjaGVzdHJhdG9yLmNvbmZsdWVuY2VTeW5jQWN0aW9uCiAgICAgICAgICAgICAgICAgICAgY29udGFpbmVySW5zdGFuY2UgdG9vbGtpdE9yY2hlc3RyYXRvci5tc2lBY3Rpb24KICAgICAgICAgICAgICAgIH0gICAKICAgICAgICAgICAgfQogICAgICAgICAgICBkZXBsb3ltZW50Tm9kZSAiT25lQXVkaSBBRyBHaXRodWIgSW5zdGFuY2UiIHsKICAgICAgICAgICAgICAgIHNvZnR3YXJlU3lzdGVtSW5zdGFuY2UgdGVhbVJlcG9zCiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIGRlcGxveW1lbnROb2RlICJNeUF1ZGkgQXBwIEdpdGh1YiBJbnN0YW5jZSIgewogICAgICAgICAgICAgICAgc29mdHdhcmVTeXN0ZW1JbnN0YW5jZSB0ZWFtUmVwb3MKICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0KCiAgICB2aWV3cyB7CgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBDNCBMZXZlbCAxIC0gU3lzdGVtIENvbnRleHQKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIHN5c3RlbUNvbnRleHQgdG9vbGtpdE9yY2hlc3RyYXRvciAiQ29udGV4dF9EaWFncmFtIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBpbmNsdWRlIHRlYW1SZXBvcyB0ZWFtRGV2IHBsYXRmb3JtVGVhbQogICAgICAgICAgICBpbmNsdWRlIHJlZERvY3NQb3J0YWwKICAgICAgICAgICAgaW5jbHVkZSB2d2dvYUNvbmZsdWVuY2VDbG91ZCBtc2lDb25mbHVlbmNlCiAgICAgICAgICAgIGF1dG9MYXlvdXQgbHIKICAgICAgICAgICAgdGl0bGUgIkM0IExldmVsIDEgLSBTeXN0ZW0gQ29udGV4dDogQXVkaVJFRCBUb29sa2l0IE9yY2hlc3RyYXRvciIKICAgICAgICAgICAgZGVzY3JpcHRpb24gIlRlYW0gcmVwb3NpdG9yaWVzIGludm9rZSB0aGUgQXVkaVJFRCBUb29sa2l0IGFmdGVyIENJL0NEIGNvbXBsZXRpb24uIFRoZSB0b29sa2l0IG9yY2hlc3RyYXRlcyBkb2N1bWVudGF0aW9uIHN5bmMsIHRlc3QgZGF0YSBjb2xsZWN0aW9uLCBhbmQgbWV0YWRhdGEgYWdncmVnYXRpb24gLSBwdWJsaXNoaW5nIG91dHB1dHMgdG8gdGhlIFJFRCBEb2N1bWVudGF0aW9uIFBvcnRhbCBhbmQgQ29uZmx1ZW5jZSBDbG91ZC4iCiAgICAgICAgfQoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgQzQgTGV2ZWwgMiAtIENvbnRhaW5lciBEaWFncmFtCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICBjb250YWluZXIgdG9vbGtpdE9yY2hlc3RyYXRvciAiQ29udGFpbmVyX0RpYWdyYW0iIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGluY2x1ZGUgdGVhbVJlcG9zCiAgICAgICAgICAgIGF1dG9MYXlvdXQgdGIKICAgICAgICAgICAgdGl0bGUgIkM0IExldmVsIDIgLSBDb250YWluZXIgRGlhZ3JhbTogQXVkaVJFRCBUb29sa2l0IE9yY2hlc3RyYXRvciIKICAgICAgICAgICAgZGVzY3JpcHRpb24gIlNob3dzIHRoZSByZXVzYWJsZSBHaXRIdWIgQWN0aW9ucyBjb250YWluZXJzIHRoYXQgbWFrZSB1cCB0aGUgdG9vbGtpdDogdGhlIHdvcmtmbG93IG9yY2hlc3RyYXRvciwgZG9jIHN5bmMsIHRlc3QgY29sbGVjdGlvbiwgbWV0YWRhdGEga2l0LCBhbmQgQ29uZmx1ZW5jZSBzeW5jLiIKICAgICAgICB9CgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBEZXBsb3ltZW50IERpYWdyYW0KICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIGRlcGxveW1lbnQgKiBwcm9kdWN0aW9uICJEZXBsb3ltZW50X0RpYWdyYW0iIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGF1dG9MYXlvdXQgbHIKICAgICAgICAgICAgdGl0bGUgIkRlcGxveW1lbnQgRGlhZ3JhbTogQXVkaVJFRCBUb29sa2l0IE9yY2hlc3RyYXRvciAoUHJvZHVjdGlvbikiCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJTaG93cyB3aGVyZSBlYWNoIHRvb2xraXQgY29tcG9uZW50IHJ1bnMgLSBhbGwgam9icyBleGVjdXRlIG9uIEdpdEh1YiBBY3Rpb25zIHJ1bm5lcnMgd2l0aGluIHRoZSBSRUQtSW50ZXJuYWwtRGV2ZWxvcG1lbnQgb3JnYW5pc2F0aW9uLiIKICAgICAgICB9CgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBTdHlsZXMKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIHN0eWxlcyB7CiAgICAgICAgICAgIGVsZW1lbnQgIkFkZGVkIEVudGl0eSIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjQUVENTgxCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiVXBkYXRlZCBFbnRpdHkiIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgI0ZCQzAyRAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkludGVybmFsIFN5c3RlbSIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjMDBiY2Q0CiAgICAgICAgICAgICAgICBjb2xvciAjZmZmZmZmCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiRXh0ZXJuYWwgU3lzdGVtIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM2NDY0NjQKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJBdWRpIFVzZXIiIHsKICAgICAgICAgICAgICAgIHNoYXBlIFBlcnNvbgogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjNjQ2NDY0CiAgICAgICAgICAgICAgICBjb2xvciAjZmZmZmZmCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiQXV0aG9ycyIgewogICAgICAgICAgICAgICAgc2hhcGUgUGVyc29uCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMxMDQ3ODYKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJQZXJzb24iIHsKICAgICAgICAgICAgICAgIHNoYXBlIFBlcnNvbgogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkNvbXBvbmVudCIgewogICAgICAgICAgICAgICAgc2hhcGUgQ29tcG9uZW50CiAgICAgICAgICAgIH0KICAgICAgICB9CgogICAgICAgIHRoZW1lcyBodHRwczovL3N0YXRpYy5zdHJ1Y3R1cml6ci5jb20vdGhlbWVzL2dvb2dsZS1jbG91ZC12MS41L2ljb25zLmpzb24KICAgIH0KCiAgICBjb25maWd1cmF0aW9uIHsKICAgICAgICBzY29wZSBub25lCiAgICB9Cn0=",
+    "structurizr.inspection.error" : "62",
+    "structurizr.dsl" : "d29ya3NwYWNlICJBdWRpUkVEIFRvb2xraXQgT3JjaGVzdHJhdG9yIiAiUmV1c2FibGUgR2l0SHViIEFjdGlvbnMgd29ya2Zsb3cgb3JjaGVzdHJhdGluZyBkb2Mgc3luYywgdGVzdCBjb2xsZWN0aW9uLCBhbmQgbWV0YWRhdGEgYWdncmVnYXRpb24gYWNyb3NzIHRlYW0gcmVwb3MuIiB7CgogICAgIWlkZW50aWZpZXJzIGhpZXJhcmNoaWNhbAoKICAgIG1vZGVsIHsKCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIFBlb3BsZSAvIEFjdG9ycwogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgZGV2ZWxvcGVyID0gcGVyc29uICJBdWRpIERldmVsb3BlciIgIkRldmVsb3BlciB3aG9zZSBDSS9DRCBwaXBlbGluZSBpbnZva2VzIHRoZSB0b29sa2l0IHRvIHN5bmMgZG9jcyBhbmQgbWV0cmljcy4iIHsKICAgICAgICAgICAgdGFncyAiQXVkaSBFbnRlcnByaXNlIFVzZXIiCiAgICAgICAgfQoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgRXh0ZXJuYWwgU3lzdGVtcyAtIENhbGxlcnMKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIHRlYW1SZXBvcyA9IHNvZnR3YXJlU3lzdGVtICJUZWFtIEdpdEh1YiBSZXBvc2l0b3JpZXMiICJUZWFtIHJlcG9zaXRvcmllcyB0aGF0IGludm9rZSB0aGUgdG9vbGtpdCB2aWEgd29ya2Zsb3dfY2FsbCBvciBkYWlseSBzY2hlZHVsZS4iIHsKICAgICAgICAgICAgdGFncyAiSW50ZXJuYWwgU3lzdGVtIgogICAgICAgIH0KCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIEV4dGVybmFsIFN5c3RlbXMgLSBEZXN0aW5hdGlvbnMKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIHJlZERvY3NQb3J0YWwgPSBzb2Z0d2FyZVN5c3RlbSAiQXVkaSBSRUQgRG9jdW1lbnRhdGlvbiBQb3J0YWwiICJDZW50cmFsIGh1YiBmb3Igc3RhbmRhcmRzLCBzZWN1cml0eSBpbnRlbGxpZ2VuY2UsIGRlcGVuZGVuY3kgdHJhY2tpbmcsIGFuZCB0ZWNoIHJhZGFyIHdpdGhpbiBBdWRpIFJFRC4iIHsKICAgICAgICAgICAgdGFncyAiSW50ZXJuYWwgU3lzdGVtIgogICAgICAgIH0KCiAgICAgICAgdndnb2FDb25mbHVlbmNlQ2xvdWQgPSBlbGVtZW50ICJWV0dPQSBDbG91ZCBDb25mbHVlbmNlIiAiQ29uZmx1ZW5jZSBTcGFjZSIgIlZXR09BIGVudGVycHJpc2UgQ29uZmx1ZW5jZSB3aWtpLiIgewogICAgICAgICAgICB0YWdzICJFeHRlcm5hbCBTeXN0ZW0iCiAgICAgICAgfQoKICAgICAgICBtc2lDb25mbHVlbmNlID0gZWxlbWVudCAiQXVkaSBNU0kgQ29uZmx1ZW5jZSIgIkNvbmZsdWVuY2UgU3BhY2UiICJBdWRpIE1TSSBDb25mbHVlbmNlIHNwYWNlLiIgewogICAgICAgICAgICB0YWdzICJFeHRlcm5hbCBTeXN0ZW0iCiAgICAgICAgfQoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgTWFpbiBTb2Z0d2FyZSBTeXN0ZW0KICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IgPSBzb2Z0d2FyZVN5c3RlbSAiQXVkaVJFRCBUb29sa2l0IE9yY2hlc3RyYXRvciIgIlJldXNhYmxlIEdpdEh1YiBBY3Rpb25zIHdvcmtmbG93IG9yY2hlc3RyYXRpbmcgZG9jIHN5bmMsIHRlc3QgY29sbGVjdGlvbiwgYW5kIG1ldGFkYXRhIHB1Ymxpc2hpbmcgZm9yIHRlYW0gcmVwb3MuIiB7CiAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIKCiAgICAgICAgICAgICMg4pSA4pSAIENvbnRhaW5lcnMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACgogICAgICAgICAgICB3b3JrZmxvd09yY2hlc3RyYXRvciA9IGNvbnRhaW5lciAiV29ya2Zsb3cgT3JjaGVzdHJhdG9yIiAiQ29yZSB3b3JrZmxvdyAoYXVkaXJlZC10b29raXQueW1sKS4gVmFsaWRhdGVzIGlucHV0cywgZGV0ZWN0cyBwcm9qZWN0IHR5cGUsIGFuZCBzZXF1ZW5jZXMgZG93bnN0cmVhbSBqb2JzLiIgIkdpdEh1YiBBY3Rpb25zIFJldXNhYmxlIFdvcmtmbG93IiB7CiAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiCgogICAgICAgICAgICAgICAgaW5wdXRWYWxpZGF0aW9uID0gY29tcG9uZW50ICJJbnB1dCBWYWxpZGF0aW9uIEpvYiIgIlZhbGlkYXRlcyByZXF1aXJlZCBpbnB1dHMgYW5kIHNlY3JldHMgYmVmb3JlIGRvd25zdHJlYW0gam9icyBydW4uIiAiR2l0SHViIEFjdGlvbnMgSm9iIiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIHByb2plY3REZXRlY3Rpb24gPSBjb21wb25lbnQgIlByb2plY3QgVHlwZSBEZXRlY3Rpb24gSm9iIiAiUmVzb2x2ZXMgYXBwX3R5cGUgZnJvbSBpbnB1dCBvciBhdXRvLWRldGVjdHMgZnJvbSBDeXByZXNzL0plc3QgY29uZmlnLiIgIkdpdEh1YiBBY3Rpb25zIEpvYiIgewogICAgICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIsICJDb21wb25lbnQiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBhcHBUeXBlUHJvZmlsZXMgPSBjb21wb25lbnQgIkFwcCBUeXBlIFByb2ZpbGVzIENvbmZpZyIgIk1hcHMgYXBwX3R5cGUgdG8gZGVzdGluYXRpb24gcGF0aCwgYnJhbmNoLCBhbmQgTVNJIHBhcmVudCBwYWdlIElELiIgIllBTUwgQ29uZmlndXJhdGlvbiIgewogICAgICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIsICJDb21wb25lbnQiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBvYnNlcnZhYmlsaXR5U3VtbWFyeSA9IGNvbXBvbmVudCAiT2JzZXJ2YWJpbGl0eSBTdW1tYXJ5IEpvYiIgIkNhcHR1cmVzIGFuZCBlbWl0cyBmaW5hbCBzdGF0dXMgb2YgYWxsIHdvcmtmbG93IGpvYnMuIiAiR2l0SHViIEFjdGlvbnMgSm9iIiB7CiAgICAgICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IiwgIkNvbXBvbmVudCIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQoKICAgICAgICAgICAgZG9jU3luY0FjdGlvbiA9IGNvbnRhaW5lciAiRG9jIFN5bmMgQWN0aW9uIiAiVmFsaWRhdGVzIGRvY3MsIGdlbmVyYXRlcyBTdHJ1Y3R1cml6ciBkaWFncmFtcywgZW1iZWRzIENJIG1ldHJpY3MsIGFuZCBwdXNoZXMgdG8gUkVEIERvY3MgUG9ydGFsLiIgImF1ZHJlZF9kb2NzeW5jX2FjdGlvbiAvIGF1ZGlyZWRfc3RydWN0dXJpenJfYWN0aW9uIiB7CiAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiCgogICAgICAgICAgICAgICAgbWR4VmFsaWRhdG9yID0gY29tcG9uZW50ICJNRFggVmFsaWRhdG9yIiAiVmFsaWRhdGVzIE1EWCBhbmQgTWVybWFpZCBjb250ZW50IGJlZm9yZSBzeW5jLiIgIk5vZGUuanMgLyBDTEkiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgc3RydWN0dXJpenJSZW5kZXJlciA9IGNvbXBvbmVudCAiU3RydWN0dXJpenIgUmVuZGVyZXIiICJHZW5lcmF0ZXMgd29ya3NwYWNlLmpzb24gYW5kIFBORyBkaWFncmFtcyBmcm9tIHdvcmtzcGFjZS5kc2wgZmlsZXMuIiAiYXVkaXJlZF9zdHJ1Y3R1cml6cl9hY3Rpb24iIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgbWV0cmljc0luamVjdG9yID0gY29tcG9uZW50ICJNZXRyaWNzIEluamVjdG9yIiAiSW5qZWN0cyBDSSBjb3ZlcmFnZSBzY29yZXMgaW50byBwcm9qZWN0X21ldHJpY3MubWR4LiIgIkJhc2ggLyBqcSIgewogICAgICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIsICJDb21wb25lbnQiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBkb2NQdWJsaXNoZXIgPSBjb21wb25lbnQgIkRvYyBQdWJsaXNoZXIiICJDb3BpZXMgdmFsaWRhdGVkIGRvY3MgdG8gdGhlIHByb2ZpbGUtcmVzb2x2ZWQgYnJhbmNoIGluIFJFRCBEb2NzIFBvcnRhbC4iICJhdWRyZWRfZG9jc3luY19hY3Rpb24iIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CgogICAgICAgICAgICB0ZXN0Q29sbGVjdGlvbktpdCA9IGNvbnRhaW5lciAiVGVzdCBDb2xsZWN0aW9uIEtpdCIgIkNvbGxlY3RzIEN5cHJlc3MgYW5kIEplc3QgY292ZXJhZ2UgYXJ0aWZhY3RzIGFuZCBzdGFnZXMgdGhlbSBhcyBhIGRhdGEtcmVwb3J0LiIgImF1ZGktcmVkLWNvbGxlY3Rpb24ta2l0IiB7CiAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiCgogICAgICAgICAgICAgICAgY3lwcmVzc1N5bmMgPSBjb21wb25lbnQgIkN5cHJlc3MgU3luYyBKb2IiICJEb3dubG9hZHMgQ3lwcmVzcyBjb3ZlcmFnZSBhcnRpZmFjdHMgZm9yIGFnZ3JlZ2F0aW9uLiIgIkdpdEh1YiBBY3Rpb25zIEpvYiIgewogICAgICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIsICJDb21wb25lbnQiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBqZXN0U3luYyA9IGNvbXBvbmVudCAiSmVzdCBTeW5jIEpvYiIgIkRvd25sb2FkcyBKZXN0IGNvdmVyYWdlIHN1bW1hcnkgZm9yIGFnZ3JlZ2F0aW9uLiIgIkdpdEh1YiBBY3Rpb25zIEpvYiIgewogICAgICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIsICJDb21wb25lbnQiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBjb2xsZWN0aW9uS2l0QWN0aW9uID0gY29tcG9uZW50ICJDb2xsZWN0aW9uIEtpdCBBY3Rpb24iICJBZ2dyZWdhdGVzIEplc3QsIEN5cHJlc3MsIGFuZCBMaWdodGhvdXNlIHJlc3VsdHMgaW50byBhIHVuaWZpZWQgZGF0YS1yZXBvcnQuIiAiYXVkaS1yZWQtY29sbGVjdGlvbi1raXQiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CgogICAgICAgICAgICBtZXRhZGF0YUtpdCA9IGNvbnRhaW5lciAiTWV0YWRhdGEgS2l0IiAiQ29sbGVjdHMgcmVwb3NpdG9yeSBtZXRhZGF0YSBhbmQgYWdncmVnYXRlcyBpdCBpbnRvIHJlcG9ydC5qc29uLiIgImF1ZGktcmVkLWFwcC1tZXRhZGF0YS1raXQiIHsKICAgICAgICAgICAgICAgIHRhZ3MgIkFkZGVkIEVudGl0eSIKCiAgICAgICAgICAgICAgICBtZXRhZGF0YUNvbGxlY3RvciA9IGNvbXBvbmVudCAiTWV0YWRhdGEgQ29sbGVjdG9yIiAiUmVhZHMgcGFja2FnZS5qc29uIGFuZCByZXNvbHZlcyB0ZWFtIG93bmVyc2hpcCBhbmQgbGlmZWN5Y2xlIHN0YWdlLiIgImF1ZGktcmVkLWFwcC1tZXRhZGF0YS1raXQiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgcmVwb3J0UHVibGlzaGVyID0gY29tcG9uZW50ICJSZXBvcnQgUHVibGlzaGVyIiAiQ29tbWl0cyB0aGUgYWdncmVnYXRlZCByZXBvcnQuanNvbiBlbnRyeSB0byBSRUQgRG9jcyBQb3J0YWwuIiAiR2l0IC8gR2l0SHViIEFjdGlvbnMiIHsKICAgICAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiLCAiQ29tcG9uZW50IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CgogICAgICAgICAgICBjb25mbHVlbmNlU3luY0FjdGlvbiA9IGNvbnRhaW5lciAiQ29uZmx1ZW5jZSBTeW5jIEFjdGlvbiIgIlN5bmNzIGRvY3VtZW50YXRpb24gcGFnZXMgdG8gVldHT0EgQ29uZmx1ZW5jZSBDbG91ZC4iICJhdWRpcmVkX2NvbmZsdWVuY2VfY2xvdWRfYWN0aW9uIiB7CiAgICAgICAgICAgICAgICB0YWdzICJBZGRlZCBFbnRpdHkiCiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIG1zaUFjdGlvbiA9IGNvbnRhaW5lciAiTVNJIFN5bmMgQWN0aW9uIiAiU3luY3MgZG9jdW1lbnRhdGlvbiBwYWdlcyB0byBBdWRpIE1TSSBDb25mbHVlbmNlLiIgImF1ZGlyZWRfbXNpX2FjdGlvbiIgewogICAgICAgICAgICAgICAgdGFncyAiQWRkZWQgRW50aXR5IgogICAgICAgICAgICB9CiAgICAgICAgfQoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgUmVsYXRpb25zaGlwcyAtIENvbnRleHQgbGV2ZWwKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAoKICAgICAgICAjIEludm9jYXRpb24KICAgICAgICBkZXZlbG9wZXIgLT4gdGVhbVJlcG9zICJbR2l0IHB1c2ggLyBtZXJnZV0gXG4gQ29tbWl0cyBjb2RlLCBkb2N1bWVudGF0aW9uLCBhbmQgdGVzdCByZXN1bHRzIHRvIG1haW4gYnJhbmNoIFxuW0dpdEh1Yl0iCiAgICAgICAgdGVhbVJlcG9zIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IgIlt3b3JrZmxvd19jYWxsIC8gc2NoZWR1bGVdIFxuIEludm9rZXMgdG9vbGtpdCBhcyBhIHJldXNhYmxlIHdvcmtmbG93IGFmdGVyIENJL0NEIGNvbXBsZXRpb24gb3Igb24gZGFpbHkgY3JvbiAoOXBtIEVUKSBcbltHaXRIdWIgQWN0aW9uc10iCgogICAgICAgICMgRGVzdGluYXRpb25zCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvciAtPiByZWREb2NzUG9ydGFsICJbR2l0IGNvbW1pdF0gXG4gUHVzaGVzIHN5bmNlZCBkb2N1bWVudGF0aW9uLCBhcmNoaXRlY3R1cmUgZGlhZ3JhbXMsIHRlc3QgbWV0cmljcywgYW5kIGRlcGVuZGVuY3kgcmVwb3J0cyBcbltET0NfU1lOQ19LRVkgLyBHaXRdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IgLT4gdndnb2FDb25mbHVlbmNlQ2xvdWQgIltIVFRQUyBSRVNUXSBcbiBTeW5jcyBkb2N1bWVudGF0aW9uIHBhZ2VzIHRvIFZXR09BIENvbmZsdWVuY2UgXG5bQ29uZmx1ZW5jZSBBUEkgVG9rZW5dIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IgLT4gbXNpQ29uZmx1ZW5jZSAiW0hUVFBTIFJFU1RdIFxuIFN5bmNzIGRvY3VtZW50YXRpb24gcGFnZXMgdG8gTVNJIENvbmZsdWVuY2UgXG5bTVNJIEFQSSBUb2tlbl0iCgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBSZWxhdGlvbnNoaXBzIC0gQ29udGFpbmVyIGxldmVsCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgIyBPcmNoZXN0cmF0aW9uIHNlcXVlbmNlCiAgICAgICAgdGVhbVJlcG9zIC0+IHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IgIltJbnZva2VzXSBcbiBDYWxscyB0aGUgbWFpbiB3b3JrZmxvdyBvcmNoZXN0cmF0b3IgcmV1c2FibGUgd29ya2Zsb3cgXG5bR2l0SHViIEFjdGlvbnNdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uICJbVHJpZ2dlcnNdIFxuIEFmdGVyIGlucHV0IHZhbGlkYXRpb24gYW5kIHByb2plY3QgdHlwZSBkZXRlY3Rpb24gXG5bR2l0SHViIEFjdGlvbnNdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci50ZXN0Q29sbGVjdGlvbktpdCAiW1RyaWdnZXJzXSBcbiBQYXJhbGxlbCB0byBkb2Mgc3luYyBcbltHaXRIdWIgQWN0aW9uc10iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci53b3JrZmxvd09yY2hlc3RyYXRvciAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLm1ldGFkYXRhS2l0ICJbVHJpZ2dlcnNdIFxuIEFmdGVyIHRlc3QgY29sbGVjdGlvbiBjb21wbGV0ZXMgXG5bR2l0SHViIEFjdGlvbnNdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci5jb25mbHVlbmNlU3luY0FjdGlvbiAiW1RyaWdnZXJzXSBcbiBBZnRlciBkb2Mgc3luYyBpZiBlbmFibGVkIFxuW0dpdEh1YiBBY3Rpb25zXSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IubXNpQWN0aW9uICJbVHJpZ2dlcnNdIFxuIEFmdGVyIGRvYyBzeW5jIGlmIGVuYWJsZWQgXG5bR2l0SHViIEFjdGlvbnNdIgoKICAgICAgICAjIFRlYW0gcmVwbyBwcm92aWRlcyBhcnRpZmFjdHMgdG8gY29sbGVjdGlvbiBraXQKICAgICAgICB0ZWFtUmVwb3MgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci50ZXN0Q29sbGVjdGlvbktpdCAiW3dvcmtmbG93X3J1biBhcnRpZmFjdF0gXG4gQ0kvQ0QgcnVuIHByb2R1Y2VzIEplc3QsIEN5cHJlc3MsIExpZ2h0aG91c2UgY292ZXJhZ2UgYXJ0aWZhY3RzIFxuW0dpdEh1YiBBY3Rpb25zIEFydGlmYWN0XSIKCiAgICAgICAgIyBEb2Mgc3luYyBkZXN0aW5hdGlvbgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IuZG9jU3luY0FjdGlvbiAtPiByZWREb2NzUG9ydGFsICJbR2l0IGNvbW1pdF0gXG4gUHVzaGVzIGRvY3MgZm9sZGVyIHRvIHByb2ZpbGUtcmVzb2x2ZWQgYnJhbmNoIChkb2NzLXN5bmMvZmVhdHVyZS1hcHBzLCBkb2NzLXN5bmMvYmFja2VuZC1zZXJ2aWNlcywgZXRjLikgXG5bRE9DX1NZTkNfS0VZIC8gcnN5bmMgKyBHaXRdIgoKICAgICAgICAjIE1ldGFkYXRhIGtpdCBkZXN0aW5hdGlvbgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IubWV0YWRhdGFLaXQgLT4gcmVkRG9jc1BvcnRhbCAiW0dpdCBjb21taXRdIFxuIFVwZGF0ZXMgcmVwb3J0Lmpzb24gZW50cnkgZm9yIHRoaXMgcmVwb3NpdG9yeSBcbltET0NfU1lOQ19LRVkgLyBHaXRdIgoKICAgICAgICAjIENvbmZsdWVuY2Ugc3luYyBkZXN0aW5hdGlvbgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IuY29uZmx1ZW5jZVN5bmNBY3Rpb24gLT4gdndnb2FDb25mbHVlbmNlQ2xvdWQgIltIVFRQUyBSRVNUXSBcbiBDcmVhdGVzIG9yIHVwZGF0ZXMgZG9jdW1lbnRhdGlvbiBwYWdlcyBcbltDb25mbHVlbmNlIEFQSSBUb2tlbl0iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci5tc2lBY3Rpb24gLT4gbXNpQ29uZmx1ZW5jZSAiW0hUVFBTIFJFU1RdIFxuIENyZWF0ZXMgb3IgdXBkYXRlcyBNU0kgZG9jdW1lbnRhdGlvbiBwYWdlcyBcbltNU0kgQVBJIFRva2VuXSIKCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIFJlbGF0aW9uc2hpcHMgLSBDb21wb25lbnQgbGV2ZWwKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAoKICAgICAgICAjIE9yY2hlc3RyYXRvciBpbnRlcm5hbCBmbG93CiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci53b3JrZmxvd09yY2hlc3RyYXRvci5pbnB1dFZhbGlkYXRpb24gLT4gdG9vbGtpdE9yY2hlc3RyYXRvci53b3JrZmxvd09yY2hlc3RyYXRvci5wcm9qZWN0RGV0ZWN0aW9uICJbVHJpZ2dlcnNdIFxuIFBhc3NlcyB2YWxpZGF0ZWQgaW5wdXRzIGRvd25zdHJlYW0gXG5bR2l0SHViIEFjdGlvbnNdIgogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IucHJvamVjdERldGVjdGlvbiAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLndvcmtmbG93T3JjaGVzdHJhdG9yLmFwcFR5cGVQcm9maWxlcyAiW1JlYWRzXSBcbiBSZXNvbHZlcyBkZXN0aW5hdGlvbiBwYXRoLCBicmFuY2gsIGFuZCBNU0kgcGFyZW50IHBhZ2UgSUQgXG5bRmlsZSBTeXN0ZW1dIgoKICAgICAgICAjIERvYyBzeW5jIGludGVybmFsIGZsb3cKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLmRvY1N5bmNBY3Rpb24ubWR4VmFsaWRhdG9yIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IuZG9jU3luY0FjdGlvbi5zdHJ1Y3R1cml6clJlbmRlcmVyICJbU2VxdWVuY2VzXSBcbiBNRFggdmFsaWRhdGlvbiBtdXN0IHBhc3MgYmVmb3JlIGRpYWdyYW0gZ2VuZXJhdGlvbiBcbltHaXRIdWIgQWN0aW9uc10iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uLnN0cnVjdHVyaXpyUmVuZGVyZXIgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uLm1ldHJpY3NJbmplY3RvciAiW1NlcXVlbmNlc10gXG4gRGlhZ3JhbXMgZ2VuZXJhdGVkIGJlZm9yZSBtZXRyaWNzIGluamVjdGlvbiBcbltHaXRIdWIgQWN0aW9uc10iCiAgICAgICAgdG9vbGtpdE9yY2hlc3RyYXRvci5kb2NTeW5jQWN0aW9uLm1ldHJpY3NJbmplY3RvciAtPiB0b29sa2l0T3JjaGVzdHJhdG9yLmRvY1N5bmNBY3Rpb24uZG9jUHVibGlzaGVyICJbU2VxdWVuY2VzXSBcbiBFbnJpY2hlZCBkb2NzIGZvbGRlciBwdXNoZWQgdG8gcG9ydGFsIFxuW0dpdEh1YiBBY3Rpb25zXSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLmRvY1N5bmNBY3Rpb24uZG9jUHVibGlzaGVyIC0+IHJlZERvY3NQb3J0YWwgIltHaXQgY29tbWl0XSBcbiBQdXNoZXMgdmFsaWRhdGVkIGFuZCBlbnJpY2hlZCBkb2NzIHRvIHBvcnRhbCByZXBvc2l0b3J5IFxuW0RPQ19TWU5DX0tFWSAvIHJzeW5jICsgR2l0XSIKCiAgICAgICAgIyBUZXN0IGNvbGxlY3Rpb24gaW50ZXJuYWwgZmxvdwogICAgICAgIHRvb2xraXRPcmNoZXN0cmF0b3IudGVzdENvbGxlY3Rpb25LaXQuY3lwcmVzc1N5bmMgLT4gdG9vbGtpdE9yY2hlc3RyYXRvci50ZXN0Q29sbGVjdGlvbktpdC5jb2xsZWN0aW9uS2l0QWN0aW9uICJbUHJvdmlkZXNdIFxuIEN5cHJlc3MgY292ZXJhZ2UgYXJ0aWZhY3RzIFxuW0dpdEh1YiBBY3Rpb25zIEFydGlmYWN0XSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLnRlc3RDb2xsZWN0aW9uS2l0Lmplc3RTeW5jIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IudGVzdENvbGxlY3Rpb25LaXQuY29sbGVjdGlvbktpdEFjdGlvbiAiW1Byb3ZpZGVzXSBcbiBKZXN0IGNvdmVyYWdlIGFydGlmYWN0cyBcbltHaXRIdWIgQWN0aW9ucyBBcnRpZmFjdF0iCgogICAgICAgICMgTWV0YWRhdGEga2l0IGludGVybmFsIGZsb3cKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLm1ldGFkYXRhS2l0Lm1ldGFkYXRhQ29sbGVjdG9yIC0+IHRvb2xraXRPcmNoZXN0cmF0b3IubWV0YWRhdGFLaXQucmVwb3J0UHVibGlzaGVyICJbUHJvZHVjZXNdIFxuIEFnZ3JlZ2F0ZWQgcmVwb3NpdG9yeSBlbnRyeSBmb3IgcmVwb3J0Lmpzb24gXG5bSW4tbWVtb3J5XSIKICAgICAgICB0b29sa2l0T3JjaGVzdHJhdG9yLm1ldGFkYXRhS2l0LnJlcG9ydFB1Ymxpc2hlciAtPiByZWREb2NzUG9ydGFsICJbR2l0IGNvbW1pdF0gXG4gQ29tbWl0cyByZXBvcnQuanNvbiB1cGRhdGUgXG5bRE9DX1NZTkNfS0VZIC8gR2l0XSIKCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIERlcGxveW1lbnQgRW52aXJvbm1lbnQKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIHByb2R1Y3Rpb24gPSBkZXBsb3ltZW50RW52aXJvbm1lbnQgIlByb2R1Y3Rpb24iIHsKCiAgICAgICAgICAgIGRlcGxveW1lbnROb2RlICJBdWRpIFJFRCBHaXRodWIgSW5zdGFuY2UiIHsKICAgICAgICAgICAgICAgIHNvZnR3YXJlU3lzdGVtSW5zdGFuY2UgcmVkRG9jc1BvcnRhbCAKICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgZGVwbG95bWVudE5vZGUgIkF1ZGlSRUQgR2l0aHViIEFjdGlvbnMgUnVubmVycyIgewogICAgICAgICAgICAgICAgICAgIGNvbnRhaW5lckluc3RhbmNlIHRvb2xraXRPcmNoZXN0cmF0b3Iud29ya2Zsb3dPcmNoZXN0cmF0b3IKICAgICAgICAgICAgICAgICAgICBjb250YWluZXJJbnN0YW5jZSB0b29sa2l0T3JjaGVzdHJhdG9yLmRvY1N5bmNBY3Rpb24KICAgICAgICAgICAgICAgICAgICBjb250YWluZXJJbnN0YW5jZSB0b29sa2l0T3JjaGVzdHJhdG9yLnRlc3RDb2xsZWN0aW9uS2l0CiAgICAgICAgICAgICAgICAgICAgY29udGFpbmVySW5zdGFuY2UgdG9vbGtpdE9yY2hlc3RyYXRvci5tZXRhZGF0YUtpdAogICAgICAgICAgICAgICAgICAgIGNvbnRhaW5lckluc3RhbmNlIHRvb2xraXRPcmNoZXN0cmF0b3IuY29uZmx1ZW5jZVN5bmNBY3Rpb24KICAgICAgICAgICAgICAgICAgICBjb250YWluZXJJbnN0YW5jZSB0b29sa2l0T3JjaGVzdHJhdG9yLm1zaUFjdGlvbgogICAgICAgICAgICAgICAgfSAgIAogICAgICAgICAgICB9CiAgICAgICAgICAgIGRlcGxveW1lbnROb2RlICJPbmVBdWRpIEFHIEdpdGh1YiBJbnN0YW5jZSIgewogICAgICAgICAgICAgICAgc29mdHdhcmVTeXN0ZW1JbnN0YW5jZSB0ZWFtUmVwb3MKICAgICAgICAgICAgfQoKICAgICAgICAgICAgZGVwbG95bWVudE5vZGUgIk15QXVkaSBBcHAgR2l0aHViIEluc3RhbmNlIiB7CiAgICAgICAgICAgICAgICBzb2Z0d2FyZVN5c3RlbUluc3RhbmNlIHRlYW1SZXBvcwogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfQoKICAgIHZpZXdzIHsKCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIEM0IExldmVsIDEgLSBTeXN0ZW0gQ29udGV4dAogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgc3lzdGVtQ29udGV4dCB0b29sa2l0T3JjaGVzdHJhdG9yICJDb250ZXh0X0RpYWdyYW0iIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGluY2x1ZGUgdGVhbVJlcG9zIGRldmVsb3BlcgogICAgICAgICAgICBpbmNsdWRlIHJlZERvY3NQb3J0YWwKICAgICAgICAgICAgaW5jbHVkZSB2d2dvYUNvbmZsdWVuY2VDbG91ZCBtc2lDb25mbHVlbmNlCiAgICAgICAgICAgIGF1dG9MYXlvdXQgbHIKICAgICAgICAgICAgdGl0bGUgIkM0IExldmVsIDEgLSBTeXN0ZW0gQ29udGV4dDogQXVkaVJFRCBUb29sa2l0IE9yY2hlc3RyYXRvciIKICAgICAgICAgICAgZGVzY3JpcHRpb24gIlRlYW0gcmVwb3NpdG9yaWVzIGludm9rZSB0aGUgQXVkaVJFRCBUb29sa2l0IGFmdGVyIENJL0NEIGNvbXBsZXRpb24uIFRoZSB0b29sa2l0IG9yY2hlc3RyYXRlcyBkb2N1bWVudGF0aW9uIHN5bmMsIHRlc3QgZGF0YSBjb2xsZWN0aW9uLCBhbmQgbWV0YWRhdGEgYWdncmVnYXRpb24gLSBwdWJsaXNoaW5nIG91dHB1dHMgdG8gdGhlIFJFRCBEb2N1bWVudGF0aW9uIFBvcnRhbCBhbmQgQ29uZmx1ZW5jZSBDbG91ZC4iCiAgICAgICAgfQoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgQzQgTGV2ZWwgMiAtIENvbnRhaW5lciBEaWFncmFtCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICBjb250YWluZXIgdG9vbGtpdE9yY2hlc3RyYXRvciAiQ29udGFpbmVyX0RpYWdyYW0iIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGluY2x1ZGUgdGVhbVJlcG9zCiAgICAgICAgICAgIGF1dG9MYXlvdXQgdGIKICAgICAgICAgICAgdGl0bGUgIkM0IExldmVsIDIgLSBDb250YWluZXIgRGlhZ3JhbTogQXVkaVJFRCBUb29sa2l0IE9yY2hlc3RyYXRvciIKICAgICAgICAgICAgZGVzY3JpcHRpb24gIlNob3dzIHRoZSByZXVzYWJsZSBHaXRIdWIgQWN0aW9ucyBjb250YWluZXJzIHRoYXQgbWFrZSB1cCB0aGUgdG9vbGtpdDogdGhlIHdvcmtmbG93IG9yY2hlc3RyYXRvciwgZG9jIHN5bmMsIHRlc3QgY29sbGVjdGlvbiwgbWV0YWRhdGEga2l0LCBhbmQgQ29uZmx1ZW5jZSBzeW5jLiIKICAgICAgICB9CgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBEZXBsb3ltZW50IERpYWdyYW0KICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIGRlcGxveW1lbnQgKiBwcm9kdWN0aW9uICJEZXBsb3ltZW50X0RpYWdyYW0iIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGF1dG9MYXlvdXQgbHIKICAgICAgICAgICAgdGl0bGUgIkRlcGxveW1lbnQgRGlhZ3JhbTogQXVkaVJFRCBUb29sa2l0IE9yY2hlc3RyYXRvciAoUHJvZHVjdGlvbikiCiAgICAgICAgICAgIGRlc2NyaXB0aW9uICJTaG93cyB3aGVyZSBlYWNoIHRvb2xraXQgY29tcG9uZW50IHJ1bnMgLSBhbGwgam9icyBleGVjdXRlIG9uIEdpdEh1YiBBY3Rpb25zIHJ1bm5lcnMgd2l0aGluIHRoZSBSRUQtSW50ZXJuYWwtRGV2ZWxvcG1lbnQgb3JnYW5pc2F0aW9uLiIKICAgICAgICB9CgogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACiAgICAgICAgIyBTdHlsZXMKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgIHN0eWxlcyB7CiAgICAgICAgICAgIGVsZW1lbnQgIkFkZGVkIEVudGl0eSIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjQUVENTgxCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiVXBkYXRlZCBFbnRpdHkiIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgI0ZCQzAyRAogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkludGVybmFsIFN5c3RlbSIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjMDBiY2Q0CiAgICAgICAgICAgICAgICBjb2xvciAjZmZmZmZmCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiRXh0ZXJuYWwgU3lzdGVtIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM2NDY0NjQKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJBdWRpIEVudGVycHJpc2UgVXNlciIgewogICAgICAgICAgICAgICAgc2hhcGUgUGVyc29uCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMxMDQ3ODYKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJDb21wb25lbnQiIHsKICAgICAgICAgICAgICAgIHNoYXBlIENvbXBvbmVudAogICAgICAgICAgICB9CiAgICAgICAgfQogICAgfQoKICAgIGNvbmZpZ3VyYXRpb24gewogICAgICAgIHNjb3BlIG5vbmUKICAgIH0KfQ==",
     "structurizr.inspection.info" : "0",
     "structurizr.inspection.ignore" : "0",
     "structurizr.inspection.warning" : "0"
@@ -664,15 +649,10 @@
           "background" : "#aed581",
           "tag" : "Added Entity"
         }, {
-          "background" : "#646464",
-          "color" : "#ffffff",
-          "shape" : "Person",
-          "tag" : "Audi User"
-        }, {
           "background" : "#104786",
           "color" : "#ffffff",
           "shape" : "Person",
-          "tag" : "Authors"
+          "tag" : "Audi Enterprise User"
         }, {
           "shape" : "Component",
           "tag" : "Component"
@@ -685,15 +665,11 @@
           "color" : "#ffffff",
           "tag" : "Internal System"
         }, {
-          "shape" : "Person",
-          "tag" : "Person"
-        }, {
           "background" : "#fbc02d",
           "tag" : "Updated Entity"
         } ]
       },
-      "terminology" : { },
-      "themes" : [ "https://static.structurizr.com/themes/google-cloud-v1.5/icons.json" ]
+      "terminology" : { }
     },
     "containerViews" : [ {
       "automaticLayout" : {
@@ -705,6 +681,10 @@
       },
       "description" : "Shows the reusable GitHub Actions containers that make up the toolkit: the workflow orchestrator, doc sync, test collection, metadata kit, and Confluence sync.",
       "elements" : [ {
+        "id" : "2",
+        "x" : 0,
+        "y" : 0
+      }, {
         "id" : "3",
         "x" : 0,
         "y" : 0
@@ -717,31 +697,27 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "6",
+        "id" : "7",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "8",
+        "id" : "12",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "13",
+        "id" : "17",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "18",
+        "id" : "21",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "22",
+        "id" : "24",
         "x" : 0,
         "y" : 0
       }, {
         "id" : "25",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "26",
         "x" : 0,
         "y" : 0
       } ],
@@ -750,6 +726,10 @@
       "name" : "Container View: AudiRED Toolkit Orchestrator",
       "order" : 2,
       "relationships" : [ {
+        "id" : "31"
+      }, {
+        "id" : "32"
+      }, {
         "id" : "33"
       }, {
         "id" : "34"
@@ -767,12 +747,8 @@
         "id" : "40"
       }, {
         "id" : "41"
-      }, {
-        "id" : "42"
-      }, {
-        "id" : "43"
       } ],
-      "softwareSystemId" : "7",
+      "softwareSystemId" : "6",
       "title" : "C4 Level 2 - Container Diagram: AudiRED Toolkit Orchestrator"
     } ],
     "deploymentViews" : [ {
@@ -785,6 +761,14 @@
       },
       "description" : "Shows where each toolkit component runs - all jobs execute on GitHub Actions runners within the RED-Internal-Development organisation.",
       "elements" : [ {
+        "id" : "52",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "53",
+        "x" : 0,
+        "y" : 0
+      }, {
         "id" : "54",
         "x" : 0,
         "y" : 0
@@ -797,11 +781,7 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "57",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "58",
+        "id" : "59",
         "x" : 0,
         "y" : 0
       }, {
@@ -809,7 +789,7 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "63",
+        "id" : "64",
         "x" : 0,
         "y" : 0
       }, {
@@ -821,19 +801,15 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "70",
+        "id" : "69",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "71",
+        "id" : "72",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "74",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "75",
+        "id" : "73",
         "x" : 0,
         "y" : 0
       } ],
@@ -842,27 +818,27 @@
       "name" : "Deployment View: Production",
       "order" : 3,
       "relationships" : [ {
-        "id" : "59"
+        "id" : "57"
+      }, {
+        "id" : "58"
       }, {
         "id" : "60"
       }, {
         "id" : "62"
       }, {
-        "id" : "64"
+        "id" : "63"
       }, {
         "id" : "65"
       }, {
         "id" : "67"
       }, {
-        "id" : "69"
+        "id" : "70"
       }, {
-        "id" : "72"
+        "id" : "71"
       }, {
-        "id" : "73"
+        "id" : "74"
       }, {
-        "id" : "76"
-      }, {
-        "id" : "77"
+        "id" : "75"
       } ],
       "title" : "Deployment Diagram: AudiRED Toolkit Orchestrator (Production)"
     } ],
@@ -899,16 +875,14 @@
         "id" : "6",
         "x" : 0,
         "y" : 0
-      }, {
-        "id" : "7",
-        "x" : 0,
-        "y" : 0
       } ],
       "enterpriseBoundaryVisible" : true,
       "key" : "Context_Diagram",
       "name" : "System Context View: AudiRED Toolkit Orchestrator",
       "order" : 1,
       "relationships" : [ {
+        "id" : "26"
+      }, {
         "id" : "27"
       }, {
         "id" : "28"
@@ -916,12 +890,8 @@
         "id" : "29"
       }, {
         "id" : "30"
-      }, {
-        "id" : "31"
-      }, {
-        "id" : "32"
       } ],
-      "softwareSystemId" : "7",
+      "softwareSystemId" : "6",
       "title" : "C4 Level 1 - System Context: AudiRED Toolkit Orchestrator"
     } ]
   }
