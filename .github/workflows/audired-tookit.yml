@@ -78,7 +78,7 @@ on:
         required: false
         default: false
       app_type:
-        description: "Preferred profile key. Supported values: feature_app, backend_service, mobile_app, special_app."
+        description: "Preferred profile key. Supported values: feature_app, backend_service, mobile_app, audired_service, special_app."
         type: string
         required: false
       project_type:
@@ -112,7 +112,7 @@ jobs:
       docs_base_path: ${{ steps.detect.outputs.docs_base_path }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Detect project type
         id: detect
@@ -127,30 +127,32 @@ jobs:
           RESOLVED_APP_TYPE=""
           DOCS_PATH="feature_apps"
 
-          map_legacy_project_type() {
+          resolve_profile_key() {
             case "$1" in
-              frontend-app|frontend_app) echo "feature_app" ;;
+              frontend-app|frontend_app|feature-app|feature_app) echo "feature_app" ;;
               backend-service|backend_service) echo "backend_service" ;;
               mobile-app|mobile_app) echo "mobile_app" ;;
+              audired_service) echo "audired_service" ;;
               special-app|special_app) echo "special_app" ;;
               *) echo "" ;;
             esac
           }
 
+          map_legacy_project_type() {
+            resolve_profile_key "$1"
+          }
+
           validate_app_type() {
-            case "$1" in
-              feature_app|backend_service|mobile_app|special_app) return 0 ;;
-              *) return 1 ;;
-            esac
+            [[ -n "$(resolve_profile_key "$1")" ]]
           }
 
           # app_type takes precedence when set
           if [[ -n "$INPUT_APP_TYPE" ]]; then
             if ! validate_app_type "$INPUT_APP_TYPE"; then
-              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, special_app"
+              echo "::error::Invalid app_type '$INPUT_APP_TYPE'. Supported: feature_app, backend_service, mobile_app, audired_service, special_app"
               exit 1
             fi
-            RESOLVED_APP_TYPE="$INPUT_APP_TYPE"
+            RESOLVED_APP_TYPE="$(resolve_profile_key "$INPUT_APP_TYPE")"
             DETECTION_MODE="app_type"
           elif [[ "$INPUT_TYPE" != "auto-detect" ]]; then
             RESOLVED_APP_TYPE="$(map_legacy_project_type "$INPUT_TYPE")"
@@ -196,6 +198,8 @@ jobs:
 
           case "$RESOLVED_APP_TYPE" in
             backend_service) DOCS_PATH="backend_services" ;;
+            mobile_app) DOCS_PATH="mobile_apps" ;;
+            audired_service) DOCS_PATH="audired_services" ;;
             special_app) DOCS_PATH="special_apps" ;;
             *) DOCS_PATH="feature_apps" ;;
           esac
@@ -221,7 +225,7 @@ jobs:
     needs: [detect_project]
     steps:
       - name: Checkout toolkit config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -307,7 +311,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Eslint check for Docusaurus build compatibility
         run: |
@@ -365,30 +369,52 @@ jobs:
 
       - name: Check if referenced images exist
         run: |
-          find docs/ -type f \( -name "*.md" -o -name "*.mdx" \) -print0 | while IFS= read -r -d '' md_file; do
-                echo "Checking file: $md_file"
-                
-                grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" | while read -r image; do
-                    image=$(echo "$image" | sed 's/[?#].*$//')
-                    if [[ "$image" =~ ^https?:// ]]; then
-                        echo "Skipping external image: $image"
-                        continue
-                    elif [[ "$image" =~ ^/ ]]; then
-                        IMAGE_PATH="$GITHUB_WORKSPACE$image"
-                    else
-                        IMAGE_PATH="$(dirname "$md_file")/$image"
-                    fi
+          folder="${{ inputs.source_file }}"
+          failed=0
 
-                    IMAGE_PATH=$(realpath "$IMAGE_PATH")
+          while IFS= read -r -d '' md_file; do
+            echo "Checking file: $md_file"
 
-                    if [[ ! -f "$IMAGE_PATH" ]]; then
-                        echo "Image '$image' referenced in '$md_file' does not exist at '$IMAGE_PATH'."
-                        exit 1
-                    fi
-                done
-            done
+            while IFS= read -r image; do
+              image=$(echo "$image" | sed 's/[?#].*$//')
+              if [[ -z "$image" ]]; then
+                continue
+              fi
 
-            echo "All images are properly referenced and exist!"
+              if [[ "$image" =~ ^https?:// ]]; then
+                echo "Skipping external image: $image"
+                continue
+              elif [[ "$image" =~ ^/img/ ]]; then
+                IMAGE_PATH="$GITHUB_WORKSPACE/static${image}"
+              elif [[ "$image" =~ ^/ ]]; then
+                IMAGE_PATH="$GITHUB_WORKSPACE${image}"
+              else
+                IMAGE_PATH="$(dirname "$md_file")/$image"
+              fi
+
+              if [[ -f "$IMAGE_PATH" ]]; then
+                continue
+              fi
+
+              # Fallback: resolve against static/ for absolute paths that are web-root based.
+              if [[ "$image" =~ ^/ ]]; then
+                alt_path="$GITHUB_WORKSPACE/static${image}"
+                if [[ -f "$alt_path" ]]; then
+                  continue
+                fi
+              fi
+
+              missing_path=$(realpath -m "$IMAGE_PATH")
+              echo "Image '$image' referenced in '$md_file' does not exist at '$missing_path'."
+              failed=1
+            done < <(grep -oP '!\[.*?\]\(\K(.*?)(?=\))' "$md_file" || true)
+          done < <(find "$folder" -type f \( -name "*.md" -o -name "*.mdx" \) -print0)
+
+          if [[ "$failed" -ne 0 ]]; then
+            exit 1
+          fi
+
+          echo "All images are properly referenced and exist!"
 
       - name: Download collection report artifact
         uses: actions/download-artifact@v4
@@ -542,7 +568,7 @@ jobs:
       docs_branch: ${{ steps.create-docs-folders.outputs.docs_branch }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Collection of metadata from repository
         id: metadata_collection
@@ -553,14 +579,14 @@ jobs:
           workflow_run_id: ${{ github.event.workflow_run.id }}
 
       - name: Checkout AudiRed Doc Sync repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
 
       - name: Checkout toolkit config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -784,14 +810,14 @@ jobs:
     if: ${{ always() && inputs.enable_doc_sync && needs.doc_sync.result == 'success' && (needs.data_sync.result == 'success' || needs.data_sync.result == 'skipped') }}
     steps:
       - name: Checkout AudiRed Doc Sync repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
 
       - name: Checkout toolkit config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -912,7 +938,7 @@ jobs:
       jest_run: ${{ steps.check_script.outputs.exists }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check if Jest test script exists
         id: check_script
@@ -989,7 +1015,7 @@ jobs:
       cypress_run: ${{ steps.check_script.outputs.exists }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check if test:e2e-run-dev script exists
         id: check_script

@@ -36,7 +36,7 @@ The **AudiRED Toolkit** is a centralized GitHub Actions workflow orchestrator th
 ## Key Features
 
 ✅ **Centralized Workflow Management** - Single reusable workflow (`audired-toolkit.yml`) called by consuming repositories  
-✅ **Multi-App-Type Support** - Handle feature apps, backend services, mobile apps, and special tools with unified interface  
+✅ **Multi-App-Type Support** - Handle feature apps, backend services, mobile apps, AudiRED services, and special tools with unified interface  
 ✅ **OIDC-Based Authentication** - GitHub Actions workload identity federation; no long-lived credentials  
 ✅ **Automated Documentation Sync** - Push ARB docs to portal PRs for review and merge  
 ✅ **Security Intelligence** - Integrate SCANOSS for CVE tracking and license compliance  
@@ -139,6 +139,7 @@ For detailed security posture, see [Security Handling Documentation](docs/arb/se
 - **[Architecture Documentation](docs/architecture.md)** - System design and data flow
 - **[ARB Documentation](docs/arb/)** - Architecturally significant review (security, interfaces, decisions)
 - **[Toolkit Setup Guide](docs/toolkit-setup-guide.md)** - Step-by-step integration guide
+- **[Profile Type Onboarding Guide](docs/profile-type-onboarding-guide.md)** - Add a new profile type across toolkit and sync workflows
 - **[API Documentation](docs/arb/service_apis/)** - Workflow inputs/outputs reference
 - **[Security Handling](docs/arb/security/security_handling.mdx)** - Authentication, authorization, threat model
 
