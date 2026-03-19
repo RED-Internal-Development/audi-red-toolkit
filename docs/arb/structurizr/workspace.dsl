@@ -7,11 +7,8 @@ workspace "AudiRED Toolkit Orchestrator" "Reusable GitHub Actions workflow orche
         # ──────────────────────────────────────────
         # People / Actors
         # ──────────────────────────────────────────
-        teamDev = person "Team Developer" "Developer whose CI/CD pipeline invokes the toolkit to sync docs and metrics." {
-            tags "Audi User"
-        }
-        platformTeam = person "Audi RED Platform Team" "Maintains toolkit workflows and app-type configuration profiles." {
-            tags "Authors"
+        developer = person "Audi Developer" "Developer whose CI/CD pipeline invokes the toolkit to sync docs and metrics." {
+            tags "Audi Enterprise User"
         }
 
         # ──────────────────────────────────────────
@@ -117,11 +114,8 @@ workspace "AudiRED Toolkit Orchestrator" "Reusable GitHub Actions workflow orche
         # ──────────────────────────────────────────
 
         # Invocation
-        teamDev -> teamRepos "[Git push / merge] \n Commits code, documentation, and test results to main branch \n[GitHub]"
+        developer -> teamRepos "[Git push / merge] \n Commits code, documentation, and test results to main branch \n[GitHub]"
         teamRepos -> toolkitOrchestrator "[workflow_call / schedule] \n Invokes toolkit as a reusable workflow after CI/CD completion or on daily cron (9pm ET) \n[GitHub Actions]"
-
-        # Platform management
-        platformTeam -> toolkitOrchestrator "[Manages] \n Maintains workflow logic, reusable actions, and app-type profiles \n[GitHub]"
 
         # Destinations
         toolkitOrchestrator -> redDocsPortal "[Git commit] \n Pushes synced documentation, architecture diagrams, test metrics, and dependency reports \n[DOC_SYNC_KEY / Git]"
@@ -209,7 +203,7 @@ workspace "AudiRED Toolkit Orchestrator" "Reusable GitHub Actions workflow orche
         # ──────────────────────────────────────────
         systemContext toolkitOrchestrator "Context_Diagram" {
             include *
-            include teamRepos teamDev platformTeam
+            include teamRepos developer
             include redDocsPortal
             include vwgoaConfluenceCloud msiConfluence
             autoLayout lr
@@ -256,25 +250,15 @@ workspace "AudiRED Toolkit Orchestrator" "Reusable GitHub Actions workflow orche
                 background #646464
                 color #ffffff
             }
-            element "Audi User" {
-                shape Person
-                background #646464
-                color #ffffff
-            }
-            element "Authors" {
+            element "Audi Enterprise User" {
                 shape Person
                 background #104786
                 color #ffffff
-            }
-            element "Person" {
-                shape Person
             }
             element "Component" {
                 shape Component
             }
         }
-
-        themes https://static.structurizr.com/themes/google-cloud-v1.5/icons.json
     }
 
     configuration {
