@@ -112,7 +112,7 @@ jobs:
       docs_base_path: ${{ steps.detect.outputs.docs_base_path }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Detect project type
         id: detect
@@ -225,7 +225,7 @@ jobs:
     needs: [detect_project]
     steps:
       - name: Checkout toolkit config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -311,7 +311,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Eslint check for Docusaurus build compatibility
         run: |
@@ -568,7 +568,7 @@ jobs:
       docs_branch: ${{ steps.create-docs-folders.outputs.docs_branch }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Collection of metadata from repository
         id: metadata_collection
@@ -579,14 +579,14 @@ jobs:
           workflow_run_id: ${{ github.event.workflow_run.id }}
 
       - name: Checkout AudiRed Doc Sync repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
 
       - name: Checkout toolkit config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -810,14 +810,14 @@ jobs:
     if: ${{ always() && inputs.enable_doc_sync && needs.doc_sync.result == 'success' && (needs.data_sync.result == 'success' || needs.data_sync.result == 'skipped') }}
     steps:
       - name: Checkout AudiRed Doc Sync repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
 
       - name: Checkout toolkit config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: RED-Internal-Development/audi-red-toolkit
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -938,7 +938,7 @@ jobs:
       jest_run: ${{ steps.check_script.outputs.exists }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check if Jest test script exists
         id: check_script
@@ -1015,7 +1015,7 @@ jobs:
       cypress_run: ${{ steps.check_script.outputs.exists }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check if test:e2e-run-dev script exists
         id: check_script
