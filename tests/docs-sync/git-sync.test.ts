@@ -11,50 +11,32 @@ const baseInputs: DocsSyncInputs = {
   userName: "audired",
   userActor: "octocat",
   destinationBranch: "docs-sync/feature-apps",
-  destinationBranchExists: true,
   commitMessage: undefined,
   rename: "app-name",
   useRsync: true,
   gitServer: "github.com",
-  githubToken: "token"
+  githubToken: "token",
 };
 
 describe("docs-sync git planning", () => {
-  test("uses a shallow clone for existing destination branches", () => {
-    const plan = buildClonePlan(baseInputs, "/tmp/docs-sync-target", true);
+  test("uses a branch-agnostic shallow clone and branch-specific checkout commands", () => {
+    const plan = buildClonePlan(baseInputs, "/tmp/docs-sync-target");
 
     expect(plan).toMatchObject({
-      branchExists: true,
       cloneArgs: [
-      "clone",
-      "--depth",
-      "1",
-      "--single-branch",
-      "--branch",
-      "docs-sync/feature-apps",
-      "https://x-access-token:token@github.com/RED-Internal-Development/audi-red-documentation.git",
-      "/tmp/docs-sync-target"
-      ]
+        "clone",
+        "--depth",
+        "1",
+        "--no-single-branch",
+        "https://x-access-token:token@github.com/RED-Internal-Development/audi-red-documentation.git",
+        "/tmp/docs-sync-target",
+      ],
+      checkoutExistingArgs: [
+        "checkout",
+        "--track",
+        "origin/docs-sync/feature-apps",
+      ],
+      checkoutNewArgs: ["checkout", "-b", "docs-sync/feature-apps"],
     });
-    expect(plan.checkoutArgs).toBeUndefined();
-  });
-
-  test("uses a shallow main clone before creating a new destination branch", () => {
-    const plan = buildClonePlan({ ...baseInputs, destinationBranchExists: false }, "/tmp/docs-sync-target", false);
-
-    expect(plan).toMatchObject({
-      branchExists: false,
-      cloneArgs: [
-      "clone",
-      "--depth",
-      "1",
-      "--single-branch",
-      "--branch",
-      "main",
-      "https://x-access-token:token@github.com/RED-Internal-Development/audi-red-documentation.git",
-      "/tmp/docs-sync-target"
-      ]
-    });
-    expect(plan.checkoutArgs).toEqual(["checkout", "-b", "docs-sync/feature-apps"]);
   });
 });
