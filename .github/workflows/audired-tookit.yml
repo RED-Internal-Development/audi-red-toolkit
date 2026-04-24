@@ -398,7 +398,7 @@ jobs:
           echo "All images are properly referenced and exist!"
 
       - name: Download collection report artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         continue-on-error: true
         with:
           name: data-report
