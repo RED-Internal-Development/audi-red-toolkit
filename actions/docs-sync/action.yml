@@ -1,0 +1,51 @@
+name: Push validated docs to another repository
+description: Validates markdown/MDX for Confluence compatibility before copying docs into another repository.
+inputs:
+  source_file:
+    description: Source markdown/MDX file or directory from the origin repository. Validation runs before any copy work.
+    required: true
+  destination_repo:
+    description: Destination repository in owner/name form.
+    required: true
+  destination_folder:
+    description: Directory to push the file or directory to.
+    required: false
+  user_email:
+    description: Email for the git commit.
+    required: true
+  user_name:
+    description: Git user name for the commit.
+    required: true
+  user_actor:
+    description: GitHub actor that triggered the pipeline.
+    required: true
+  destination_branch:
+    description: Destination branch to update.
+    required: false
+    default: main
+  destination_branch_create:
+    description: Deprecated. Kept for compatibility; destination_branch is used.
+    required: false
+  commit_message:
+    description: Custom commit message.
+    required: false
+  rename:
+    description: Rename the destination file or directory.
+    required: false
+  use_rsync:
+    description: Copy files/directories using rsync instead of native Node file copy.
+    required: false
+    default: "false"
+  git_server:
+    description: Git server host.
+    required: false
+    default: github.com
+  destination_branch_exists:
+    description: Whether destination_branch already exists in the destination repository.
+    required: false
+runs:
+  using: node24
+  main: dist/index.js
+branding:
+  icon: git-commit
+  color: green

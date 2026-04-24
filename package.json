@@ -1,0 +1,23 @@
+{
+  "name": "audi-red-toolkit-actions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run build:docs-sync",
+    "build:docs-sync": "ncc build actions/docs-sync/src/index.ts --out actions/docs-sync/dist --source-map --license licenses.txt"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/exec": "^3.0.0",
+    "@actions/io": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "@vercel/ncc": "^0.38.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.5"
+  }
+}
