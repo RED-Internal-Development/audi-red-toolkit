@@ -398,7 +398,7 @@ jobs:
           echo "All images are properly referenced and exist!"
 
       - name: Download collection report artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         continue-on-error: true
         with:
           name: data-report
@@ -523,7 +523,7 @@ jobs:
           echo "Using source path: $SOURCE"
 
       - name: Push documentation to Audi RED Portal for syndication
-        uses: ./actions/docs-sync
+        uses: RED-Internal-Development/audi-red-toolkit/actions/docs-sync@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
         with:
@@ -573,14 +573,14 @@ jobs:
           path: toolkit-config
 
       - name: Download metadata artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: metadata-report
           path: metadata-report
 
       - name: Download cypress report artifact
         if: github.event_name == 'schedule' && needs.cypress_sync.outputs.cypress_run == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: audired-cypress-report
           path: audired-cypress-report
@@ -589,14 +589,14 @@ jobs:
         if: |
           (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
           needs.jest_sync.outputs.jest_run == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: audired-jest-report
           path: audired-jest-report
 
       - name: Download collection report artifact
         if: github.event.workflow_run.id != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: audired-collection-report
           path: collection-report
@@ -760,7 +760,7 @@ jobs:
           fi
 
       - name: Upload final report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: data-report
@@ -979,7 +979,7 @@ jobs:
 
       - name: Upload Jest Coverage Report
         if: steps.check_script.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: audired-jest-report
           path: audired-jest-report.json
@@ -1127,7 +1127,7 @@ jobs:
 
       - name: Upload report.json
         if: steps.check_script.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: audired-cypress-report
           path: audired-cypress-report.json
