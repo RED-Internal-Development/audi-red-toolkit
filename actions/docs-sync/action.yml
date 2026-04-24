@@ -40,9 +40,6 @@ inputs:
     description: Git server host.
     required: false
     default: github.com
-  destination_branch_exists:
-    description: Whether destination_branch already exists in the destination repository.
-    required: false
 runs:
   using: node24
   main: dist/index.js

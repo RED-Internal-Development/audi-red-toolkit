@@ -1,7 +1,10 @@
 import * as core from "@actions/core";
 import { stat } from "node:fs/promises";
 
-import { ActionError, isActionError } from "../../../packages/action-common/src/errors.js";
+import {
+  ActionError,
+  isActionError,
+} from "../../../packages/action-common/src/errors.js";
 import { validatePath } from "../../../packages/docs-validation/src/confluence-validation.js";
 import { syncDocs } from "./git-sync.js";
 import { readDocsSyncInputs } from "./inputs.js";
@@ -18,14 +21,13 @@ export async function run(): Promise<void> {
     throw new ActionError(
       "DOCSYNC_INVALID_CONTENT",
       "validate_docs",
-      "Source content contains Confluence-incompatible markdown/MDX. Fix the reported files upstream before docs-sync can copy them."
+      "Source content contains Confluence-incompatible markdown/MDX. Fix the reported files upstream before docs-sync can copy them.",
     );
   }
 
   core.info(
-    `Resolved docs sync target: repo=${inputs.destinationRepo} branch=${inputs.destinationBranch} folder=${inputs.destinationFolder || "."}`
+    `Resolved docs sync target: repo=${inputs.destinationRepo} branch=${inputs.destinationBranch} folder=${inputs.destinationFolder || "."}`,
   );
-  core.info(`Destination branch exists: ${String(inputs.destinationBranchExists)}`);
 
   const pushed = await syncDocs(inputs);
   if (pushed) {
@@ -38,7 +40,11 @@ export async function run(): Promise<void> {
 async function ensureSourceExists(sourceFile: string): Promise<void> {
   const sourceStat = await stat(sourceFile).catch(() => undefined);
   if (!sourceStat) {
-    throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `source_file '${sourceFile}' does not exist.`);
+    throw new ActionError(
+      "DOCSYNC_INVALID_INPUT",
+      "validate_inputs",
+      `source_file '${sourceFile}' does not exist.`,
+    );
   }
 }
 
