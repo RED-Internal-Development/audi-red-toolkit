@@ -291,25 +291,6 @@ jobs:
           echo "docs_branch=$docs_branch" >> "$GITHUB_OUTPUT"
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> "$GITHUB_OUTPUT"
 
-      - name: Check if branch exists
-        id: check_branch
-        shell: bash
-        run: |
-          BRANCH_NAME="${{ steps.resolve_target.outputs.docs_branch }}"
-          DESTINATION_REPO="${{ inputs.destination_repo }}"
-          API_URL="https://api.github.com/repos/${DESTINATION_REPO}/branches/${BRANCH_NAME}"
-
-          # Query the GitHub API
-          response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.DOC_SYNC_KEY }}" "$API_URL")
-
-          if [ "$response" -eq 200 ]; then
-              echo "Branch '${BRANCH_NAME}' exists."
-              echo "branch_exists=true" >> $GITHUB_OUTPUT
-          else
-              echo "Branch '${BRANCH_NAME}' does not exist."
-              echo "branch_exists=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -542,7 +523,7 @@ jobs:
           echo "Using source path: $SOURCE"
 
       - name: Push documentation to Audi RED Portal for syndication
-        uses: RED-Internal-Development/audred_docsync_action@main
+        uses: ./actions/docs-sync
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
         with:
@@ -555,7 +536,6 @@ jobs:
           user_name: ${{ inputs.user_name }}
           user_actor: ${{ github.actor }}
           use_rsync: true
-          destination_branch_exists: ${{ steps.check_branch.outputs.branch_exists }}
 
   data_sync:
     runs-on: ubuntu-latest
