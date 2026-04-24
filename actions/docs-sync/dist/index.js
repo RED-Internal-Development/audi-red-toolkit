@@ -31066,25 +31066,25 @@ const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import
 
 async function syncDocs(inputs) {
     const cloneDir = await (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), "docs-sync-"));
-    const clonePlan = await resolveClonePlan(inputs, cloneDir);
+    const clonePlan = buildClonePlan(inputs, cloneDir);
     try {
         await runGit(["config", "--global", "--add", "safe.directory", process.env.GITHUB_WORKSPACE ?? process.cwd()]);
         await runGit(["config", "--global", "user.email", inputs.userEmail]);
         await runGit(["config", "--global", "user.name", inputs.userName]);
-        if (clonePlan.branchExists) {
-            await runGit(clonePlan.cloneArgs, {
-                code: "DOCSYNC_CLONE_FAILED",
+        await runGit(clonePlan.cloneArgs, {
+            code: "DOCSYNC_CLONE_FAILED",
+            step: "clone_destination_repo",
+            message: "Failed cloning destination repository."
+        });
+        if (await hasRemoteBranch(cloneDir, inputs.destinationBranch)) {
+            await runGit(clonePlan.checkoutExistingArgs, {
+                code: "DOCSYNC_BRANCH_CHECKOUT_FAILED",
                 step: "clone_destination_repo",
-                message: `Failed cloning destination repository branch '${inputs.destinationBranch}'.`
-            });
+                message: `Failed checking out destination branch '${inputs.destinationBranch}'.`
+            }, cloneDir);
         }
         else {
-            await runGit(clonePlan.cloneArgs, {
-                code: "DOCSYNC_CLONE_FAILED",
-                step: "clone_destination_repo",
-                message: "Failed cloning destination repository from main."
-            });
-            await runGit(clonePlan.checkoutArgs ?? ["checkout", "-b", inputs.destinationBranch], {
+            await runGit(clonePlan.checkoutNewArgs, {
                 code: "DOCSYNC_BRANCH_CREATE_FAILED",
                 step: "clone_destination_repo",
                 message: `Failed creating destination branch '${inputs.destinationBranch}'.`
@@ -31113,21 +31113,13 @@ async function syncDocs(inputs) {
         await (0,promises_namespaceObject.rm)(cloneDir, { force: true, recursive: true });
     }
 }
-function buildClonePlan(inputs, cloneDir, branchExists) {
+function buildClonePlan(inputs, cloneDir) {
     const repoUrl = `https://x-access-token:${inputs.githubToken}@${inputs.gitServer}/${inputs.destinationRepo}.git`;
-    const branchToClone = branchExists ? inputs.destinationBranch : "main";
-    const plan = {
-        branchExists,
-        cloneArgs: ["clone", "--depth", "1", "--single-branch", "--branch", branchToClone, repoUrl, cloneDir]
+    return {
+        cloneArgs: ["clone", "--depth", "1", "--no-single-branch", repoUrl, cloneDir],
+        checkoutExistingArgs: ["checkout", "--track", `origin/${inputs.destinationBranch}`],
+        checkoutNewArgs: ["checkout", "-b", inputs.destinationBranch]
     };
-    if (!branchExists) {
-        plan.checkoutArgs = ["checkout", "-b", inputs.destinationBranch];
-    }
-    return plan;
-}
-async function resolveClonePlan(inputs, cloneDir) {
-    const branchExists = inputs.destinationBranchExists ?? (await detectBranchExists(inputs));
-    return buildClonePlan(inputs, cloneDir, branchExists);
 }
 async function copySource(inputs, cloneDir) {
     const destinationFolder = (0,external_node_path_namespaceObject.join)(cloneDir, inputs.destinationFolder);
@@ -31151,19 +31143,19 @@ async function runCopyCommand(command, args, message) {
         throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", message);
     }
 }
-async function detectBranchExists(inputs) {
-    const repoUrl = `https://x-access-token:${inputs.githubToken}@${inputs.gitServer}/${inputs.destinationRepo}.git`;
-    const exitCode = await exec_exec("git", ["ls-remote", "--exit-code", "--heads", repoUrl, inputs.destinationBranch], {
+async function hasRemoteBranch(cwd, branch) {
+    const exitCode = await exec_exec("git", ["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branch}`], {
+        cwd,
         ignoreReturnCode: true,
         silent: true
     });
     if (exitCode === 0) {
         return true;
     }
-    if (exitCode === 2) {
+    if (exitCode === 1) {
         return false;
     }
-    throw new ActionError("DOCSYNC_BRANCH_DETECTION_FAILED", "clone_destination_repo", `Failed checking whether destination branch '${inputs.destinationBranch}' exists.`);
+    throw new ActionError("DOCSYNC_BRANCH_DETECTION_FAILED", "clone_destination_repo", `Failed checking whether destination branch '${branch}' exists after cloning.`);
 }
 async function runGit(args, failure, cwd) {
     const exitCode = await exec_exec("git", args, { cwd, ignoreReturnCode: true });
@@ -31205,7 +31197,6 @@ function readDocsSyncInputs() {
         user_name: getInput("user_name"),
         user_actor: getInput("user_actor"),
         destination_branch: getInput("destination_branch"),
-        destination_branch_exists: getInput("destination_branch_exists"),
         commit_message: getInput("commit_message"),
         rename: getInput("rename"),
         use_rsync: getInput("use_rsync"),
@@ -31230,7 +31221,6 @@ function parseDocsSyncInputsFromRecord(inputs, githubToken) {
         userName,
         userActor,
         destinationBranch,
-        destinationBranchExists: parseOptionalBooleanInput(inputs.destination_branch_exists, "destination_branch_exists"),
         commitMessage: optionalInput(inputs, "commit_message"),
         rename: optionalInput(inputs, "rename"),
         useRsync: parseBooleanInput(inputs.use_rsync, "use_rsync", false),
@@ -31262,12 +31252,6 @@ function parseBooleanInput(value, name, defaultValue) {
     }
     throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `${name} must be 'true' or 'false'.`);
 }
-function parseOptionalBooleanInput(value, name) {
-    if (!value?.trim()) {
-        return undefined;
-    }
-    return parseBooleanInput(value, name, false);
-}
 
 ;// CONCATENATED MODULE: ./actions/docs-sync/src/index.ts
 
@@ -31287,7 +31271,6 @@ async function run() {
         throw new ActionError("DOCSYNC_INVALID_CONTENT", "validate_docs", "Source content contains Confluence-incompatible markdown/MDX. Fix the reported files upstream before docs-sync can copy them.");
     }
     info(`Resolved docs sync target: repo=${inputs.destinationRepo} branch=${inputs.destinationBranch} folder=${inputs.destinationFolder || "."}`);
-    info(`Destination branch exists: ${String(inputs.destinationBranchExists)}`);
     const pushed = await syncDocs(inputs);
     if (pushed) {
         notice("Documentation changes pushed to the destination repository.");

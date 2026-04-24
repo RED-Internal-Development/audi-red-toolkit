@@ -10,9 +10,8 @@ const baseInputs = {
   user_name: "audired",
   user_actor: "octocat",
   destination_branch: "docs-sync/feature-apps",
-  destination_branch_exists: "true",
   git_server: "github.com",
-  use_rsync: "true"
+  use_rsync: "true",
 };
 
 describe("docs-sync input parsing", () => {
@@ -25,12 +24,11 @@ describe("docs-sync input parsing", () => {
       userName: "audired",
       userActor: "octocat",
       destinationBranch: "docs-sync/feature-apps",
-      destinationBranchExists: true,
       commitMessage: undefined,
       rename: undefined,
       useRsync: true,
       gitServer: "github.com",
-      githubToken: "token"
+      githubToken: "token",
     });
   });
 
@@ -40,38 +38,40 @@ describe("docs-sync input parsing", () => {
       use_rsync: _rsync,
       git_server: _server,
       destination_branch: _branch,
-      destination_branch_exists: _branchExists,
       ...minimal
     } = baseInputs;
 
     expect(parseDocsSyncInputsFromRecord(minimal, "token")).toMatchObject({
       destinationFolder: "",
       destinationBranch: "main",
-      destinationBranchExists: undefined,
       useRsync: false,
-      gitServer: "github.com"
+      gitServer: "github.com",
     });
   });
 
   test("treats explicit false use_rsync as disabled", () => {
-    expect(parseDocsSyncInputsFromRecord({ ...baseInputs, use_rsync: "false" }, "token")).toMatchObject({
-      useRsync: false
+    expect(
+      parseDocsSyncInputsFromRecord(
+        { ...baseInputs, use_rsync: "false" },
+        "token",
+      ),
+    ).toMatchObject({
+      useRsync: false,
     });
   });
 
   test("rejects invalid use_rsync values", () => {
-    expect(() => parseDocsSyncInputsFromRecord({ ...baseInputs, use_rsync: "sometimes" }, "token")).toThrow(
-      "DOCSYNC_INVALID_INPUT"
-    );
-  });
-
-  test("rejects invalid boolean inputs", () => {
     expect(() =>
-      parseDocsSyncInputsFromRecord({ ...baseInputs, destination_branch_exists: "sometimes" }, "token")
+      parseDocsSyncInputsFromRecord(
+        { ...baseInputs, use_rsync: "sometimes" },
+        "token",
+      ),
     ).toThrow("DOCSYNC_INVALID_INPUT");
   });
 
   test("requires the GitHub token secret", () => {
-    expect(() => parseDocsSyncInputsFromRecord(baseInputs, "")).toThrow("DOCSYNC_MISSING_SECRET");
+    expect(() => parseDocsSyncInputsFromRecord(baseInputs, "")).toThrow(
+      "DOCSYNC_MISSING_SECRET",
+    );
   });
 });
