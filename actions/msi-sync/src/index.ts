@@ -9,6 +9,7 @@ import { validatePath } from "../../../packages/docs-validation/src/confluence-v
 import { readMsiSyncInputs } from "./inputs.js";
 import { buildPublishPlan } from "./plan.js";
 import { PublishStats } from "./summary.js";
+import { executeMsiSync } from "./sync.js";
 
 export async function run(): Promise<void> {
   const inputs = readMsiSyncInputs();
@@ -51,9 +52,7 @@ export async function run(): Promise<void> {
     return;
   }
 
-  core.notice(
-    "MSI sync validation and discovery completed. Publish orchestration is not enabled in this integration pass.",
-  );
+  await executeMsiSync(inputs, publishPlan, stats);
 
   if (stats.hasFailures()) {
     throw new ActionError(
@@ -62,6 +61,8 @@ export async function run(): Promise<void> {
       stats.renderSummary(),
     );
   }
+
+  core.notice("MSI sync publish completed successfully.");
 }
 
 async function ensureSourceDirectory(directory: string): Promise<void> {
