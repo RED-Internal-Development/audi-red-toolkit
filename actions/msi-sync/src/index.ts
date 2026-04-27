@@ -6,8 +6,8 @@ import {
   isActionError,
 } from "../../../packages/action-common/src/errors.js";
 import { validatePath } from "../../../packages/docs-validation/src/confluence-validation.js";
-import { discoverPublishTree } from "./discovery.js";
 import { readMsiSyncInputs } from "./inputs.js";
+import { buildPublishPlan } from "./plan.js";
 import { PublishStats } from "./summary.js";
 
 export async function run(): Promise<void> {
@@ -31,14 +31,22 @@ export async function run(): Promise<void> {
     );
   }
 
-  const publishTree = await discoverPublishTree(inputs.from);
+  const publishPlan = await buildPublishPlan({
+    sourceRoot: inputs.from,
+    parentPageId: inputs.parentPageId,
+    deploymentConfigPath: inputs.deploymentConfig,
+  });
   const stats = new PublishStats();
 
+  for (const warning of publishPlan.warnings) {
+    core.warning(warning);
+  }
+
   core.info(
-    `Discovered ${publishTree.files.length} markdown file(s) and ${publishTree.collisions.length} collision candidate(s) for MSI sync.`,
+    `Discovered ${publishPlan.entries.filter((entry) => entry.sourceFilePath).length} markdown file(s) across ${publishPlan.roots.length} publish root(s) for MSI sync.`,
   );
 
-  if (publishTree.files.length === 0) {
+  if (publishPlan.entries.filter((entry) => entry.sourceFilePath).length === 0) {
     core.notice("No markdown files found for MSI sync.");
     return;
   }

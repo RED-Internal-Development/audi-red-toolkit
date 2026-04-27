@@ -1,5 +1,5 @@
 import { readdir } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 import { isDirectoryFileCollision } from "./page-registry.js";
 
@@ -19,10 +19,11 @@ export interface PublishTree {
 }
 
 export async function discoverPublishTree(root: string): Promise<PublishTree> {
+  const resolvedRoot = resolve(root);
   const files: DiscoveredFile[] = [];
   const collisions: PublishTreeCollision[] = [];
 
-  await walk(root, root, files, collisions);
+  await walk(resolvedRoot, resolvedRoot, files, collisions);
 
   return {
     files: files.sort((left, right) => left.relativePath.localeCompare(right.relativePath)),
