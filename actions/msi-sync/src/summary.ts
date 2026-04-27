@@ -1,10 +1,19 @@
 const REFERRAL_ID_RE = /"referralId"\s*:\s*"([^"]+)"/;
 
+type PublishTargetType = "page" | "attachment";
+
+interface PublishFailureContext {
+  targetType?: PublishTargetType;
+  parentTitle?: string;
+}
+
 interface PublishFailure {
   operation: string;
   title: string;
   statusCode: string;
   referralId?: string;
+  targetType: PublishTargetType;
+  parentTitle?: string;
 }
 
 export class PublishStats {
@@ -15,8 +24,16 @@ export class PublishStats {
     title: string,
     statusCode: string,
     referralId?: string,
+    context?: PublishFailureContext,
   ): void {
-    this.failures.push({ operation, title, statusCode, referralId });
+    this.failures.push({
+      operation,
+      title,
+      statusCode,
+      referralId,
+      targetType: context?.targetType ?? "page",
+      parentTitle: context?.parentTitle,
+    });
   }
 
   hasFailures(): boolean {
@@ -24,14 +41,26 @@ export class PublishStats {
   }
 
   renderSummary(): string {
+    const byStep = new Map<string, number>();
+
+    for (const failure of this.failures) {
+      const key = `${failure.targetType}:${failure.operation}`;
+      byStep.set(key, (byStep.get(key) ?? 0) + 1);
+    }
+
     return [
-      `MSI_PARTIAL_PUBLISH_FAILURE | publish | Found ${this.failures.length} page publish failure(s).`,
+      `MSI_PARTIAL_PUBLISH_FAILURE | publish | Found ${this.failures.length} publish failure(s).`,
+      `steps | ${[...byStep.entries()]
+        .map(([key, count]) => `${key}=${count}`)
+        .join(" | ")}`,
       ...this.failures.map((failure) =>
         [
+          failure.targetType,
           failure.operation,
           failure.title,
           failure.statusCode,
           failure.referralId,
+          failure.parentTitle ? `page=${failure.parentTitle}` : undefined,
         ]
           .filter(Boolean)
           .join(" | "),
