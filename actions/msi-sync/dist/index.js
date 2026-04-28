@@ -31860,11 +31860,21 @@ function escapeHtml(value) {
 }
 function normalizeVoidElements(html) {
     return html.replace(VOID_ELEMENT_RE, (fullMatch, tagName, attributes = "") => {
+        const normalizedTagName = String(tagName).toLowerCase();
+        const normalizedAttributes = normalizedTagName === "img"
+            ? ensureConfluenceImageWidth(attributes)
+            : attributes;
         if (fullMatch.endsWith("/>")) {
-            return fullMatch;
+            return `<${normalizedTagName}${normalizedAttributes} />`;
         }
-        return `<${String(tagName).toLowerCase()}${attributes} />`;
+        return `<${normalizedTagName}${normalizedAttributes} />`;
     });
+}
+function ensureConfluenceImageWidth(attributes) {
+    if (/\swidth\s*=/i.test(attributes)) {
+        return attributes;
+    }
+    return `${attributes} width="100%"`;
 }
 
 // EXTERNAL MODULE: external "node:crypto"

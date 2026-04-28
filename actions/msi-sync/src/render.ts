@@ -44,10 +44,23 @@ function escapeHtml(value: string): string {
 
 function normalizeVoidElements(html: string): string {
   return html.replace(VOID_ELEMENT_RE, (fullMatch, tagName, attributes = "") => {
+    const normalizedTagName = String(tagName).toLowerCase();
+    const normalizedAttributes = normalizedTagName === "img"
+      ? ensureConfluenceImageWidth(attributes)
+      : attributes;
+
     if (fullMatch.endsWith("/>")) {
-      return fullMatch;
+      return `<${normalizedTagName}${normalizedAttributes} />`;
     }
 
-    return `<${String(tagName).toLowerCase()}${attributes} />`;
+    return `<${normalizedTagName}${normalizedAttributes} />`;
   });
+}
+
+function ensureConfluenceImageWidth(attributes: string): string {
+  if (/\swidth\s*=/i.test(attributes)) {
+    return attributes;
+  }
+
+  return `${attributes} width="100%"`;
 }

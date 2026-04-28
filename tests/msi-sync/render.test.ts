@@ -34,8 +34,14 @@ describe("msi-sync render", () => {
 
     const html = await renderMarkdownToHtml(markdown);
 
-    expect(html).toContain('<img src="./diagram.png" alt="Diagram" />');
+    expect(html).toContain('<img src="./diagram.png" alt="Diagram" width="100%" />');
     expect(html).toContain("<hr />");
     expect(html).toContain("<br />");
+  });
+
+  test("preserves explicit image width when one is already present", async () => {
+    const html = await renderMarkdownToHtml('<img src="./diagram.png" alt="Diagram" width="50%">');
+
+    expect(html).toContain('<img src="./diagram.png" alt="Diagram" width="50%" />');
   });
 });
