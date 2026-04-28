@@ -31826,6 +31826,7 @@ Please report this to https://github.com/markedjs/marked.`,e){let s="<p>An error
 
 ;// CONCATENATED MODULE: ./actions/msi-sync/src/render.ts
 
+const VOID_ELEMENT_RE = /<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^<>]*?)?>/gi;
 function stripFrontmatter(markdown) {
     const lines = markdown.split(/\r?\n/);
     if (lines[0]?.trim() !== "---") {
@@ -31840,10 +31841,11 @@ function stripFrontmatter(markdown) {
     return markdown;
 }
 async function renderMarkdownToHtml(markdown) {
-    return await g.parse(stripFrontmatter(markdown), {
+    const html = await g.parse(stripFrontmatter(markdown), {
         async: true,
         gfm: true,
     });
+    return normalizeVoidElements(html);
 }
 function renderDirectoryTitleHtml(title) {
     return `<h1>${escapeHtml(title)}</h1>`;
@@ -31855,6 +31857,14 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+}
+function normalizeVoidElements(html) {
+    return html.replace(VOID_ELEMENT_RE, (fullMatch, tagName, attributes = "") => {
+        if (fullMatch.endsWith("/>")) {
+            return fullMatch;
+        }
+        return `<${String(tagName).toLowerCase()}${attributes} />`;
+    });
 }
 
 // EXTERNAL MODULE: external "node:crypto"

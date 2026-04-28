@@ -1,5 +1,8 @@
 import { marked } from "marked";
 
+const VOID_ELEMENT_RE =
+  /<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^<>]*?)?>/gi;
+
 export function stripFrontmatter(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
 
@@ -18,10 +21,12 @@ export function stripFrontmatter(markdown: string): string {
 }
 
 export async function renderMarkdownToHtml(markdown: string): Promise<string> {
-  return await marked.parse(stripFrontmatter(markdown), {
+  const html = await marked.parse(stripFrontmatter(markdown), {
     async: true,
     gfm: true,
   });
+
+  return normalizeVoidElements(html);
 }
 
 export function renderDirectoryTitleHtml(title: string): string {
@@ -35,4 +40,14 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function normalizeVoidElements(html: string): string {
+  return html.replace(VOID_ELEMENT_RE, (fullMatch, tagName, attributes = "") => {
+    if (fullMatch.endsWith("/>")) {
+      return fullMatch;
+    }
+
+    return `<${String(tagName).toLowerCase()}${attributes} />`;
+  });
 }

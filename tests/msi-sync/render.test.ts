@@ -26,4 +26,16 @@ describe("msi-sync render", () => {
       "<h1>Deploy &lt;Prod&gt; &amp; &quot;Docs&quot;</h1>",
     );
   });
+
+  test("normalizes void tags to XHTML-style output for Confluence storage", async () => {
+    const markdown = ["![Diagram](./diagram.png)", "", "---", "", "Line 1  ", "Line 2"].join(
+      "\n",
+    );
+
+    const html = await renderMarkdownToHtml(markdown);
+
+    expect(html).toContain('<img src="./diagram.png" alt="Diagram" />');
+    expect(html).toContain("<hr />");
+    expect(html).toContain("<br />");
+  });
 });
