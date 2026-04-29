@@ -2,6 +2,12 @@ export interface ConfluencePage {
   id: string;
   title: string;
   ancestors?: Array<{ id: string }>;
+  body?: {
+    storage?: {
+      value?: string;
+      representation?: string;
+    };
+  };
 }
 
 export interface ConfluenceAttachment {
@@ -33,13 +39,13 @@ export interface ConfluenceAttachmentInput {
   contentType?: string;
 }
 
-export interface ConfluenceAttachmentUpdateInput
-  extends ConfluenceAttachmentInput {
+export interface ConfluenceAttachmentUpdateInput extends ConfluenceAttachmentInput {
   attachmentId: string;
 }
 
 export interface ConfluenceClient {
   getPagesByTitle(title: string): Promise<ConfluencePage[]>;
+  getPageById(pageId: string, expand?: string): Promise<ConfluencePage>;
   getPageVersion(pageId: string): Promise<number>;
   createPage(input: {
     title: string;
@@ -119,11 +125,20 @@ export class ConfluenceHttpClient implements ConfluenceClient {
       expand: "ancestors",
       type: "page",
     });
-    const response = await this.requestJson<ConfluenceCollectionResponse<ConfluencePage>>(
-      `/content?${searchParams.toString()}`,
-    );
+    const response = await this.requestJson<
+      ConfluenceCollectionResponse<ConfluencePage>
+    >(`/content?${searchParams.toString()}`);
 
     return response.results ?? [];
+  }
+
+  async getPageById(
+    pageId: string,
+    expand = "ancestors",
+  ): Promise<ConfluencePage> {
+    return this.requestJson<ConfluencePage>(
+      `/content/${encodeURIComponent(pageId)}?expand=${encodeURIComponent(expand)}`,
+    );
   }
 
   async getPageVersion(pageId: string): Promise<number> {
@@ -148,7 +163,7 @@ export class ConfluenceHttpClient implements ConfluenceClient {
       type: "page",
       title: input.title,
       space: { key: this.options.spaceKey },
-      ancestors: input.parentId ? [{ id: input.parentId }] : [],
+      ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
       body: {
         storage: {
           value: input.html,
@@ -175,7 +190,7 @@ export class ConfluenceHttpClient implements ConfluenceClient {
           type: "page",
           title: input.title,
           space: { key: this.options.spaceKey },
-          ancestors: input.parentId ? [{ id: input.parentId }] : [],
+          ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
           version: { number: currentVersion + 1 },
           body: {
             storage: {
@@ -304,7 +319,8 @@ export class ConfluenceHttpClient implements ConfluenceClient {
       };
     }
 
-    const body = (await response.json()) as ConfluenceCollectionResponse<ConfluenceAttachmentResponse>;
+    const body =
+      (await response.json()) as ConfluenceCollectionResponse<ConfluenceAttachmentResponse>;
     const attachment = body.results?.[0];
 
     return {

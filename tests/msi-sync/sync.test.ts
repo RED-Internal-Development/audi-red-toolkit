@@ -32,14 +32,26 @@ describe("msi-sync orchestration", () => {
     await writeFile(summaryPath, "", "utf8");
 
     const guideFile = join(sourceRoot, "my-service", "guide", "README.md");
-    const imageFile = join(sourceRoot, "my-service", "guide", "images", "diagram.png");
+    const imageFile = join(
+      sourceRoot,
+      "my-service",
+      "guide",
+      "images",
+      "diagram.png",
+    );
 
-    await mkdir(join(sourceRoot, "my-service", "guide", "images"), { recursive: true });
+    await mkdir(join(sourceRoot, "my-service", "guide", "images"), {
+      recursive: true,
+    });
     await writeFile(
       guideFile,
-      ["---", "title: Guide", "---", "# Guide", "![Diagram](./images/diagram.png)"].join(
-        "\n",
-      ),
+      [
+        "---",
+        "title: Guide",
+        "---",
+        "# Guide",
+        "![Diagram](./images/diagram.png)",
+      ].join("\n"),
       "utf8",
     );
     await writeFile(imageFile, "binary", "utf8");
@@ -57,6 +69,9 @@ describe("msi-sync orchestration", () => {
         calls.push(`lookup:${title}`);
         return [];
       },
+      async getPageById(pageId) {
+        return { id: pageId, title: "stub" };
+      },
       async getPageVersion() {
         return 1;
       },
@@ -64,11 +79,12 @@ describe("msi-sync orchestration", () => {
         calls.push(`create:${input.title}`);
         return {
           ok: true,
-          id: input.title === "README (my-service)"
-            ? "p-readme"
-            : input.title === "guide (my-service)"
-            ? "p-guide"
-            : "p-dir",
+          id:
+            input.title === "README (my-service)"
+              ? "p-readme"
+              : input.title === "guide (my-service)"
+                ? "p-guide"
+                : "p-dir",
           title: input.title,
         };
       },
@@ -121,6 +137,8 @@ describe("msi-sync orchestration", () => {
     expect(updatedBodies[0]).toContain(
       "https://example.invalid/confluence/download/attachments/p-readme/",
     );
-    await expect(readFile(summaryPath, "utf8")).resolves.toContain("status | success");
+    await expect(readFile(summaryPath, "utf8")).resolves.toContain(
+      "status | success",
+    );
   });
 });

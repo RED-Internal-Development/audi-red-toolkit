@@ -14,7 +14,10 @@ function createJsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
-function getFetchCall(fetchMock: ReturnType<typeof vi.fn>, index: number): FetchCall {
+function getFetchCall(
+  fetchMock: ReturnType<typeof vi.fn>,
+  index: number,
+): FetchCall {
   return fetchMock.mock.calls[index] as FetchCall;
 }
 
@@ -22,7 +25,9 @@ describe("msi-sync ConfluenceHttpClient", () => {
   test("looks up pages by title with ancestors expanded", async () => {
     const fetchMock = vi.fn(async () =>
       createJsonResponse({
-        results: [{ id: "11", title: "Deployment", ancestors: [{ id: "901" }] }],
+        results: [
+          { id: "11", title: "Deployment", ancestors: [{ id: "901" }] },
+        ],
       }),
     );
     const client = new ConfluenceHttpClient({
@@ -68,6 +73,31 @@ describe("msi-sync ConfluenceHttpClient", () => {
     await expect(client.getPageVersion("11")).resolves.toBe(4);
     expect(getFetchCall(fetchMock, 0)[0]).toBe(
       "https://example.invalid/confluence/rest/api/content/11?expand=version",
+    );
+  });
+
+  test("fetches a page by id", async () => {
+    const fetchMock = vi.fn(async () =>
+      createJsonResponse({
+        id: "42",
+        title: "Feature App Repository Report",
+      }),
+    );
+    const client = new ConfluenceHttpClient({
+      baseUrl: "https://example.invalid/confluence",
+      spaceKey: "AAA",
+      token: "secret",
+      fetch: fetchMock,
+    });
+
+    const page = await client.getPageById("42");
+
+    expect(page).toMatchObject({
+      id: "42",
+      title: "Feature App Repository Report",
+    });
+    expect(getFetchCall(fetchMock, 0)[0]).toBe(
+      "https://example.invalid/confluence/rest/api/content/42?expand=ancestors",
     );
   });
 
@@ -214,11 +244,12 @@ describe("msi-sync ConfluenceHttpClient", () => {
   });
 
   test("throws a typed request error for failed lookup calls", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response('{"message":"bad"}', {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response('{"message":"bad"}', {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        }),
     );
     const client = new ConfluenceHttpClient({
       baseUrl: "https://example.invalid/confluence",

@@ -61,6 +61,9 @@ describe("msi-sync publish summary", () => {
           },
         ];
       },
+      async getPageById(pageId: string) {
+        return { id: pageId, title: "Deployment (my-service)", ancestors: [] };
+      },
       async createPage() {
         calls.push("create");
         return { ok: true as const, id: "new" };
@@ -100,6 +103,9 @@ describe("msi-sync publish summary", () => {
       async getPagesByTitle() {
         calls.push("lookup");
         return [];
+      },
+      async getPageById(pageId: string) {
+        return { id: pageId, title: "my-service (my-service)", ancestors: [] };
       },
       async createPage() {
         calls.push("create-page");
@@ -165,6 +171,9 @@ describe("msi-sync publish summary", () => {
             ancestors: [{ id: "901" }],
           },
         ];
+      },
+      async getPageById(pageId: string) {
+        return { id: pageId, title: "Deployment (my-service)", ancestors: [] };
       },
       async createPage() {
         calls.push("create-page");
@@ -234,6 +243,9 @@ describe("msi-sync publish summary", () => {
     const client = {
       async getPagesByTitle() {
         return [];
+      },
+      async getPageById(pageId: string) {
+        return { id: pageId, title: "Deployment (my-service)", ancestors: [] };
       },
       async createPage() {
         return { ok: true as const, id: "11" };
