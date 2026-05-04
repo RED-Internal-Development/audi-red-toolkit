@@ -1,0 +1,33 @@
+name: Publish Confluence repository report to MSI Confluence
+description: Publishes a precomputed Feature App repository report to an MSI Confluence page.
+inputs:
+  dataFile:
+    description: Path to the precomputed JSON report artifact.
+    required: true
+  pageTitle:
+    description: Confluence page title to create or update.
+    required: false
+  parentPageId:
+    description: Parent Confluence page ID for the report page (required when creating/upserting by title).
+    required: false
+  targetPageId:
+    description: Existing Confluence page ID to update directly.
+    required: false
+  baseUrl:
+    description: Base URL of the Confluence Data Center instance.
+    required: true
+  spaceKey:
+    description: Confluence space key.
+    required: true
+  token:
+    description: Personal access token for Confluence.
+    required: true
+  csvFile:
+    description: Optional CSV companion artifact to upload as an attachment.
+    required: false
+runs:
+  using: node24
+  main: dist/index.js
+branding:
+  icon: table
+  color: blue
