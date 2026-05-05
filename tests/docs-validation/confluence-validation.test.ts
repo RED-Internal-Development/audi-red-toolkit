@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import {
   iterMarkdownFiles,
   validateMarkdownText,
-  validatePath
+  validatePath,
 } from "../../packages/docs-validation/src/confluence-validation.js";
 
 describe("Confluence markdown validation", () => {
@@ -17,9 +17,9 @@ describe("Confluence markdown validation", () => {
         "",
         '<div style={{ color: "red" }}>',
         "  flagged",
-        "</div>"
+        "</div>",
       ].join("\n"),
-      "coverage.mdx"
+      "coverage.mdx",
     );
 
     expect(issues).toEqual([
@@ -27,15 +27,37 @@ describe("Confluence markdown validation", () => {
         ruleId: "confluence.jsx_style_attribute",
         filePath: "coverage.mdx",
         message:
-          "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse."
-      }
+          "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse.",
+      },
+    ]);
+  });
+
+  test("detects string-based raw HTML style attributes", () => {
+    const issues = validateMarkdownText(
+      [
+        "# Coverage",
+        "",
+        "<table style='width: 100%'>",
+        "  <tr><td>flagged</td></tr>",
+        "</table>",
+      ].join("\n"),
+      "coverage.mdx",
+    );
+
+    expect(issues).toEqual([
+      {
+        ruleId: "confluence.html_string_style_attribute",
+        filePath: "coverage.mdx",
+        message:
+          "Raw HTML contains string-based style attributes like style='...' or style=\"...\". Docusaurus interprets HTML in markdown as JSX, which requires style={{...}} objects instead. Convert string styles to inline style objects or move styles to CSS classes.",
+      },
     ]);
   });
 
   test("detects unescaped ampersands inside raw HTML tables", () => {
     const issues = validateMarkdownText(
       ["<table>", "  <tr><td>AT&T</td></tr>", "</table>"].join("\n"),
-      "raw-html.mdx"
+      "raw-html.mdx",
     );
 
     expect(issues).toEqual([
@@ -43,8 +65,8 @@ describe("Confluence markdown validation", () => {
         ruleId: "confluence.raw_html_unescaped_ampersand",
         filePath: "raw-html.mdx",
         message:
-          "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML."
-      }
+          "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML.",
+      },
     ]);
   });
 
@@ -59,9 +81,9 @@ describe("Confluence markdown validation", () => {
         "<table>",
         "  <tr><td>AT&T</td></tr>",
         "</table>",
-        "```"
+        "```",
       ].join("\n"),
-      "clean.md"
+      "clean.md",
     );
 
     expect(issues).toEqual([]);
@@ -80,7 +102,7 @@ describe("Confluence markdown validation", () => {
       await expect(iterMarkdownFiles(root)).resolves.toEqual([
         join(root, "a.md"),
         join(root, "b.mdx"),
-        join(root, "nested", "c.md")
+        join(root, "nested", "c.md"),
       ]);
       await expect(validatePath(root)).resolves.toEqual([]);
     } finally {
