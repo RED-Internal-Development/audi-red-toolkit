@@ -1,0 +1,27 @@
+name: Collect repository test data for RED sync
+description: Collects Jest, Lighthouse, and Cypress coverage metrics and writes a report.json file compatible with current workflow consumers.
+inputs:
+  github_token:
+    description: GitHub token preserved for caller compatibility.
+    required: true
+  jest_coverage_file_path:
+    description: Optional path to Jest coverage-summary.json.
+    required: false
+    default: coverage/coverage-summary.json
+  lighthouse_coverage_file_path:
+    description: Optional path to Lighthouse assertion-results.json.
+    required: false
+    default: .lighthouseci/assertion-results.json
+  cypress_coverage_temp_dir:
+    description: Optional path to the .nyc_output directory used for Cypress coverage.
+    required: false
+    default: ""
+outputs:
+  report_file:
+    description: Absolute path to the generated report.json file.
+runs:
+  using: node24
+  main: dist/index.js
+branding:
+  icon: bar-chart
+  color: blue

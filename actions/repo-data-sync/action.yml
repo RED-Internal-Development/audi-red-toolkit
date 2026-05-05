@@ -1,0 +1,52 @@
+name: Sync repository data into RED report
+description: Merges metadata and collected test artifacts into the legacy report.json contract and updates per-repo snapshots.
+inputs:
+  metadata_file:
+    description: Path to the metadata-report.json artifact.
+    required: true
+  collection_report_file:
+    description: Optional path to the collection report artifact.
+    required: false
+    default: ""
+  cypress_report_file:
+    description: Optional path to the Cypress report artifact.
+    required: false
+    default: ""
+  jest_report_file:
+    description: Optional path to the Jest report artifact.
+    required: false
+    default: ""
+  data_dir:
+    description: Directory containing the shared report.json and per-repo snapshots.
+    required: false
+    default: data
+  collection_output_dir:
+    description: Directory where the assembled collection report.json should be written.
+    required: false
+    default: collection-report
+  docs_destination_team_folder:
+    description: Team folder path in the docs portal.
+    required: true
+  docs_destination_app_folder:
+    description: App folder path in the docs portal.
+    required: true
+  docs_branch:
+    description: Docs portal branch associated with the app profile.
+    required: true
+  prod_support_enabled:
+    description: Whether VWGOA prod support deployment is enabled.
+    required: false
+    default: "false"
+outputs:
+  report_file:
+    description: Absolute path to the assembled collection report.json file.
+  per_repo_file:
+    description: Absolute path to the per-repository snapshot file.
+  repo_name:
+    description: Repository name extracted from the metadata report.
+runs:
+  using: node24
+  main: dist/index.js
+branding:
+  icon: layers
+  color: blue

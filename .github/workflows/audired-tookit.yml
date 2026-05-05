@@ -552,7 +552,7 @@ jobs:
 
       - name: Collection of metadata from repository
         id: metadata_collection
-        uses: RED-Internal-Development/audi-red-toolkit/actions/metadata-sync@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-metadata-collect@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
@@ -685,7 +685,7 @@ jobs:
 
       - name: Assemble report.json data
         id: report_sync
-        uses: RED-Internal-Development/audi-red-toolkit/actions/report-sync@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-data-sync@main
         with:
           metadata_file: metadata-report/metadata-report.json
           collection_report_file: collection-report/report.json
@@ -902,7 +902,7 @@ jobs:
       - name: Collect Jest Coverage using Toolkit Action
         if: steps.check_script.outputs.exists == 'true'
         id: collect_jest
-        uses: RED-Internal-Development/audi-red-toolkit/actions/collection-sync@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
@@ -978,7 +978,7 @@ jobs:
       - name: Collect Cypress Coverage using Toolkit Action
         if: steps.check_script.outputs.exists == 'true'
         id: collect_cypress
-        uses: RED-Internal-Development/audi-red-toolkit/actions/collection-sync@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           cypress_coverage_temp_dir: .nyc_output
