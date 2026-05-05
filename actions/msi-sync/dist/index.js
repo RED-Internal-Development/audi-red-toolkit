@@ -30969,6 +30969,7 @@ const MARKDOWN_SUFFIXES = new Set([".md", ".mdx"]);
 const FENCE_RE = /^[ \t]{0,3}(```+|~~~+)/;
 const INLINE_CODE_RE = /(`+)(.+?)\1/g;
 const JSX_STYLE_RE = /style\s*=\s*\{\{/i;
+const HTML_STRING_STYLE_RE = /(?:^|\s)style\s*=\s*["']/i;
 const TABLE_START_RE = /<table\b/i;
 const TABLE_END_RE = /<\/table\b/i;
 const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/;
@@ -30990,6 +30991,7 @@ async function iterMarkdownFiles(root) {
 function validateMarkdownText(text, filePath) {
     const issues = [];
     let foundJsxStyle = false;
+    let foundHtmlStringStyle = false;
     let foundUnescapedAmpersand = false;
     let inFencedCodeBlock = false;
     let inRawHtmlTable = false;
@@ -31006,18 +31008,28 @@ function validateMarkdownText(text, filePath) {
             issues.push({
                 ruleId: "confluence.jsx_style_attribute",
                 filePath,
-                message: "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse."
+                message: "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse.",
             });
             foundJsxStyle = true;
+        }
+        if (!foundHtmlStringStyle && HTML_STRING_STYLE_RE.test(searchableLine)) {
+            issues.push({
+                ruleId: "confluence.html_string_style_attribute",
+                filePath,
+                message: "Raw HTML contains string-based style attributes like style='...' or style=\"...\". To keep markdown compatible with both Confluence and MDX-based tooling, remove inline styles and use CSS classes instead.",
+            });
+            foundHtmlStringStyle = true;
         }
         if (TABLE_START_RE.test(searchableLine)) {
             inRawHtmlTable = true;
         }
-        if (inRawHtmlTable && !foundUnescapedAmpersand && UNESCAPED_AMP_RE.test(searchableLine)) {
+        if (inRawHtmlTable &&
+            !foundUnescapedAmpersand &&
+            UNESCAPED_AMP_RE.test(searchableLine)) {
             issues.push({
                 ruleId: "confluence.raw_html_unescaped_ampersand",
                 filePath,
-                message: "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML."
+                message: "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML.",
             });
             foundUnescapedAmpersand = true;
         }
