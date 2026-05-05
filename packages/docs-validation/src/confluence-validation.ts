@@ -74,7 +74,7 @@ export function validateMarkdownText(
         ruleId: "confluence.html_string_style_attribute",
         filePath,
         message:
-          "Raw HTML contains string-based style attributes like style='...' or style=\"...\". Docusaurus interprets HTML in markdown as JSX, which requires style={{...}} objects instead. Convert string styles to inline style objects or move styles to CSS classes.",
+          "Raw HTML contains string-based style attributes like style='...' or style=\"...\". To keep markdown compatible with both Confluence and MDX-based tooling, remove inline styles and use CSS classes instead.",
       });
       foundHtmlStringStyle = true;
     }
