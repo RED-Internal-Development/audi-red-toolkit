@@ -48,11 +48,15 @@ async function ensureSourceExists(sourceFile: string): Promise<void> {
   }
 }
 
-run().catch((error: unknown) => {
+function handleRunFailure(error: unknown): void {
   if (isActionError(error)) {
     core.setFailed(error.message);
     return;
   }
 
   core.setFailed(error instanceof Error ? error.message : String(error));
-});
+}
+
+if (process.env.VITEST !== "true") {
+  run().catch(handleRunFailure);
+}

@@ -30969,6 +30969,7 @@ const MARKDOWN_SUFFIXES = new Set([".md", ".mdx"]);
 const FENCE_RE = /^[ \t]{0,3}(```+|~~~+)/;
 const INLINE_CODE_RE = /(`+)(.+?)\1/g;
 const JSX_STYLE_RE = /style\s*=\s*\{\{/i;
+const HTML_STRING_STYLE_RE = /style\s*=\s*["']/i;
 const TABLE_START_RE = /<table\b/i;
 const TABLE_END_RE = /<\/table\b/i;
 const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/;
@@ -30990,6 +30991,7 @@ async function iterMarkdownFiles(root) {
 function validateMarkdownText(text, filePath) {
     const issues = [];
     let foundJsxStyle = false;
+    let foundHtmlStringStyle = false;
     let foundUnescapedAmpersand = false;
     let inFencedCodeBlock = false;
     let inRawHtmlTable = false;
@@ -31009,6 +31011,14 @@ function validateMarkdownText(text, filePath) {
                 message: "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse."
             });
             foundJsxStyle = true;
+        }
+        if (!foundHtmlStringStyle && HTML_STRING_STYLE_RE.test(searchableLine)) {
+            issues.push({
+                ruleId: "confluence.html_string_style_attribute",
+                filePath,
+                message: "Raw HTML contains string-based style attributes like style='...' or style=\"...\". Docusaurus interprets HTML in markdown as JSX, which requires style={{...}} objects instead. Convert string styles to inline style objects or move styles to CSS classes."
+            });
+            foundHtmlStringStyle = true;
         }
         if (TABLE_START_RE.test(searchableLine)) {
             inRawHtmlTable = true;
@@ -31311,13 +31321,16 @@ async function ensureSourceExists(sourceFile) {
         throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `source_file '${sourceFile}' does not exist.`);
     }
 }
-run().catch((error) => {
+function handleRunFailure(error) {
     if (isActionError(error)) {
         setFailed(error.message);
         return;
     }
     setFailed(error instanceof Error ? error.message : String(error));
-});
+}
+if (process.env.VITEST !== "true") {
+    run().catch(handleRunFailure);
+}
 
 var __webpack_exports__run = __webpack_exports__.e;
 export { __webpack_exports__run as run };
