@@ -49,9 +49,28 @@ describe("Confluence markdown validation", () => {
         ruleId: "confluence.html_string_style_attribute",
         filePath: "coverage.mdx",
         message:
-          "Raw HTML contains string-based style attributes like style='...' or style=\"...\". Docusaurus interprets HTML in markdown as JSX, which requires style={{...}} objects instead. Convert string styles to inline style objects or move styles to CSS classes.",
+          "Raw HTML contains string-based style attributes like style='...' or style=\"...\". To keep markdown compatible with both Confluence and MDX-based tooling, remove inline styles and use CSS classes instead.",
       },
     ]);
+  });
+
+  test("ignores string-style examples inside inline and fenced code", () => {
+    const issues = validateMarkdownText(
+      [
+        "# Clean",
+        "",
+        "Inline code: `<table style='width: 100%'>`.",
+        "",
+        "```html",
+        '<table style="width: 100%">',
+        "  <tr><td>Example</td></tr>",
+        "</table>",
+        "```",
+      ].join("\n"),
+      "clean.md",
+    );
+
+    expect(issues).toEqual([]);
   });
 
   test("detects unescaped ampersands inside raw HTML tables", () => {
