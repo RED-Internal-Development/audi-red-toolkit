@@ -10,6 +10,7 @@ export async function run(): Promise<void> {
 
   core.setOutput("report_file", result.reportFile);
   core.setOutput("per_repo_file", result.perRepoFile);
+  core.setOutput("profile_dashboard_file", result.profileDashboardFile);
   core.setOutput("repo_name", result.repoName);
   core.notice(`Report sync wrote ${result.reportFile}.`);
 }

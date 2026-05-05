@@ -74,6 +74,8 @@ describe("repo-data-sync execution", () => {
         docsDestinationTeamFolder: "docs/feature-apps/payments",
         docsDestinationAppFolder: "docs/feature-apps/payments/fa-example",
         docsBranch: "release",
+        appType: "feature_app",
+        profileKey: "feature_app",
         prodSupportEnabled: true,
       },
       {
@@ -84,6 +86,7 @@ describe("repo-data-sync execution", () => {
     const collectionReport = await readJson(result.reportFile);
     const sharedReport = await readJson(join(root, "data", "report.json"));
     const perRepoReport = await readJson(result.perRepoFile);
+    const profileDashboardReport = await readJson(result.profileDashboardFile);
 
     expect(collectionReport).toEqual({
       "@oneaudi/fa-example": {
@@ -118,6 +121,58 @@ describe("repo-data-sync execution", () => {
 
     expect(result.perRepoFile.endsWith("_oneaudi_fa-example.json")).toBe(true);
     expect(perRepoReport).toEqual(collectionReport["@oneaudi/fa-example"]);
+
+    expect(profileDashboardReport).toEqual({
+      schemaVersion: "1.0",
+      generatedAt: "2025-01-02T03:04:05.000Z",
+      repositories: [
+        {
+          repository: {
+            owner: "@oneaudi",
+            name: "fa-example",
+            fullName: "@oneaudi/fa-example",
+            displayName: "fa-example",
+          },
+          appType: "feature_app",
+          profileKey: "feature_app",
+          generatedAt: "2025-01-02T03:04:05.000Z",
+          metadata: {
+            app_name: "fa-example",
+            default_branch: "main",
+            prod_support_enabled: true,
+            docs: {
+              docs_destination_team_folder: "docs/feature-apps/payments",
+              docs_destination_app_folder:
+                "docs/feature-apps/payments/fa-example",
+              docs_branch: "release",
+            },
+          },
+          metrics: {
+            unitTest: {
+              overallCoverage: 88,
+              breakdown: {
+                lines: 90,
+                statements: 89,
+                functions: 87,
+                branches: 86,
+              },
+            },
+            e2eCoverage: {
+              overallCoverage: 62,
+              breakdown: undefined,
+            },
+            lighthouse: {
+              overallScore: 0.91,
+            },
+          },
+          collectionStatus: {
+            unitTest: { status: "found" },
+            e2eCoverage: { status: "found" },
+            lighthouse: { status: "found" },
+          },
+        },
+      ],
+    });
   });
 });
 

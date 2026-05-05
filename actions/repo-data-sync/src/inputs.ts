@@ -12,6 +12,8 @@ export interface ReportSyncInputs {
   docsDestinationTeamFolder: string;
   docsDestinationAppFolder: string;
   docsBranch: string;
+  appType: string | undefined;
+  profileKey: string | undefined;
   prodSupportEnabled: boolean;
 }
 
@@ -28,6 +30,8 @@ export function readRepoDataSyncInputs(): ReportSyncInputs {
     docs_destination_team_folder: core.getInput("docs_destination_team_folder"),
     docs_destination_app_folder: core.getInput("docs_destination_app_folder"),
     docs_branch: core.getInput("docs_branch"),
+    app_type: core.getInput("app_type"),
+    profile_key: core.getInput("profile_key"),
     prod_support_enabled: core.getInput("prod_support_enabled"),
   });
 }
@@ -52,6 +56,8 @@ export function parseRepoDataSyncInputsFromRecord(
       "docs_destination_app_folder",
     ),
     docsBranch: requireInput(inputs, "docs_branch"),
+    appType: optionalInput(inputs, "app_type"),
+    profileKey: optionalInput(inputs, "profile_key"),
     prodSupportEnabled: parseBoolean(
       optionalInput(inputs, "prod_support_enabled") ?? "false",
       "prod_support_enabled",

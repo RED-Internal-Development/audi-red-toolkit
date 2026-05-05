@@ -673,6 +673,7 @@ jobs:
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_OUTPUT
           echo "app_name=$app_name" >> $GITHUB_OUTPUT
+          echo "profile_key=$profile_key" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_ENV
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
@@ -696,6 +697,8 @@ jobs:
           docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
           docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
           docs_branch: ${{ steps.create-docs-folders.outputs.docs_branch }}
+          app_type: ${{ needs.detect_project.outputs.app_type }}
+          profile_key: ${{ steps.create-docs-folders.outputs.profile_key }}
           prod_support_enabled: ${{ inputs.enable_vwgoa_prod_support_deployment }}
 
       - name: Upload final report
@@ -712,6 +715,9 @@ jobs:
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
           git add data/report.json
+            if [ -d data/profile-dashboard ]; then
+              git add data/profile-dashboard/
+            fi
           if [ -d data/per-repo ]; then
               git add data/per-repo/
           fi

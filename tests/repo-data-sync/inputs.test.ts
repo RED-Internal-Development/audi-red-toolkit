@@ -15,6 +15,8 @@ describe("repo-data-sync input parsing", () => {
         docs_destination_team_folder: "docs/feature-apps/team",
         docs_destination_app_folder: "docs/feature-apps/team/app",
         docs_branch: "main",
+        app_type: "feature_app",
+        profile_key: "feature_app",
         prod_support_enabled: "true",
       }),
     ).toEqual({
@@ -27,6 +29,8 @@ describe("repo-data-sync input parsing", () => {
       docsDestinationTeamFolder: "docs/feature-apps/team",
       docsDestinationAppFolder: "docs/feature-apps/team/app",
       docsBranch: "main",
+      appType: "feature_app",
+      profileKey: "feature_app",
       prodSupportEnabled: true,
     });
   });

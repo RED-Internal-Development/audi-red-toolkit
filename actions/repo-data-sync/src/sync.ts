@@ -3,6 +3,15 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { ActionError } from "../../../packages/action-common/src/errors.js";
+import {
+  buildBackendServiceProfileDashboardEntryV1,
+  buildFeatureAppProfileDashboardEntryV1,
+  buildProfileDashboardReportV1,
+  type E2eCoverageBreakdown,
+  type ProfileDashboardCollectionStatusV1,
+  type ProfileDashboardEntryV1,
+  type UnitTestCoverageData,
+} from "../../repo-test-data-collect/src/report.js";
 import type { ReportSyncInputs } from "./inputs.js";
 
 type JsonRecord = Record<string, unknown>;
@@ -14,7 +23,12 @@ interface SyncRuntimeOptions {
 export async function executeRepoDataSync(
   inputs: ReportSyncInputs,
   options: SyncRuntimeOptions = {},
-): Promise<{ reportFile: string; perRepoFile: string; repoName: string }> {
+): Promise<{
+  reportFile: string;
+  perRepoFile: string;
+  profileDashboardFile: string;
+  repoName: string;
+}> {
   const metadataReport = await readRequiredReport(
     inputs.metadataFile,
     "metadata_file",
@@ -73,7 +87,30 @@ export async function executeRepoDataSync(
   );
   await writeJsonFile(perRepoFile, finalRepoEntry);
 
-  return { reportFile, perRepoFile, repoName };
+  const profileDashboardDir = resolve(dataDir, "profile-dashboard");
+  await mkdir(profileDashboardDir, { recursive: true });
+  const profileDashboardFile = resolve(profileDashboardDir, "report.json");
+  const profileDashboardEntries =
+    await readProfileDashboardEntries(profileDashboardFile);
+  const profileDashboardEntry = buildProfileDashboardEntry(
+    finalRepoEntry,
+    repoName,
+    timestamp,
+    inputs,
+  );
+  const nextProfileDashboardEntries = upsertProfileDashboardEntry(
+    profileDashboardEntries,
+    profileDashboardEntry,
+  );
+  await writeJsonFile(
+    profileDashboardFile,
+    buildProfileDashboardReportV1({
+      generatedAt: timestamp,
+      repositories: nextProfileDashboardEntries,
+    }),
+  );
+
+  return { reportFile, perRepoFile, profileDashboardFile, repoName };
 }
 
 async function mergeOptionalReport(
@@ -176,4 +213,199 @@ async function pathExists(filePath: string): Promise<boolean> {
 
 function toSafeRepoFileName(repoName: string): string {
   return repoName.replace(/[/@ ]/g, "_");
+}
+
+async function readProfileDashboardEntries(
+  filePath: string,
+): Promise<ProfileDashboardEntryV1[]> {
+  if (!(await pathExists(filePath))) {
+    return [];
+  }
+
+  const parsed: unknown = JSON.parse(await readFile(filePath, "utf8"));
+  const report = readObject(
+    parsed,
+    "profile-dashboard/report.json must contain a JSON object.",
+  );
+  const repositories = report.repositories;
+
+  if (!Array.isArray(repositories)) {
+    return [];
+  }
+
+  return repositories.filter(
+    (entry): entry is ProfileDashboardEntryV1 =>
+      Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
+  );
+}
+
+function buildProfileDashboardEntry(
+  finalRepoEntry: JsonRecord,
+  repoName: string,
+  timestamp: string,
+  inputs: ReportSyncInputs,
+): ProfileDashboardEntryV1 {
+  const appType = normalizeProfileDashboardAppType(inputs.appType);
+  const profileKey = inputs.profileKey?.trim() || appType;
+  const metadata = buildProfileDashboardMetadata(finalRepoEntry);
+  const collectionStatus = buildCollectionStatus(finalRepoEntry, appType);
+  const unitTestCoverage = readOptionalNumber(
+    finalRepoEntry.unit_test_coverage,
+  );
+  const unitTestCoverageData = readOptionalUnitTestCoverageData(
+    finalRepoEntry.unit_test_coverage_data,
+  );
+
+  if (appType === "backend_service") {
+    return buildBackendServiceProfileDashboardEntryV1({
+      repoName,
+      generatedAt: timestamp,
+      profileKey,
+      metadata,
+      unitTestCoverage,
+      unitTestCoverageData,
+      collectionStatus,
+    });
+  }
+
+  return buildFeatureAppProfileDashboardEntryV1({
+    repoName,
+    generatedAt: timestamp,
+    profileKey,
+    metadata,
+    unitTestCoverage,
+    unitTestCoverageData,
+    e2eTestCoverage: readOptionalNumber(finalRepoEntry.e2e_test_coverage),
+    e2eTestCoverageBreakdown: readOptionalE2eCoverageBreakdown(
+      finalRepoEntry.e2e_test_coverage_breakdown,
+    ),
+    lighthouseScore: readOptionalNumber(finalRepoEntry.lighthouse_score),
+    collectionStatus,
+  });
+}
+
+function normalizeProfileDashboardAppType(
+  appType: string | undefined,
+): "feature_app" | "backend_service" {
+  return appType === "backend_service" ? "backend_service" : "feature_app";
+}
+
+function buildProfileDashboardMetadata(finalRepoEntry: JsonRecord): JsonRecord {
+  const {
+    lighthouse_score: _lighthouseScore,
+    unit_test_coverage: _unitTestCoverage,
+    unit_test_coverage_data: _unitTestCoverageData,
+    e2e_test_coverage: _e2eTestCoverage,
+    e2e_test_coverage_breakdown: _e2eTestCoverageBreakdown,
+    timestamp: _timestamp,
+    ...metadata
+  } = finalRepoEntry;
+
+  return metadata;
+}
+
+function buildCollectionStatus(
+  finalRepoEntry: JsonRecord,
+  appType: "feature_app" | "backend_service",
+): Record<string, ProfileDashboardCollectionStatusV1> | undefined {
+  const status: Record<string, ProfileDashboardCollectionStatusV1> = {
+    unitTest: hasAnyMetric(
+      finalRepoEntry.unit_test_coverage,
+      finalRepoEntry.unit_test_coverage_data,
+    )
+      ? { status: "found" }
+      : { status: "missing" },
+  };
+
+  if (appType === "feature_app") {
+    status.e2eCoverage = hasAnyMetric(
+      finalRepoEntry.e2e_test_coverage,
+      finalRepoEntry.e2e_test_coverage_breakdown,
+    )
+      ? { status: "found" }
+      : { status: "not_configured" };
+    status.lighthouse = hasAnyMetric(finalRepoEntry.lighthouse_score)
+      ? { status: "found" }
+      : { status: "not_configured" };
+  }
+
+  return Object.keys(status).length > 0 ? status : undefined;
+}
+
+function hasAnyMetric(...values: unknown[]): boolean {
+  return values.some((value) => value !== undefined);
+}
+
+function upsertProfileDashboardEntry(
+  entries: ProfileDashboardEntryV1[],
+  nextEntry: ProfileDashboardEntryV1,
+): ProfileDashboardEntryV1[] {
+  const nextEntries = [...entries];
+  const entryIndex = nextEntries.findIndex(
+    (entry) => entry.repository.fullName === nextEntry.repository.fullName,
+  );
+
+  if (entryIndex >= 0) {
+    nextEntries[entryIndex] = nextEntry;
+    return nextEntries;
+  }
+
+  nextEntries.push(nextEntry);
+  return nextEntries;
+}
+
+function readOptionalNumber(value: unknown): number | null | undefined {
+  return typeof value === "number" ? value : undefined;
+}
+
+function readOptionalUnitTestCoverageData(
+  value: unknown,
+): UnitTestCoverageData | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (
+    typeof record.line_coverage !== "number" ||
+    typeof record.statement_coverage !== "number" ||
+    typeof record.function_coverage !== "number" ||
+    typeof record.branch_coverage !== "number" ||
+    typeof record.average_coverage !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    line_coverage: record.line_coverage,
+    statement_coverage: record.statement_coverage,
+    function_coverage: record.function_coverage,
+    branch_coverage: record.branch_coverage,
+    average_coverage: record.average_coverage,
+  };
+}
+
+function readOptionalE2eCoverageBreakdown(
+  value: unknown,
+): E2eCoverageBreakdown | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (
+    typeof record.e2e_test_coverage_statements !== "number" ||
+    typeof record.e2e_test_coverage_branches !== "number" ||
+    typeof record.e2e_test_coverage_functions !== "number" ||
+    typeof record.e2e_test_coverage_lines !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    e2e_test_coverage_statements: record.e2e_test_coverage_statements,
+    e2e_test_coverage_branches: record.e2e_test_coverage_branches,
+    e2e_test_coverage_functions: record.e2e_test_coverage_functions,
+    e2e_test_coverage_lines: record.e2e_test_coverage_lines,
+  };
 }

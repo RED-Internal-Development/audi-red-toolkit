@@ -33,6 +33,14 @@ inputs:
   docs_branch:
     description: Docs portal branch associated with the app profile.
     required: true
+  app_type:
+    description: Optional resolved app type for the new profile dashboard dataset.
+    required: false
+    default: ""
+  profile_key:
+    description: Optional resolved profile key for the new profile dashboard dataset.
+    required: false
+    default: ""
   prod_support_enabled:
     description: Whether VWGOA prod support deployment is enabled.
     required: false
@@ -42,6 +50,8 @@ outputs:
     description: Absolute path to the assembled collection report.json file.
   per_repo_file:
     description: Absolute path to the per-repository snapshot file.
+  profile_dashboard_file:
+    description: Absolute path to the aggregate profile dashboard report file.
   repo_name:
     description: Repository name extracted from the metadata report.
 runs:
