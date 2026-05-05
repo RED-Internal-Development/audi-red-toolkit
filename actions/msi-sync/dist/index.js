@@ -31493,6 +31493,9 @@ class ConfluenceHttpClient {
         const response = await this.requestJson(`/content?${searchParams.toString()}`);
         return response.results ?? [];
     }
+    async getPageById(pageId, expand = "ancestors") {
+        return this.requestJson(`/content/${encodeURIComponent(pageId)}?expand=${encodeURIComponent(expand)}`);
+    }
     async getPageVersion(pageId) {
         const response = await this.requestJson(`/content/${encodeURIComponent(pageId)}?expand=version`);
         const version = response.version?.number;
@@ -31506,7 +31509,7 @@ class ConfluenceHttpClient {
             type: "page",
             title: input.title,
             space: { key: this.options.spaceKey },
-            ancestors: input.parentId ? [{ id: input.parentId }] : [],
+            ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
             body: {
                 storage: {
                     value: input.html,
@@ -31523,7 +31526,7 @@ class ConfluenceHttpClient {
                 type: "page",
                 title: input.title,
                 space: { key: this.options.spaceKey },
-                ancestors: input.parentId ? [{ id: input.parentId }] : [],
+                ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
                 version: { number: currentVersion + 1 },
                 body: {
                     storage: {

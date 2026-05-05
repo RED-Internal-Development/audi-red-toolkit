@@ -31068,30 +31068,40 @@ async function syncDocs(inputs) {
     const cloneDir = await (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), "docs-sync-"));
     const clonePlan = buildClonePlan(inputs, cloneDir);
     try {
-        await runGit(["config", "--global", "--add", "safe.directory", process.env.GITHUB_WORKSPACE ?? process.cwd()]);
+        await runGit([
+            "config",
+            "--global",
+            "--add",
+            "safe.directory",
+            process.env.GITHUB_WORKSPACE ?? process.cwd(),
+        ]);
         await runGit(["config", "--global", "user.email", inputs.userEmail]);
         await runGit(["config", "--global", "user.name", inputs.userName]);
         await runGit(clonePlan.cloneArgs, {
             code: "DOCSYNC_CLONE_FAILED",
             step: "clone_destination_repo",
-            message: "Failed cloning destination repository."
+            message: "Failed cloning destination repository.",
         });
         if (await hasRemoteBranch(cloneDir, inputs.destinationBranch)) {
             await runGit(clonePlan.checkoutExistingArgs, {
                 code: "DOCSYNC_BRANCH_CHECKOUT_FAILED",
                 step: "clone_destination_repo",
-                message: `Failed checking out destination branch '${inputs.destinationBranch}'.`
+                message: `Failed checking out destination branch '${inputs.destinationBranch}'.`,
             }, cloneDir);
         }
         else {
             await runGit(clonePlan.checkoutNewArgs, {
                 code: "DOCSYNC_BRANCH_CREATE_FAILED",
                 step: "clone_destination_repo",
-                message: `Failed creating destination branch '${inputs.destinationBranch}'.`
+                message: `Failed creating destination branch '${inputs.destinationBranch}'.`,
             }, cloneDir);
         }
         await copySource(inputs, cloneDir);
-        await runGit(["add", "-A"], { code: "DOCSYNC_GIT_ADD_FAILED", step: "commit_changes", message: "git add failed." }, cloneDir);
+        await runGit(["add", "-A"], {
+            code: "DOCSYNC_GIT_ADD_FAILED",
+            step: "commit_changes",
+            message: "git add failed.",
+        }, cloneDir);
         if (!(await hasStagedChanges(cloneDir))) {
             return false;
         }
@@ -31100,12 +31110,12 @@ async function syncDocs(inputs) {
         await runGit(["commit", "--message", message], {
             code: "DOCSYNC_COMMIT_FAILED",
             step: "commit_changes",
-            message: "git commit failed."
+            message: "git commit failed.",
         }, cloneDir);
         await runGit(["push", "-u", "origin", `HEAD:${inputs.destinationBranch}`], {
             code: "DOCSYNC_PUSH_FAILED",
             step: "push_changes",
-            message: "git push failed. Check permissions or branch protection."
+            message: "git push failed. Check permissions or branch protection.",
         }, cloneDir);
         return true;
     }
@@ -31116,14 +31126,27 @@ async function syncDocs(inputs) {
 function buildClonePlan(inputs, cloneDir) {
     const repoUrl = `https://x-access-token:${inputs.githubToken}@${inputs.gitServer}/${inputs.destinationRepo}.git`;
     return {
-        cloneArgs: ["clone", "--depth", "1", "--no-single-branch", repoUrl, cloneDir],
-        checkoutExistingArgs: ["checkout", "--track", `origin/${inputs.destinationBranch}`],
-        checkoutNewArgs: ["checkout", "-b", inputs.destinationBranch]
+        cloneArgs: [
+            "clone",
+            "--depth",
+            "1",
+            "--no-single-branch",
+            repoUrl,
+            cloneDir,
+        ],
+        checkoutExistingArgs: [
+            "checkout",
+            "--track",
+            `origin/${inputs.destinationBranch}`,
+        ],
+        checkoutNewArgs: ["checkout", "-b", inputs.destinationBranch],
     };
 }
 async function copySource(inputs, cloneDir) {
     const destinationFolder = (0,external_node_path_namespaceObject.join)(cloneDir, inputs.destinationFolder);
-    const destinationPath = inputs.rename ? (0,external_node_path_namespaceObject.join)(destinationFolder, inputs.rename) : destinationFolder;
+    const destinationPath = inputs.rename
+        ? (0,external_node_path_namespaceObject.join)(destinationFolder, inputs.rename)
+        : destinationFolder;
     await (0,promises_namespaceObject.mkdir)(destinationFolder, { recursive: true });
     if (inputs.useRsync) {
         await runCopyCommand("rsync", ["-avrh", "--delete", inputs.sourceFile, destinationPath], "rsync failed while copying source path.");
@@ -31132,7 +31155,7 @@ async function copySource(inputs, cloneDir) {
     await (0,promises_namespaceObject.cp)(inputs.sourceFile, destinationPath, {
         recursive: true,
         force: true,
-        errorOnExist: false
+        errorOnExist: false,
     }).catch(() => {
         throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", "Failed copying source path to destination.");
     });
@@ -31147,7 +31170,7 @@ async function hasRemoteBranch(cwd, branch) {
     const exitCode = await exec_exec("git", ["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branch}`], {
         cwd,
         ignoreReturnCode: true,
-        silent: true
+        silent: true,
     });
     if (exitCode === 0) {
         return true;
@@ -31158,7 +31181,10 @@ async function hasRemoteBranch(cwd, branch) {
     throw new ActionError("DOCSYNC_BRANCH_DETECTION_FAILED", "clone_destination_repo", `Failed checking whether destination branch '${branch}' exists after cloning.`);
 }
 async function runGit(args, failure, cwd) {
-    const exitCode = await exec_exec("git", args, { cwd, ignoreReturnCode: true });
+    const exitCode = await exec_exec("git", args, {
+        cwd,
+        ignoreReturnCode: true,
+    });
     if (exitCode !== 0) {
         if (failure) {
             throw new ActionError(failure.code, failure.step, failure.message);
@@ -31170,7 +31196,7 @@ async function hasStagedChanges(cwd) {
     const exitCode = await exec_exec("git", ["diff", "--cached", "--quiet", "--exit-code"], {
         cwd,
         ignoreReturnCode: true,
-        silent: true
+        silent: true,
     });
     if (exitCode === 0) {
         return false;
@@ -31200,7 +31226,7 @@ function readDocsSyncInputs() {
         commit_message: getInput("commit_message"),
         rename: getInput("rename"),
         use_rsync: getInput("use_rsync"),
-        git_server: getInput("git_server")
+        git_server: getInput("git_server"),
     }, token);
 }
 function parseDocsSyncInputsFromRecord(inputs, githubToken) {
@@ -31225,7 +31251,7 @@ function parseDocsSyncInputsFromRecord(inputs, githubToken) {
         rename: optionalInput(inputs, "rename"),
         useRsync: parseBooleanInput(inputs.use_rsync, "use_rsync", false),
         gitServer: optionalInput(inputs, "git_server") ?? "github.com",
-        githubToken
+        githubToken,
     };
 }
 function requireInput(inputs, name) {
