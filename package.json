@@ -6,8 +6,11 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build": "npm run build:docs-sync && npm run build:msi-sync && npm run build:msi-report-sync",
+    "build": "npm run build:docs-sync && npm run build:metadata-sync && npm run build:collection-sync && npm run build:report-sync && npm run build:msi-sync && npm run build:msi-report-sync",
     "build:docs-sync": "ncc build actions/docs-sync/src/index.ts --out actions/docs-sync/dist --source-map --license licenses.txt",
+    "build:metadata-sync": "ncc build actions/metadata-sync/src/index.ts --out actions/metadata-sync/dist --source-map --license licenses.txt",
+    "build:collection-sync": "ncc build actions/collection-sync/src/index.ts --out actions/collection-sync/dist --source-map --license licenses.txt",
+    "build:report-sync": "ncc build actions/report-sync/src/index.ts --out actions/report-sync/dist --source-map --license licenses.txt",
     "build:msi-sync": "ncc build actions/msi-sync/src/index.ts --out actions/msi-sync/dist --source-map --license licenses.txt",
     "build:msi-report-sync": "ncc build actions/msi-report-sync/src/index.ts --out actions/msi-report-sync/dist --source-map --license licenses.txt"
   },
