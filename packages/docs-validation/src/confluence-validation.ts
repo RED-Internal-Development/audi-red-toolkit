@@ -5,7 +5,7 @@ const MARKDOWN_SUFFIXES = new Set([".md", ".mdx"]);
 const FENCE_RE = /^[ \t]{0,3}(```+|~~~+)/;
 const INLINE_CODE_RE = /(`+)(.+?)\1/g;
 const JSX_STYLE_RE = /style\s*=\s*\{\{/i;
-const HTML_STRING_STYLE_RE = /style\s*=\s*["']/i;
+const HTML_STRING_STYLE_RE = /(?:^|\s)style\s*=\s*["']/i;
 const TABLE_START_RE = /<table\b/i;
 const TABLE_END_RE = /<\/table\b/i;
 const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/;
