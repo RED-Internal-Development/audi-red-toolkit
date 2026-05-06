@@ -27995,6 +27995,7 @@ var __webpack_exports__ = {};
 
 // EXPORTS
 __nccwpck_require__.d(__webpack_exports__, {
+  C: () => (/* binding */ executeMsiReportSync),
   e: () => (/* binding */ run)
 });
 
@@ -29394,7 +29395,7 @@ const _summary = new Summary();
  * @deprecated use `core.summary`
  */
 const markdownSummary = (/* unused pure expression or super */ null && (_summary));
-const summary = (/* unused pure expression or super */ null && (_summary));
+const summary = _summary;
 //# sourceMappingURL=summary.js.map
 ;// CONCATENATED MODULE: ./node_modules/@actions/core/lib/path-utils.js
 
@@ -30504,14 +30505,14 @@ var exec_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arg
  */
 function exec_exec(commandLine, args, options) {
     return exec_awaiter(this, void 0, void 0, function* () {
-        const commandArgs = argStringToArray(commandLine);
+        const commandArgs = tr.argStringToArray(commandLine);
         if (commandArgs.length === 0) {
             throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
         }
         // Path to tool to execute should be first arg
         const toolPath = commandArgs[0];
         args = commandArgs.slice(1).concat(args || []);
-        const runner = new ToolRunner(toolPath, args, options);
+        const runner = new tr.ToolRunner(toolPath, args, options);
         return runner.exec();
     });
 }
@@ -30945,6 +30946,8 @@ function getIDToken(aud) {
 //# sourceMappingURL=core.js.map
 ;// CONCATENATED MODULE: external "node:fs/promises"
 const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 ;// CONCATENATED MODULE: ./packages/action-common/src/errors.ts
 class ActionError extends Error {
     code;
@@ -30960,316 +30963,396 @@ function isActionError(error) {
     return error instanceof ActionError;
 }
 
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
-;// CONCATENATED MODULE: ./packages/docs-validation/src/confluence-validation.ts
+;// CONCATENATED MODULE: ./actions/msi-sync/src/confluence-client.ts
+class ConfluenceRequestError extends Error {
+    method;
+    url;
+    statusCode;
+    body;
+    constructor(method, url, statusCode, body) {
+        super(`Confluence request failed: ${method} ${url} (${statusCode})`);
+        this.method = method;
+        this.url = url;
+        this.name = "ConfluenceRequestError";
+        this.statusCode = String(statusCode);
+        this.body = body;
+    }
+}
+class ConfluenceHttpClient {
+    options;
+    apiBaseUrl;
+    doFetch;
+    constructor(options) {
+        this.options = options;
+        this.apiBaseUrl = `${options.baseUrl.replace(/\/+$/, "")}/rest/api`;
+        this.doFetch = options.fetch ?? fetch;
+    }
+    async getPagesByTitle(title) {
+        const searchParams = new URLSearchParams({
+            spaceKey: this.options.spaceKey,
+            title,
+            expand: "ancestors",
+            type: "page",
+        });
+        const response = await this.requestJson(`/content?${searchParams.toString()}`);
+        return response.results ?? [];
+    }
+    async getPageById(pageId, expand = "ancestors") {
+        return this.requestJson(`/content/${encodeURIComponent(pageId)}?expand=${encodeURIComponent(expand)}`);
+    }
+    async getPageVersion(pageId) {
+        const response = await this.requestJson(`/content/${encodeURIComponent(pageId)}?expand=version`);
+        const version = response.version?.number;
+        if (typeof version !== "number") {
+            throw new Error(`Confluence page ${pageId} did not return a version.`);
+        }
+        return version;
+    }
+    async createPage(input) {
+        return this.mutateJson("/content", "POST", {
+            type: "page",
+            title: input.title,
+            space: { key: this.options.spaceKey },
+            ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
+            body: {
+                storage: {
+                    value: input.html,
+                    representation: "storage",
+                },
+            },
+        });
+    }
+    async updatePage(input) {
+        try {
+            const currentVersion = await this.getPageVersion(input.id);
+            return this.mutateJson(`/content/${encodeURIComponent(input.id)}`, "PUT", {
+                id: input.id,
+                type: "page",
+                title: input.title,
+                space: { key: this.options.spaceKey },
+                ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
+                version: { number: currentVersion + 1 },
+                body: {
+                    storage: {
+                        value: input.html,
+                        representation: "storage",
+                    },
+                },
+            });
+        }
+        catch (error) {
+            if (error instanceof ConfluenceRequestError) {
+                return {
+                    ok: false,
+                    statusCode: error.statusCode,
+                    body: error.body,
+                };
+            }
+            throw error;
+        }
+    }
+    async listPageAttachments(pageId) {
+        const response = await this.requestJson(`/content/${encodeURIComponent(pageId)}/child/attachment`);
+        return response.results ?? [];
+    }
+    async createAttachment(input) {
+        return this.uploadAttachment(`/content/${encodeURIComponent(input.pageId)}/child/attachment`, input);
+    }
+    async updateAttachment(input) {
+        return this.uploadAttachment(`/content/${encodeURIComponent(input.pageId)}/child/attachment/${encodeURIComponent(input.attachmentId)}/data`, input);
+    }
+    async requestJson(path) {
+        const response = await this.doFetch(this.toUrl(path), {
+            method: "GET",
+            headers: this.baseHeaders(),
+        });
+        if (!response.ok) {
+            throw new ConfluenceRequestError("GET", this.toUrl(path), response.status, await response.text());
+        }
+        return (await response.json());
+    }
+    async mutateJson(path, method, payload) {
+        const response = await this.doFetch(this.toUrl(path), {
+            method,
+            headers: {
+                ...this.baseHeaders(),
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+            return {
+                ok: false,
+                statusCode: String(response.status),
+                body: await response.text(),
+            };
+        }
+        const body = (await response.json());
+        return {
+            ok: true,
+            id: body.id ?? "",
+            title: body.title,
+        };
+    }
+    async uploadAttachment(path, input) {
+        const formData = new FormData();
+        const fileBytes = new Uint8Array(input.data);
+        formData.append("file", new File([fileBytes], input.filename, {
+            type: input.contentType ?? "application/octet-stream",
+        }));
+        formData.append("minorEdit", "true");
+        const response = await this.doFetch(this.toUrl(path), {
+            method: "POST",
+            headers: {
+                ...this.baseHeaders(),
+                "X-Atlassian-Token": "no-check",
+            },
+            body: formData,
+        });
+        if (!response.ok) {
+            return {
+                ok: false,
+                statusCode: String(response.status),
+                body: await response.text(),
+            };
+        }
+        const body = (await response.json());
+        const attachment = body.results?.[0];
+        return {
+            ok: true,
+            id: attachment?.id ?? "",
+            title: attachment?.title,
+        };
+    }
+    baseHeaders() {
+        return {
+            Accept: "application/json",
+            Authorization: `Bearer ${this.options.token}`,
+        };
+    }
+    toUrl(path) {
+        return `${this.apiBaseUrl}${path}`;
+    }
+}
+
+;// CONCATENATED MODULE: ./actions/msi-sync/src/page-registry.ts
+function chooseExistingPage(pages, title, parentId) {
+    const matching = pages.filter((page) => page.title?.toLowerCase() === title.toLowerCase());
+    if (!parentId) {
+        return matching[0];
+    }
+    return matching.find((page) => (page.ancestors ?? []).some((ancestor) => ancestor.id === parentId));
+}
+function isDirectoryFileCollision(directoryName, filename) {
+    return directoryName.toLowerCase() === filename.replace(/\.(md|mdx)$/i, "").toLowerCase();
+}
+
+;// CONCATENATED MODULE: ./actions/msi-sync/src/summary.ts
+const REFERRAL_ID_RE = /"referralId"\s*:\s*"([^"]+)"/;
+class PublishStats {
+    failures = [];
+    recordFailure(operation, title, statusCode, referralId, context) {
+        this.failures.push({
+            operation,
+            title,
+            statusCode,
+            referralId,
+            targetType: context?.targetType ?? "page",
+            parentTitle: context?.parentTitle,
+        });
+    }
+    hasFailures() {
+        return this.failures.length > 0;
+    }
+    renderSummary() {
+        const byStep = new Map();
+        for (const failure of this.failures) {
+            const key = `${failure.targetType}:${failure.operation}`;
+            byStep.set(key, (byStep.get(key) ?? 0) + 1);
+        }
+        return [
+            `MSI_PARTIAL_PUBLISH_FAILURE | publish | Found ${this.failures.length} publish failure(s).`,
+            `steps | ${[...byStep.entries()]
+                .map(([key, count]) => `${key}=${count}`)
+                .join(" | ")}`,
+            ...this.failures.map((failure) => [
+                failure.targetType,
+                failure.operation,
+                failure.title,
+                failure.statusCode,
+                failure.referralId,
+                failure.parentTitle ? `page=${failure.parentTitle}` : undefined,
+            ]
+                .filter(Boolean)
+                .join(" | ")),
+        ].join("\n");
+    }
+}
+function extractReferralId(responseText) {
+    return REFERRAL_ID_RE.exec(responseText)?.[1];
+}
+
+;// CONCATENATED MODULE: ./actions/msi-sync/src/publish.ts
 
 
-const MARKDOWN_SUFFIXES = new Set([".md", ".mdx"]);
-const FENCE_RE = /^[ \t]{0,3}(```+|~~~+)/;
-const INLINE_CODE_RE = /(`+)(.+?)\1/g;
-const JSX_STYLE_RE = /style\s*=\s*\{\{/i;
-const HTML_STRING_STYLE_RE = /(?:^|\s)style\s*=\s*["']/i;
-const TABLE_START_RE = /<table\b/i;
-const TABLE_END_RE = /<\/table\b/i;
-const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/;
-async function iterMarkdownFiles(root) {
-    const rootStat = await (0,promises_namespaceObject.stat)(root).catch(() => undefined);
-    if (!rootStat) {
-        return [];
+
+async function publishPage(client, stats, page) {
+    const result = await publishTypedPage(client, stats, "file", page);
+    return result?.pageId;
+}
+function publishDirectoryPage(client, stats, page) {
+    return publishTypedPage(client, stats, "directory", page);
+}
+function publishFilePage(client, stats, page) {
+    return publishTypedPage(client, stats, "file", page);
+}
+async function publishTypedPage(client, stats, pageKind, page) {
+    let existingPages;
+    try {
+        existingPages = await client.getPagesByTitle(page.title);
     }
-    if (rootStat.isFile()) {
-        return isMarkdownFile(root) ? [root] : [];
+    catch (error) {
+        recordRequestFailure(stats, "lookup", page.title, error);
+        return undefined;
     }
-    if (!rootStat.isDirectory()) {
+    const existing = chooseExistingPage(existingPages, page.title, page.parentId);
+    const pageResult = existing
+        ? await client.updatePage({
+            id: existing.id,
+            title: page.title,
+            html: page.html,
+            parentId: page.parentId,
+        })
+        : await client.createPage(page);
+    const pageOperation = existing ? "updated" : "created";
+    if (!pageResult.ok) {
+        stats.recordFailure(existing ? "update" : "create", page.title, pageResult.statusCode, extractReferralId(pageResult.body));
+        return undefined;
+    }
+    const attachmentResults = await publishAttachments(client, stats, pageResult.id, page.title, pageOperation, page.attachments ?? []);
+    if (!attachmentResults) {
+        return undefined;
+    }
+    return {
+        pageId: pageResult.id,
+        pageTitle: page.title,
+        pageKind,
+        pageOperation,
+        attachmentStrategy: page.attachments?.length
+            ? pageOperation === "created"
+                ? "create-all"
+                : "upsert-existing"
+            : "none",
+        attachmentResults,
+    };
+}
+async function publishAttachments(client, stats, pageId, pageTitle, pageOperation, attachments) {
+    if (attachments.length === 0) {
         return [];
     }
     const results = [];
-    await collectMarkdownFiles(root, results);
-    return results.sort((left, right) => left.localeCompare(right));
-}
-function validateMarkdownText(text, filePath) {
-    const issues = [];
-    let foundJsxStyle = false;
-    let foundHtmlStringStyle = false;
-    let foundUnescapedAmpersand = false;
-    let inFencedCodeBlock = false;
-    let inRawHtmlTable = false;
-    for (const line of text.split(/\r?\n/)) {
-        if (FENCE_RE.test(line)) {
-            inFencedCodeBlock = !inFencedCodeBlock;
+    let existingAttachmentsByTitle = new Map();
+    if (pageOperation === "updated") {
+        try {
+            const existingAttachments = await client.listPageAttachments(pageId);
+            existingAttachmentsByTitle = new Map(existingAttachments.map((attachment) => [
+                attachment.title.toLowerCase(),
+                attachment,
+            ]));
+        }
+        catch (error) {
+            recordRequestFailure(stats, "list", pageTitle, error, {
+                targetType: "attachment",
+                parentTitle: pageTitle,
+            });
+            return undefined;
+        }
+    }
+    let hasFailure = false;
+    for (const attachment of attachments) {
+        const existing = existingAttachmentsByTitle.get(attachment.filename.toLowerCase());
+        const uploadResult = existing
+            ? await client.updateAttachment({
+                pageId,
+                attachmentId: existing.id,
+                filename: attachment.filename,
+                data: attachment.data,
+                contentType: attachment.contentType,
+            })
+            : await client.createAttachment({
+                pageId,
+                filename: attachment.filename,
+                data: attachment.data,
+                contentType: attachment.contentType,
+            });
+        if (!uploadResult.ok) {
+            hasFailure = true;
+            stats.recordFailure("upload", attachment.filename, uploadResult.statusCode, extractReferralId(uploadResult.body), {
+                targetType: "attachment",
+                parentTitle: pageTitle,
+            });
             continue;
         }
-        if (inFencedCodeBlock) {
-            continue;
-        }
-        const searchableLine = stripInlineCode(line);
-        if (!foundJsxStyle && JSX_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.jsx_style_attribute",
-                filePath,
-                message: "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse.",
-            });
-            foundJsxStyle = true;
-        }
-        if (!foundHtmlStringStyle && HTML_STRING_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.html_string_style_attribute",
-                filePath,
-                message: "Raw HTML contains string-based style attributes like style='...' or style=\"...\". To keep markdown compatible with both Confluence and MDX-based tooling, remove inline styles and use CSS classes instead.",
-            });
-            foundHtmlStringStyle = true;
-        }
-        if (TABLE_START_RE.test(searchableLine)) {
-            inRawHtmlTable = true;
-        }
-        if (inRawHtmlTable &&
-            !foundUnescapedAmpersand &&
-            UNESCAPED_AMP_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.raw_html_unescaped_ampersand",
-                filePath,
-                message: "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML.",
-            });
-            foundUnescapedAmpersand = true;
-        }
-        if (TABLE_END_RE.test(searchableLine)) {
-            inRawHtmlTable = false;
-        }
-    }
-    return issues;
-}
-async function validatePath(root) {
-    const markdownFiles = await iterMarkdownFiles(root);
-    const issues = [];
-    for (const markdownFile of markdownFiles) {
-        const text = await (0,promises_namespaceObject.readFile)(markdownFile, "utf8");
-        issues.push(...validateMarkdownText(text, markdownFile));
-    }
-    return issues;
-}
-function isMarkdownFile(filePath) {
-    const lowerCasePath = filePath.toLowerCase();
-    return [...MARKDOWN_SUFFIXES].some((suffix) => lowerCasePath.endsWith(suffix));
-}
-async function collectMarkdownFiles(directory, results) {
-    const entries = await (0,promises_namespaceObject.readdir)(directory, { withFileTypes: true });
-    for (const entry of entries) {
-        const entryPath = (0,external_node_path_namespaceObject.join)(directory, entry.name);
-        if (entry.isDirectory()) {
-            await collectMarkdownFiles(entryPath, results);
-        }
-        else if (entry.isFile() && isMarkdownFile(entryPath)) {
-            results.push(entryPath);
-        }
-    }
-}
-function stripInlineCode(line) {
-    return line.replace(INLINE_CODE_RE, "");
-}
-
-;// CONCATENATED MODULE: external "node:os"
-const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
-;// CONCATENATED MODULE: ./actions/docs-sync/src/git-sync.ts
-
-
-
-
-
-async function syncDocs(inputs) {
-    const cloneDir = await (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), "docs-sync-"));
-    const clonePlan = buildClonePlan(inputs, cloneDir);
-    try {
-        await runGit([
-            "config",
-            "--global",
-            "--add",
-            "safe.directory",
-            process.env.GITHUB_WORKSPACE ?? process.cwd(),
-        ]);
-        await runGit(["config", "--global", "user.email", inputs.userEmail]);
-        await runGit(["config", "--global", "user.name", inputs.userName]);
-        await runGit(clonePlan.cloneArgs, {
-            code: "DOCSYNC_CLONE_FAILED",
-            step: "clone_destination_repo",
-            message: "Failed cloning destination repository.",
+        results.push({
+            attachmentId: uploadResult.id,
+            filename: attachment.filename,
+            operation: existing ? "updated" : "created",
         });
-        if (await hasRemoteBranch(cloneDir, inputs.destinationBranch)) {
-            await runGit(clonePlan.checkoutExistingArgs, {
-                code: "DOCSYNC_BRANCH_CHECKOUT_FAILED",
-                step: "clone_destination_repo",
-                message: `Failed checking out destination branch '${inputs.destinationBranch}'.`,
-            }, cloneDir);
-        }
-        else {
-            await runGit(clonePlan.checkoutNewArgs, {
-                code: "DOCSYNC_BRANCH_CREATE_FAILED",
-                step: "clone_destination_repo",
-                message: `Failed creating destination branch '${inputs.destinationBranch}'.`,
-            }, cloneDir);
-        }
-        await copySource(inputs, cloneDir);
-        await runGit(["add", "-A"], {
-            code: "DOCSYNC_GIT_ADD_FAILED",
-            step: "commit_changes",
-            message: "git add failed.",
-        }, cloneDir);
-        if (!(await hasStagedChanges(cloneDir))) {
-            return false;
-        }
-        const message = inputs.commitMessage ??
-            `Update from ${inputs.userActor} from this repository https://${inputs.gitServer}/${process.env.GITHUB_REPOSITORY ?? "unknown/repository"}/commit/${process.env.GITHUB_SHA ?? "unknown-sha"}`;
-        await runGit(["commit", "--message", message], {
-            code: "DOCSYNC_COMMIT_FAILED",
-            step: "commit_changes",
-            message: "git commit failed.",
-        }, cloneDir);
-        await runGit(["push", "-u", "origin", `HEAD:${inputs.destinationBranch}`], {
-            code: "DOCSYNC_PUSH_FAILED",
-            step: "push_changes",
-            message: "git push failed. Check permissions or branch protection.",
-        }, cloneDir);
-        return true;
     }
-    finally {
-        await (0,promises_namespaceObject.rm)(cloneDir, { force: true, recursive: true });
-    }
+    return hasFailure ? undefined : results;
 }
-function buildClonePlan(inputs, cloneDir) {
-    const repoUrl = `https://x-access-token:${inputs.githubToken}@${inputs.gitServer}/${inputs.destinationRepo}.git`;
-    return {
-        cloneArgs: [
-            "clone",
-            "--depth",
-            "1",
-            "--no-single-branch",
-            repoUrl,
-            cloneDir,
-        ],
-        checkoutExistingArgs: [
-            "checkout",
-            "--track",
-            `origin/${inputs.destinationBranch}`,
-        ],
-        checkoutNewArgs: ["checkout", "-b", inputs.destinationBranch],
-    };
-}
-async function copySource(inputs, cloneDir) {
-    const destinationFolder = (0,external_node_path_namespaceObject.join)(cloneDir, inputs.destinationFolder);
-    const destinationPath = inputs.rename
-        ? (0,external_node_path_namespaceObject.join)(destinationFolder, inputs.rename)
-        : destinationFolder;
-    await (0,promises_namespaceObject.mkdir)(destinationFolder, { recursive: true });
-    if (inputs.useRsync) {
-        await runCopyCommand("rsync", ["-avrh", "--delete", inputs.sourceFile, destinationPath], "rsync failed while copying source path.");
+function recordRequestFailure(stats, operation, title, error, context) {
+    if (error instanceof ConfluenceRequestError) {
+        stats.recordFailure(operation, title, error.statusCode, extractReferralId(error.body), context);
         return;
     }
-    await (0,promises_namespaceObject.cp)(inputs.sourceFile, destinationPath, {
-        recursive: true,
-        force: true,
-        errorOnExist: false,
-    }).catch(() => {
-        throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", "Failed copying source path to destination.");
-    });
-}
-async function runCopyCommand(command, args, message) {
-    const exitCode = await exec_exec(command, args, { ignoreReturnCode: true });
-    if (exitCode !== 0) {
-        throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", message);
-    }
-}
-async function hasRemoteBranch(cwd, branch) {
-    const exitCode = await exec_exec("git", ["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branch}`], {
-        cwd,
-        ignoreReturnCode: true,
-        silent: true,
-    });
-    if (exitCode === 0) {
-        return true;
-    }
-    if (exitCode === 1) {
-        return false;
-    }
-    throw new ActionError("DOCSYNC_BRANCH_DETECTION_FAILED", "clone_destination_repo", `Failed checking whether destination branch '${branch}' exists after cloning.`);
-}
-async function runGit(args, failure, cwd) {
-    const exitCode = await exec_exec("git", args, {
-        cwd,
-        ignoreReturnCode: true,
-    });
-    if (exitCode !== 0) {
-        if (failure) {
-            throw new ActionError(failure.code, failure.step, failure.message);
-        }
-        throw new ActionError("DOCSYNC_GIT_FAILED", "git", `git ${args[0] ?? "command"} failed.`);
-    }
-}
-async function hasStagedChanges(cwd) {
-    const exitCode = await exec_exec("git", ["diff", "--cached", "--quiet", "--exit-code"], {
-        cwd,
-        ignoreReturnCode: true,
-        silent: true,
-    });
-    if (exitCode === 0) {
-        return false;
-    }
-    if (exitCode === 1) {
-        return true;
-    }
-    throw new ActionError("DOCSYNC_GIT_STATUS_FAILED", "commit_changes", "git diff --cached failed.");
+    stats.recordFailure(operation, title, "ERROR", undefined, context);
 }
 
-;// CONCATENATED MODULE: ./actions/docs-sync/src/inputs.ts
+;// CONCATENATED MODULE: ./actions/msi-report-sync/src/inputs.ts
 
 
-function readDocsSyncInputs() {
-    const token = process.env.API_TOKEN_GITHUB ?? "";
+function readMsiReportSyncInputs() {
+    const token = getInput("token");
     if (token) {
         core_setSecret(token);
     }
-    return parseDocsSyncInputsFromRecord({
-        source_file: getInput("source_file"),
-        destination_repo: getInput("destination_repo"),
-        destination_folder: getInput("destination_folder"),
-        user_email: getInput("user_email"),
-        user_name: getInput("user_name"),
-        user_actor: getInput("user_actor"),
-        destination_branch: getInput("destination_branch"),
-        commit_message: getInput("commit_message"),
-        rename: getInput("rename"),
-        use_rsync: getInput("use_rsync"),
-        git_server: getInput("git_server"),
-    }, token);
+    return parseMsiReportSyncInputsFromRecord({
+        dataFile: getInput("dataFile"),
+        pageTitle: getInput("pageTitle"),
+        parentPageId: getInput("parentPageId"),
+        targetPageId: getInput("targetPageId"),
+        baseUrl: getInput("baseUrl"),
+        spaceKey: getInput("spaceKey"),
+        token,
+        csvFile: getInput("csvFile"),
+    });
 }
-function parseDocsSyncInputsFromRecord(inputs, githubToken) {
-    const sourceFile = requireInput(inputs, "source_file");
-    const destinationRepo = requireInput(inputs, "destination_repo");
-    const userEmail = requireInput(inputs, "user_email");
-    const userName = requireInput(inputs, "user_name");
-    const userActor = requireInput(inputs, "user_actor");
-    const destinationBranch = optionalInput(inputs, "destination_branch") ?? "main";
-    if (!githubToken.trim()) {
-        throw new ActionError("DOCSYNC_MISSING_SECRET", "validate_inputs", "API_TOKEN_GITHUB is required.");
+function parseMsiReportSyncInputsFromRecord(inputs) {
+    const pageTitle = optionalInput(inputs, "pageTitle");
+    const parentPageId = optionalInput(inputs, "parentPageId");
+    const targetPageId = optionalInput(inputs, "targetPageId");
+    if (!targetPageId && !pageTitle) {
+        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", "Either targetPageId or pageTitle must be provided.");
+    }
+    if (!targetPageId && !parentPageId) {
+        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", "parentPageId is required when targetPageId is not provided.");
     }
     return {
-        sourceFile,
-        destinationRepo,
-        destinationFolder: optionalInput(inputs, "destination_folder") ?? "",
-        userEmail,
-        userName,
-        userActor,
-        destinationBranch,
-        commitMessage: optionalInput(inputs, "commit_message"),
-        rename: optionalInput(inputs, "rename"),
-        useRsync: parseBooleanInput(inputs.use_rsync, "use_rsync", false),
-        gitServer: optionalInput(inputs, "git_server") ?? "github.com",
-        githubToken,
+        dataFile: requireInput(inputs, "dataFile"),
+        pageTitle,
+        parentPageId,
+        targetPageId,
+        baseUrl: requireInput(inputs, "baseUrl"),
+        spaceKey: requireInput(inputs, "spaceKey"),
+        token: requireInput(inputs, "token"),
+        csvFile: optionalInput(inputs, "csvFile"),
     };
 }
 function requireInput(inputs, name) {
     const value = optionalInput(inputs, name);
     if (!value) {
-        throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `${name} is required.`);
+        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `${name} is required.`);
     }
     return value;
 }
@@ -31277,50 +31360,333 @@ function optionalInput(inputs, name) {
     const value = inputs[name]?.trim();
     return value ? value : undefined;
 }
-function parseBooleanInput(value, name, defaultValue) {
-    const normalized = value?.trim().toLowerCase();
-    if (!normalized) {
-        return defaultValue;
+
+;// CONCATENATED MODULE: ./actions/msi-report-sync/src/render.ts
+const DISPLAY_COLUMNS = [
+    { key: "repository", label: "Repository" },
+    { key: "team", label: "Team" },
+    { key: "supplier", label: "Supplier" },
+    { key: "releaseTrain", label: "ART" },
+    { key: "publishedVersion", label: "Published Version" },
+    { key: "timestamp", label: "Last Update" },
+    { key: "quality", label: "Quality" },
+    { key: "dependabotPullRequests", label: "Dependabot PRs" },
+    { key: "vulnerabilities", label: "Vulnerabilities" },
+    { key: "hasScanResults", label: "ScanOSS" },
+];
+function renderConfluenceRepositoryReport(report) {
+    const summaryTable = renderSummaryTable(report);
+    const repositoryTable = renderRepositoryTable(report);
+    return [
+        `<p><strong>Generated:</strong> ${escapeHtml(report.metadata.generatedAt)}</p>`,
+        `<p><strong>Source:</strong> ${escapeHtml(report.metadata.source)}</p>`,
+        "<h2>Summary</h2>",
+        summaryTable,
+        "<h2>Repository Report</h2>",
+        repositoryTable,
+    ].join("");
+}
+function renderSummaryTable(report) {
+    const summaryRows = [
+        ["Repositories", String(report.summary.repositoryCount)],
+        ["Teams", String(report.summary.teamCount)],
+        ["Suppliers", String(report.summary.supplierCount)],
+        ["Production Support", String(report.summary.productionSupportCount)],
+        ["Dependabot PRs", String(report.summary.dependabotPullRequestCount)],
+        ["Total Vulnerabilities", String(report.summary.totalVulnerabilities)],
+        ["Critical", String(report.summary.criticalVulnerabilities)],
+        ["High", String(report.summary.highVulnerabilities)],
+        ["Moderate", String(report.summary.moderateVulnerabilities)],
+        ["Low", String(report.summary.lowVulnerabilities)],
+    ];
+    return [
+        "<table><tbody>",
+        ...summaryRows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`),
+        "</tbody></table>",
+    ].join("");
+}
+function renderRepositoryTable(report) {
+    return [
+        "<table><thead><tr>",
+        ...DISPLAY_COLUMNS.map((column) => `<th>${escapeHtml(column.label)}</th>`),
+        "</tr></thead><tbody>",
+        ...report.rows.map((row) => renderRepositoryRow(row)),
+        "</tbody></table>",
+    ].join("");
+}
+function renderRepositoryRow(row) {
+    const cells = DISPLAY_COLUMNS.map((column) => {
+        const value = getColumnValue(column.key, row);
+        return `<td>${value}</td>`;
+    });
+    return `<tr>${cells.join("")}</tr>`;
+}
+function getColumnValue(columnKey, row) {
+    switch (columnKey) {
+        case "repository":
+            return row.repositoryUrl
+                ? `<a href="${escapeAttribute(row.repositoryUrl)}">${escapeHtml(row.repositoryName)}</a>`
+                : escapeHtml(row.repositoryName);
+        case "team":
+            return escapeHtml(orFallback(row.team));
+        case "supplier":
+            return escapeHtml(orFallback(row.supplier));
+        case "releaseTrain":
+            return escapeHtml(orFallback(row.releaseTrain));
+        case "publishedVersion":
+            return escapeHtml(orFallback(row.publishedVersion));
+        case "timestamp":
+            return escapeHtml(formatTimestamp(row.timestamp));
+        case "quality":
+            return [
+                renderQualityStatus(row),
+                escapeHtml([
+                    `Unit ${formatPercentage(row.unitTestCoverage)}`,
+                    `E2E ${formatPercentage(row.e2eTestCoverage)}`,
+                    `LH ${formatPercentage(row.lighthouseScore)}`,
+                ].join(" | ")),
+            ].join(" ");
+        case "dependabotPullRequests":
+            return escapeHtml(String(row.dependabotPullRequests));
+        case "vulnerabilities":
+            return [
+                renderSeverityStatus(row),
+                escapeHtml([
+                    `Total ${row.totalVulnerabilities}`,
+                    `Critical ${row.criticalVulnerabilities}`,
+                    `High ${row.highVulnerabilities}`,
+                    `Moderate ${row.moderateVulnerabilities}`,
+                    `Low ${row.lowVulnerabilities}`,
+                ].join(" | ")),
+            ].join(" ");
+        case "hasScanResults":
+            return escapeHtml(row.hasScanResults ? "Enabled" : "Pending");
+        default:
+            return "N/A";
     }
-    if (normalized === "true") {
-        return true;
+}
+function formatPercentage(value) {
+    if (value === null) {
+        return "N/A";
     }
-    if (normalized === "false") {
-        return false;
+    return `${value.toFixed(2)}%`;
+}
+function orFallback(value) {
+    return value && value.trim().length > 0 ? value : "N/A";
+}
+function formatTimestamp(value) {
+    if (!value || value.trim().length === 0) {
+        return "N/A";
     }
-    throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `${name} must be 'true' or 'false'.`);
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return value;
+    }
+    return parsed.toISOString().slice(0, 10);
+}
+function renderSeverityStatus(row) {
+    if (row.criticalVulnerabilities > 0) {
+        return renderStatusMacro("Critical", "Red");
+    }
+    if (row.highVulnerabilities > 0) {
+        return renderStatusMacro("High", "Yellow");
+    }
+    if (row.moderateVulnerabilities > 0) {
+        return renderStatusMacro("Moderate", "Blue");
+    }
+    if (row.lowVulnerabilities > 0) {
+        return renderStatusMacro("Low", "Grey");
+    }
+    return renderStatusMacro("Clear", "Green");
+}
+function renderQualityStatus(row) {
+    const scores = [
+        row.unitTestCoverage,
+        row.e2eTestCoverage,
+        row.lighthouseScore,
+    ].filter((value) => value !== null);
+    if (scores.length === 0) {
+        return renderStatusMacro("Unscored", "Grey");
+    }
+    const lowestScore = Math.min(...scores);
+    if (lowestScore >= 90) {
+        return renderStatusMacro("Strong", "Green");
+    }
+    if (lowestScore >= 75) {
+        return renderStatusMacro("Good", "Blue");
+    }
+    if (lowestScore >= 50) {
+        return renderStatusMacro("Watch", "Yellow");
+    }
+    return renderStatusMacro("Weak", "Red");
+}
+function renderStatusMacro(title, colour) {
+    return [
+        '<ac:structured-macro ac:name="status">',
+        `<ac:parameter ac:name="title">${escapeHtml(title)}</ac:parameter>`,
+        `<ac:parameter ac:name="colour">${escapeHtml(colour)}</ac:parameter>`,
+        "</ac:structured-macro>",
+    ].join("");
+}
+function escapeHtml(value) {
+    return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+function escapeAttribute(value) {
+    return escapeHtml(value);
 }
 
-;// CONCATENATED MODULE: ./actions/docs-sync/src/index.ts
+;// CONCATENATED MODULE: ./actions/msi-report-sync/src/index.ts
 
 
 
 
 
 
+
+
+
+async function executeMsiReportSync(inputs, options = {}) {
+    const dataFile = (0,external_node_path_namespaceObject.resolve)(inputs.dataFile);
+    const csvFile = inputs.csvFile ? (0,external_node_path_namespaceObject.resolve)(inputs.csvFile) : undefined;
+    await ensureFileExists(dataFile, "dataFile");
+    if (csvFile) {
+        await ensureFileExists(csvFile, "csvFile");
+    }
+    const report = validateReportData(JSON.parse(await (0,promises_namespaceObject.readFile)(dataFile, "utf8")));
+    const html = renderConfluenceRepositoryReport(report);
+    const attachments = await loadAttachments({
+        dataFile,
+        csvFile,
+    });
+    const client = options.createClient?.(inputs) ??
+        new ConfluenceHttpClient({
+            baseUrl: inputs.baseUrl,
+            spaceKey: inputs.spaceKey,
+            token: inputs.token,
+        });
+    const stats = new PublishStats();
+    const pageId = await publishReportPage(client, stats, inputs, html, attachments);
+    await summary
+        .addHeading("MSI Report Sync")
+        .addCodeBlock([
+        `page-title | ${inputs.pageTitle}`,
+        `page-id | ${pageId}`,
+        `rows | ${report.rows.length}`,
+        `attachments | ${attachments.length}`,
+        "status | success",
+    ].join("\n"), "text")
+        .write();
+    return { pageId, attachmentCount: attachments.length };
+}
 async function run() {
-    const inputs = readDocsSyncInputs();
-    await ensureSourceExists(inputs.sourceFile);
-    const validationIssues = await validatePath(inputs.sourceFile);
-    if (validationIssues.length > 0) {
-        for (const issue of validationIssues) {
-            error(`${issue.filePath} | ${issue.ruleId} | ${issue.message}`);
-        }
-        throw new ActionError("DOCSYNC_INVALID_CONTENT", "validate_docs", "Source content contains Confluence-incompatible markdown/MDX. Fix the reported files upstream before docs-sync can copy them.");
+    const inputs = readMsiReportSyncInputs();
+    info(`Preparing MSI report sync from ${inputs.dataFile} into space ${inputs.spaceKey}.`);
+    const result = await executeMsiReportSync(inputs);
+    notice(`MSI report sync published page ${result.pageId} with ${result.attachmentCount} attachment(s).`);
+}
+async function ensureFileExists(filePath, inputName) {
+    try {
+        await (0,promises_namespaceObject.access)(filePath);
     }
-    info(`Resolved docs sync target: repo=${inputs.destinationRepo} branch=${inputs.destinationBranch} folder=${inputs.destinationFolder || "."}`);
-    const pushed = await syncDocs(inputs);
-    if (pushed) {
-        notice("Documentation changes pushed to the destination repository.");
-    }
-    else {
-        notice("No documentation changes detected.");
+    catch {
+        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `${inputName} must reference an existing file.`);
     }
 }
-async function ensureSourceExists(sourceFile) {
-    const sourceStat = await (0,promises_namespaceObject.stat)(sourceFile).catch(() => undefined);
-    if (!sourceStat) {
-        throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `source_file '${sourceFile}' does not exist.`);
+function validateReportData(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", "dataFile must contain a JSON object.");
+    }
+    const report = value;
+    if (!Array.isArray(report.rows) ||
+        !Array.isArray(report.columns) ||
+        !report.summary) {
+        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", "dataFile does not match the expected repository report contract.");
+    }
+    return report;
+}
+async function loadAttachments(options) {
+    const attachments = [
+        {
+            filename: (0,external_node_path_namespaceObject.basename)(options.dataFile),
+            data: new Uint8Array(await (0,promises_namespaceObject.readFile)(options.dataFile)),
+            contentType: "application/json",
+        },
+    ];
+    if (options.csvFile) {
+        attachments.push({
+            filename: (0,external_node_path_namespaceObject.basename)(options.csvFile),
+            data: new Uint8Array(await (0,promises_namespaceObject.readFile)(options.csvFile)),
+            contentType: "text/csv",
+        });
+    }
+    return attachments;
+}
+async function publishReportPage(client, stats, inputs, html, attachments) {
+    if (inputs.targetPageId) {
+        const existingPage = await client.getPageById(inputs.targetPageId);
+        const updateResult = await client.updatePage({
+            id: inputs.targetPageId,
+            title: inputs.pageTitle ?? existingPage.title,
+            html,
+            parentId: inputs.parentPageId,
+        });
+        if (!updateResult.ok) {
+            stats.recordFailure("update", inputs.pageTitle ?? existingPage.title, updateResult.statusCode, extractReferralId(updateResult.body));
+            throw new ActionError("MSI_PARTIAL_PUBLISH_FAILURE", "publish", stats.renderSummary());
+        }
+        await uploadAttachmentsForPage(client, stats, inputs.targetPageId, attachments);
+        if (stats.hasFailures()) {
+            throw new ActionError("MSI_PARTIAL_PUBLISH_FAILURE", "publish", stats.renderSummary());
+        }
+        return inputs.targetPageId;
+    }
+    const page = await publishFilePage(client, stats, {
+        title: inputs.pageTitle,
+        html,
+        parentId: inputs.parentPageId,
+        attachments,
+    });
+    if (!page || stats.hasFailures()) {
+        throw new ActionError("MSI_PARTIAL_PUBLISH_FAILURE", "publish", stats.renderSummary());
+    }
+    return page.pageId;
+}
+async function uploadAttachmentsForPage(client, stats, pageId, attachments) {
+    if (attachments.length === 0) {
+        return;
+    }
+    const existingAttachments = await client.listPageAttachments(pageId);
+    const existingByName = new Map(existingAttachments.map((attachment) => [
+        attachment.title.toLowerCase(),
+        attachment,
+    ]));
+    for (const attachment of attachments) {
+        const existing = existingByName.get(attachment.filename.toLowerCase());
+        const result = existing
+            ? await client.updateAttachment({
+                pageId,
+                attachmentId: existing.id,
+                filename: attachment.filename,
+                data: attachment.data,
+                contentType: attachment.contentType,
+            })
+            : await client.createAttachment({
+                pageId,
+                filename: attachment.filename,
+                data: attachment.data,
+                contentType: attachment.contentType,
+            });
+        if (!result.ok) {
+            stats.recordFailure("upload", attachment.filename, result.statusCode, extractReferralId(result.body), {
+                targetType: "attachment",
+                parentTitle: pageId,
+            });
+        }
     }
 }
 function handleRunFailure(error) {
@@ -31334,7 +31700,8 @@ if (process.env.VITEST !== "true") {
     run().catch(handleRunFailure);
 }
 
+var __webpack_exports__executeMsiReportSync = __webpack_exports__.C;
 var __webpack_exports__run = __webpack_exports__.e;
-export { __webpack_exports__run as run };
+export { __webpack_exports__executeMsiReportSync as executeMsiReportSync, __webpack_exports__run as run };
 
 //# sourceMappingURL=index.js.map

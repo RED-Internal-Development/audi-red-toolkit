@@ -28145,16 +28145,16 @@ function file_command_issueFileCommand(command, message) {
     if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
     }
-    if (!fs.existsSync(filePath)) {
+    if (!external_fs_namespaceObject.existsSync(filePath)) {
         throw new Error(`Missing file at path: ${filePath}`);
     }
-    fs.appendFileSync(filePath, `${toCommandValue(message)}${os.EOL}`, {
+    external_fs_namespaceObject.appendFileSync(filePath, `${utils_toCommandValue(message)}${external_os_namespaceObject.EOL}`, {
         encoding: 'utf8'
     });
 }
 function file_command_prepareKeyValueMessage(key, value) {
-    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
-    const convertedValue = toCommandValue(value);
+    const delimiter = `ghadelimiter_${external_crypto_namespaceObject.randomUUID()}`;
+    const convertedValue = utils_toCommandValue(value);
     // These should realistically never happen, but just in case someone finds a
     // way to exploit uuid generation let's not allow keys or values that contain
     // the delimiter.
@@ -28164,7 +28164,7 @@ function file_command_prepareKeyValueMessage(key, value) {
     if (convertedValue.includes(delimiter)) {
         throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
     }
-    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
+    return `${key}<<${delimiter}${external_os_namespaceObject.EOL}${convertedValue}${external_os_namespaceObject.EOL}${delimiter}`;
 }
 //# sourceMappingURL=file-command.js.map
 ;// CONCATENATED MODULE: external "path"
@@ -30504,14 +30504,14 @@ var exec_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arg
  */
 function exec_exec(commandLine, args, options) {
     return exec_awaiter(this, void 0, void 0, function* () {
-        const commandArgs = argStringToArray(commandLine);
+        const commandArgs = tr.argStringToArray(commandLine);
         if (commandArgs.length === 0) {
             throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
         }
         // Path to tool to execute should be first arg
         const toolPath = commandArgs[0];
         args = commandArgs.slice(1).concat(args || []);
-        const runner = new ToolRunner(toolPath, args, options);
+        const runner = new tr.ToolRunner(toolPath, args, options);
         return runner.exec();
     });
 }
@@ -30703,7 +30703,7 @@ function exportVariable(name, val) {
  * ```
  */
 function core_setSecret(secret) {
-    command_issueCommand('add-mask', {}, secret);
+    issueCommand('add-mask', {}, secret);
 }
 /**
  * Prepends inputPath to the PATH (for this action and future actions)
@@ -30786,10 +30786,10 @@ function getBooleanInput(name, options) {
 function setOutput(name, value) {
     const filePath = process.env['GITHUB_OUTPUT'] || '';
     if (filePath) {
-        return issueFileCommand('OUTPUT', prepareKeyValueMessage(name, value));
+        return file_command_issueFileCommand('OUTPUT', file_command_prepareKeyValueMessage(name, value));
     }
-    process.stdout.write(os.EOL);
-    issueCommand('set-output', { name }, toCommandValue(value));
+    process.stdout.write(external_os_namespaceObject.EOL);
+    command_issueCommand('set-output', { name }, utils_toCommandValue(value));
 }
 /**
  * Enables or disables the echoing of commands into stdout for the rest of the step.
@@ -30943,8 +30943,6 @@ function getIDToken(aud) {
  */
 
 //# sourceMappingURL=core.js.map
-;// CONCATENATED MODULE: external "node:fs/promises"
-const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
 ;// CONCATENATED MODULE: ./packages/action-common/src/errors.ts
 class ActionError extends Error {
     code;
@@ -30960,316 +30958,41 @@ function isActionError(error) {
     return error instanceof ActionError;
 }
 
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
-;// CONCATENATED MODULE: ./packages/docs-validation/src/confluence-validation.ts
+;// CONCATENATED MODULE: ./actions/repo-data-sync/src/inputs.ts
 
 
-const MARKDOWN_SUFFIXES = new Set([".md", ".mdx"]);
-const FENCE_RE = /^[ \t]{0,3}(```+|~~~+)/;
-const INLINE_CODE_RE = /(`+)(.+?)\1/g;
-const JSX_STYLE_RE = /style\s*=\s*\{\{/i;
-const HTML_STRING_STYLE_RE = /(?:^|\s)style\s*=\s*["']/i;
-const TABLE_START_RE = /<table\b/i;
-const TABLE_END_RE = /<\/table\b/i;
-const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/;
-async function iterMarkdownFiles(root) {
-    const rootStat = await (0,promises_namespaceObject.stat)(root).catch(() => undefined);
-    if (!rootStat) {
-        return [];
-    }
-    if (rootStat.isFile()) {
-        return isMarkdownFile(root) ? [root] : [];
-    }
-    if (!rootStat.isDirectory()) {
-        return [];
-    }
-    const results = [];
-    await collectMarkdownFiles(root, results);
-    return results.sort((left, right) => left.localeCompare(right));
+function readRepoDataSyncInputs() {
+    return parseRepoDataSyncInputsFromRecord({
+        metadata_file: getInput("metadata_file"),
+        collection_report_file: getInput("collection_report_file"),
+        cypress_report_file: getInput("cypress_report_file"),
+        jest_report_file: getInput("jest_report_file"),
+        data_dir: getInput("data_dir"),
+        collection_output_dir: getInput("collection_output_dir"),
+        docs_destination_team_folder: getInput("docs_destination_team_folder"),
+        docs_destination_app_folder: getInput("docs_destination_app_folder"),
+        docs_branch: getInput("docs_branch"),
+        prod_support_enabled: getInput("prod_support_enabled"),
+    });
 }
-function validateMarkdownText(text, filePath) {
-    const issues = [];
-    let foundJsxStyle = false;
-    let foundHtmlStringStyle = false;
-    let foundUnescapedAmpersand = false;
-    let inFencedCodeBlock = false;
-    let inRawHtmlTable = false;
-    for (const line of text.split(/\r?\n/)) {
-        if (FENCE_RE.test(line)) {
-            inFencedCodeBlock = !inFencedCodeBlock;
-            continue;
-        }
-        if (inFencedCodeBlock) {
-            continue;
-        }
-        const searchableLine = stripInlineCode(line);
-        if (!foundJsxStyle && JSX_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.jsx_style_attribute",
-                filePath,
-                message: "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse.",
-            });
-            foundJsxStyle = true;
-        }
-        if (!foundHtmlStringStyle && HTML_STRING_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.html_string_style_attribute",
-                filePath,
-                message: "Raw HTML contains string-based style attributes like style='...' or style=\"...\". To keep markdown compatible with both Confluence and MDX-based tooling, remove inline styles and use CSS classes instead.",
-            });
-            foundHtmlStringStyle = true;
-        }
-        if (TABLE_START_RE.test(searchableLine)) {
-            inRawHtmlTable = true;
-        }
-        if (inRawHtmlTable &&
-            !foundUnescapedAmpersand &&
-            UNESCAPED_AMP_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.raw_html_unescaped_ampersand",
-                filePath,
-                message: "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML.",
-            });
-            foundUnescapedAmpersand = true;
-        }
-        if (TABLE_END_RE.test(searchableLine)) {
-            inRawHtmlTable = false;
-        }
-    }
-    return issues;
-}
-async function validatePath(root) {
-    const markdownFiles = await iterMarkdownFiles(root);
-    const issues = [];
-    for (const markdownFile of markdownFiles) {
-        const text = await (0,promises_namespaceObject.readFile)(markdownFile, "utf8");
-        issues.push(...validateMarkdownText(text, markdownFile));
-    }
-    return issues;
-}
-function isMarkdownFile(filePath) {
-    const lowerCasePath = filePath.toLowerCase();
-    return [...MARKDOWN_SUFFIXES].some((suffix) => lowerCasePath.endsWith(suffix));
-}
-async function collectMarkdownFiles(directory, results) {
-    const entries = await (0,promises_namespaceObject.readdir)(directory, { withFileTypes: true });
-    for (const entry of entries) {
-        const entryPath = (0,external_node_path_namespaceObject.join)(directory, entry.name);
-        if (entry.isDirectory()) {
-            await collectMarkdownFiles(entryPath, results);
-        }
-        else if (entry.isFile() && isMarkdownFile(entryPath)) {
-            results.push(entryPath);
-        }
-    }
-}
-function stripInlineCode(line) {
-    return line.replace(INLINE_CODE_RE, "");
-}
-
-;// CONCATENATED MODULE: external "node:os"
-const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
-;// CONCATENATED MODULE: ./actions/docs-sync/src/git-sync.ts
-
-
-
-
-
-async function syncDocs(inputs) {
-    const cloneDir = await (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), "docs-sync-"));
-    const clonePlan = buildClonePlan(inputs, cloneDir);
-    try {
-        await runGit([
-            "config",
-            "--global",
-            "--add",
-            "safe.directory",
-            process.env.GITHUB_WORKSPACE ?? process.cwd(),
-        ]);
-        await runGit(["config", "--global", "user.email", inputs.userEmail]);
-        await runGit(["config", "--global", "user.name", inputs.userName]);
-        await runGit(clonePlan.cloneArgs, {
-            code: "DOCSYNC_CLONE_FAILED",
-            step: "clone_destination_repo",
-            message: "Failed cloning destination repository.",
-        });
-        if (await hasRemoteBranch(cloneDir, inputs.destinationBranch)) {
-            await runGit(clonePlan.checkoutExistingArgs, {
-                code: "DOCSYNC_BRANCH_CHECKOUT_FAILED",
-                step: "clone_destination_repo",
-                message: `Failed checking out destination branch '${inputs.destinationBranch}'.`,
-            }, cloneDir);
-        }
-        else {
-            await runGit(clonePlan.checkoutNewArgs, {
-                code: "DOCSYNC_BRANCH_CREATE_FAILED",
-                step: "clone_destination_repo",
-                message: `Failed creating destination branch '${inputs.destinationBranch}'.`,
-            }, cloneDir);
-        }
-        await copySource(inputs, cloneDir);
-        await runGit(["add", "-A"], {
-            code: "DOCSYNC_GIT_ADD_FAILED",
-            step: "commit_changes",
-            message: "git add failed.",
-        }, cloneDir);
-        if (!(await hasStagedChanges(cloneDir))) {
-            return false;
-        }
-        const message = inputs.commitMessage ??
-            `Update from ${inputs.userActor} from this repository https://${inputs.gitServer}/${process.env.GITHUB_REPOSITORY ?? "unknown/repository"}/commit/${process.env.GITHUB_SHA ?? "unknown-sha"}`;
-        await runGit(["commit", "--message", message], {
-            code: "DOCSYNC_COMMIT_FAILED",
-            step: "commit_changes",
-            message: "git commit failed.",
-        }, cloneDir);
-        await runGit(["push", "-u", "origin", `HEAD:${inputs.destinationBranch}`], {
-            code: "DOCSYNC_PUSH_FAILED",
-            step: "push_changes",
-            message: "git push failed. Check permissions or branch protection.",
-        }, cloneDir);
-        return true;
-    }
-    finally {
-        await (0,promises_namespaceObject.rm)(cloneDir, { force: true, recursive: true });
-    }
-}
-function buildClonePlan(inputs, cloneDir) {
-    const repoUrl = `https://x-access-token:${inputs.githubToken}@${inputs.gitServer}/${inputs.destinationRepo}.git`;
+function parseRepoDataSyncInputsFromRecord(inputs) {
     return {
-        cloneArgs: [
-            "clone",
-            "--depth",
-            "1",
-            "--no-single-branch",
-            repoUrl,
-            cloneDir,
-        ],
-        checkoutExistingArgs: [
-            "checkout",
-            "--track",
-            `origin/${inputs.destinationBranch}`,
-        ],
-        checkoutNewArgs: ["checkout", "-b", inputs.destinationBranch],
-    };
-}
-async function copySource(inputs, cloneDir) {
-    const destinationFolder = (0,external_node_path_namespaceObject.join)(cloneDir, inputs.destinationFolder);
-    const destinationPath = inputs.rename
-        ? (0,external_node_path_namespaceObject.join)(destinationFolder, inputs.rename)
-        : destinationFolder;
-    await (0,promises_namespaceObject.mkdir)(destinationFolder, { recursive: true });
-    if (inputs.useRsync) {
-        await runCopyCommand("rsync", ["-avrh", "--delete", inputs.sourceFile, destinationPath], "rsync failed while copying source path.");
-        return;
-    }
-    await (0,promises_namespaceObject.cp)(inputs.sourceFile, destinationPath, {
-        recursive: true,
-        force: true,
-        errorOnExist: false,
-    }).catch(() => {
-        throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", "Failed copying source path to destination.");
-    });
-}
-async function runCopyCommand(command, args, message) {
-    const exitCode = await exec_exec(command, args, { ignoreReturnCode: true });
-    if (exitCode !== 0) {
-        throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", message);
-    }
-}
-async function hasRemoteBranch(cwd, branch) {
-    const exitCode = await exec_exec("git", ["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branch}`], {
-        cwd,
-        ignoreReturnCode: true,
-        silent: true,
-    });
-    if (exitCode === 0) {
-        return true;
-    }
-    if (exitCode === 1) {
-        return false;
-    }
-    throw new ActionError("DOCSYNC_BRANCH_DETECTION_FAILED", "clone_destination_repo", `Failed checking whether destination branch '${branch}' exists after cloning.`);
-}
-async function runGit(args, failure, cwd) {
-    const exitCode = await exec_exec("git", args, {
-        cwd,
-        ignoreReturnCode: true,
-    });
-    if (exitCode !== 0) {
-        if (failure) {
-            throw new ActionError(failure.code, failure.step, failure.message);
-        }
-        throw new ActionError("DOCSYNC_GIT_FAILED", "git", `git ${args[0] ?? "command"} failed.`);
-    }
-}
-async function hasStagedChanges(cwd) {
-    const exitCode = await exec_exec("git", ["diff", "--cached", "--quiet", "--exit-code"], {
-        cwd,
-        ignoreReturnCode: true,
-        silent: true,
-    });
-    if (exitCode === 0) {
-        return false;
-    }
-    if (exitCode === 1) {
-        return true;
-    }
-    throw new ActionError("DOCSYNC_GIT_STATUS_FAILED", "commit_changes", "git diff --cached failed.");
-}
-
-;// CONCATENATED MODULE: ./actions/docs-sync/src/inputs.ts
-
-
-function readDocsSyncInputs() {
-    const token = process.env.API_TOKEN_GITHUB ?? "";
-    if (token) {
-        core_setSecret(token);
-    }
-    return parseDocsSyncInputsFromRecord({
-        source_file: getInput("source_file"),
-        destination_repo: getInput("destination_repo"),
-        destination_folder: getInput("destination_folder"),
-        user_email: getInput("user_email"),
-        user_name: getInput("user_name"),
-        user_actor: getInput("user_actor"),
-        destination_branch: getInput("destination_branch"),
-        commit_message: getInput("commit_message"),
-        rename: getInput("rename"),
-        use_rsync: getInput("use_rsync"),
-        git_server: getInput("git_server"),
-    }, token);
-}
-function parseDocsSyncInputsFromRecord(inputs, githubToken) {
-    const sourceFile = requireInput(inputs, "source_file");
-    const destinationRepo = requireInput(inputs, "destination_repo");
-    const userEmail = requireInput(inputs, "user_email");
-    const userName = requireInput(inputs, "user_name");
-    const userActor = requireInput(inputs, "user_actor");
-    const destinationBranch = optionalInput(inputs, "destination_branch") ?? "main";
-    if (!githubToken.trim()) {
-        throw new ActionError("DOCSYNC_MISSING_SECRET", "validate_inputs", "API_TOKEN_GITHUB is required.");
-    }
-    return {
-        sourceFile,
-        destinationRepo,
-        destinationFolder: optionalInput(inputs, "destination_folder") ?? "",
-        userEmail,
-        userName,
-        userActor,
-        destinationBranch,
-        commitMessage: optionalInput(inputs, "commit_message"),
-        rename: optionalInput(inputs, "rename"),
-        useRsync: parseBooleanInput(inputs.use_rsync, "use_rsync", false),
-        gitServer: optionalInput(inputs, "git_server") ?? "github.com",
-        githubToken,
+        metadataFile: requireInput(inputs, "metadata_file"),
+        collectionReportFile: optionalInput(inputs, "collection_report_file"),
+        cypressReportFile: optionalInput(inputs, "cypress_report_file"),
+        jestReportFile: optionalInput(inputs, "jest_report_file"),
+        dataDir: optionalInput(inputs, "data_dir") ?? "data",
+        collectionOutputDir: optionalInput(inputs, "collection_output_dir") ?? "collection-report",
+        docsDestinationTeamFolder: requireInput(inputs, "docs_destination_team_folder"),
+        docsDestinationAppFolder: requireInput(inputs, "docs_destination_app_folder"),
+        docsBranch: requireInput(inputs, "docs_branch"),
+        prodSupportEnabled: parseBoolean(optionalInput(inputs, "prod_support_enabled") ?? "false", "prod_support_enabled"),
     };
 }
 function requireInput(inputs, name) {
     const value = optionalInput(inputs, name);
     if (!value) {
-        throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `${name} is required.`);
+        throw new ActionError("REPORT_SYNC_INVALID_INPUT", "validate_inputs", `${name} is required.`);
     }
     return value;
 }
@@ -31277,51 +31000,137 @@ function optionalInput(inputs, name) {
     const value = inputs[name]?.trim();
     return value ? value : undefined;
 }
-function parseBooleanInput(value, name, defaultValue) {
-    const normalized = value?.trim().toLowerCase();
-    if (!normalized) {
-        return defaultValue;
-    }
-    if (normalized === "true") {
+function parseBoolean(value, name) {
+    if (value === "true") {
         return true;
     }
-    if (normalized === "false") {
+    if (value === "false") {
         return false;
     }
-    throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `${name} must be 'true' or 'false'.`);
+    throw new ActionError("REPORT_SYNC_INVALID_INPUT", "validate_inputs", `${name} must be 'true' or 'false'.`);
 }
 
-;// CONCATENATED MODULE: ./actions/docs-sync/src/index.ts
+;// CONCATENATED MODULE: external "node:fs/promises"
+const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
+;// CONCATENATED MODULE: ./actions/repo-data-sync/src/sync.ts
 
 
+
+
+async function executeRepoDataSync(inputs, options = {}) {
+    const metadataReport = await readRequiredReport(inputs.metadataFile, "metadata_file");
+    const repoName = extractRepoName(metadataReport);
+    let repoEntry = readRepoEntry(metadataReport, repoName);
+    repoEntry = await mergeOptionalReport(repoEntry, repoName, inputs.collectionReportFile, "collection_report_file");
+    repoEntry = await mergeOptionalReport(repoEntry, repoName, inputs.cypressReportFile, "cypress_report_file");
+    repoEntry = await mergeOptionalReport(repoEntry, repoName, inputs.jestReportFile, "jest_report_file");
+    const timestamp = (options.now?.() ?? new Date()).toISOString();
+    const finalRepoEntry = {
+        ...repoEntry,
+        prod_support_enabled: inputs.prodSupportEnabled,
+        docs: {
+            docs_destination_team_folder: inputs.docsDestinationTeamFolder,
+            docs_destination_app_folder: inputs.docsDestinationAppFolder,
+            docs_branch: inputs.docsBranch,
+        },
+        timestamp,
+    };
+    const collectionOutputDir = (0,external_node_path_namespaceObject.resolve)(inputs.collectionOutputDir);
+    await (0,promises_namespaceObject.mkdir)(collectionOutputDir, { recursive: true });
+    const reportFile = (0,external_node_path_namespaceObject.resolve)(collectionOutputDir, "report.json");
+    await writeJsonFile(reportFile, { [repoName]: finalRepoEntry });
+    const dataDir = (0,external_node_path_namespaceObject.resolve)(inputs.dataDir);
+    const perRepoDir = (0,external_node_path_namespaceObject.resolve)(dataDir, "per-repo");
+    await (0,promises_namespaceObject.mkdir)(perRepoDir, { recursive: true });
+    const sharedReportFile = (0,external_node_path_namespaceObject.resolve)(dataDir, "report.json");
+    const sharedReport = await readOptionalReport(sharedReportFile);
+    sharedReport[repoName] = finalRepoEntry;
+    await writeJsonFile(sharedReportFile, sharedReport);
+    const perRepoFile = (0,external_node_path_namespaceObject.resolve)(perRepoDir, `${toSafeRepoFileName(repoName)}.json`);
+    await writeJsonFile(perRepoFile, finalRepoEntry);
+    return { reportFile, perRepoFile, repoName };
+}
+async function mergeOptionalReport(repoEntry, repoName, reportFilePath, inputName) {
+    if (!reportFilePath) {
+        return repoEntry;
+    }
+    const reportExists = await pathExists(reportFilePath);
+    if (!reportExists) {
+        info(`${inputName} not found at ${reportFilePath}. Skipping.`);
+        return repoEntry;
+    }
+    const report = await readRequiredReport(reportFilePath, inputName);
+    const nextEntry = readRepoEntry(report, repoName);
+    return Object.keys(nextEntry).length > 0
+        ? { ...repoEntry, ...nextEntry }
+        : repoEntry;
+}
+async function readRequiredReport(filePath, inputName) {
+    try {
+        const parsed = JSON.parse(await (0,promises_namespaceObject.readFile)(filePath, "utf8"));
+        return readObject(parsed, `${inputName} must contain a JSON object.`);
+    }
+    catch (error) {
+        if (error instanceof ActionError) {
+            throw error;
+        }
+        throw new ActionError("REPORT_SYNC_INVALID_INPUT", "validate_inputs", `${inputName} must reference a readable JSON file.`);
+    }
+}
+async function readOptionalReport(filePath) {
+    if (!(await pathExists(filePath))) {
+        return {};
+    }
+    const parsed = JSON.parse(await (0,promises_namespaceObject.readFile)(filePath, "utf8"));
+    return readObject(parsed, "data/report.json must contain a JSON object.");
+}
+function extractRepoName(report) {
+    const repoName = Object.keys(report)[0];
+    if (!repoName) {
+        throw new ActionError("REPORT_SYNC_INVALID_INPUT", "validate_inputs", "metadata_file must contain at least one repository entry.");
+    }
+    return repoName;
+}
+function readRepoEntry(report, repoName) {
+    const entry = report[repoName];
+    return readObject(entry, `Report entry for ${repoName} must be a JSON object.`);
+}
+function readObject(value, message) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        throw new ActionError("REPORT_SYNC_INVALID_INPUT", "validate_inputs", message);
+    }
+    return value;
+}
+async function writeJsonFile(filePath, value) {
+    await (0,promises_namespaceObject.writeFile)(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+async function pathExists(filePath) {
+    try {
+        await (0,promises_namespaceObject.access)(filePath);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function toSafeRepoFileName(repoName) {
+    return repoName.replace(/[/@ ]/g, "_");
+}
+
+;// CONCATENATED MODULE: ./actions/repo-data-sync/src/index.ts
 
 
 
 
 async function run() {
-    const inputs = readDocsSyncInputs();
-    await ensureSourceExists(inputs.sourceFile);
-    const validationIssues = await validatePath(inputs.sourceFile);
-    if (validationIssues.length > 0) {
-        for (const issue of validationIssues) {
-            error(`${issue.filePath} | ${issue.ruleId} | ${issue.message}`);
-        }
-        throw new ActionError("DOCSYNC_INVALID_CONTENT", "validate_docs", "Source content contains Confluence-incompatible markdown/MDX. Fix the reported files upstream before docs-sync can copy them.");
-    }
-    info(`Resolved docs sync target: repo=${inputs.destinationRepo} branch=${inputs.destinationBranch} folder=${inputs.destinationFolder || "."}`);
-    const pushed = await syncDocs(inputs);
-    if (pushed) {
-        notice("Documentation changes pushed to the destination repository.");
-    }
-    else {
-        notice("No documentation changes detected.");
-    }
-}
-async function ensureSourceExists(sourceFile) {
-    const sourceStat = await (0,promises_namespaceObject.stat)(sourceFile).catch(() => undefined);
-    if (!sourceStat) {
-        throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `source_file '${sourceFile}' does not exist.`);
-    }
+    const inputs = readRepoDataSyncInputs();
+    const result = await executeRepoDataSync(inputs);
+    setOutput("report_file", result.reportFile);
+    setOutput("per_repo_file", result.perRepoFile);
+    setOutput("repo_name", result.repoName);
+    notice(`Report sync wrote ${result.reportFile}.`);
 }
 function handleRunFailure(error) {
     if (isActionError(error)) {

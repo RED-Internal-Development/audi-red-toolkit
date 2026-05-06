@@ -1,0 +1,30 @@
+name: Publish markdown/MDX docs to MSI Confluence
+description: Validates, stages, and publishes a markdown or MDX directory tree to MSI Confluence.
+inputs:
+  from:
+    description: Directory to publish, relative to the repository root.
+    required: true
+  parentPageId:
+    description: Parent Confluence page ID for the published hierarchy.
+    required: true
+  deploymentConfig:
+    description: Optional JSON file describing extra folder-to-parent mappings.
+    required: false
+  baseUrl:
+    description: Base URL of the Confluence Data Center instance.
+    required: true
+  spaceKey:
+    description: Confluence space key.
+    required: true
+  token:
+    description: Personal access token for Confluence.
+    required: true
+  diagrams_source:
+    description: Optional compatibility input for pre-staged diagrams and images.
+    required: false
+runs:
+  using: node24
+  main: dist/index.js
+branding:
+  icon: upload-cloud
+  color: blue

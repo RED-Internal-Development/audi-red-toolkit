@@ -28022,7 +28022,7 @@ function utils_toCommandValue(input) {
  * @returns The command properties to send with the actual annotation command
  * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
  */
-function utils_toCommandProperties(annotationProperties) {
+function toCommandProperties(annotationProperties) {
     if (!Object.keys(annotationProperties).length) {
         return {};
     }
@@ -28145,16 +28145,16 @@ function file_command_issueFileCommand(command, message) {
     if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
     }
-    if (!fs.existsSync(filePath)) {
+    if (!external_fs_namespaceObject.existsSync(filePath)) {
         throw new Error(`Missing file at path: ${filePath}`);
     }
-    fs.appendFileSync(filePath, `${toCommandValue(message)}${os.EOL}`, {
+    external_fs_namespaceObject.appendFileSync(filePath, `${utils_toCommandValue(message)}${external_os_namespaceObject.EOL}`, {
         encoding: 'utf8'
     });
 }
 function file_command_prepareKeyValueMessage(key, value) {
-    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
-    const convertedValue = toCommandValue(value);
+    const delimiter = `ghadelimiter_${external_crypto_namespaceObject.randomUUID()}`;
+    const convertedValue = utils_toCommandValue(value);
     // These should realistically never happen, but just in case someone finds a
     // way to exploit uuid generation let's not allow keys or values that contain
     // the delimiter.
@@ -28164,7 +28164,7 @@ function file_command_prepareKeyValueMessage(key, value) {
     if (convertedValue.includes(delimiter)) {
         throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
     }
-    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
+    return `${key}<<${delimiter}${external_os_namespaceObject.EOL}${convertedValue}${external_os_namespaceObject.EOL}${delimiter}`;
 }
 //# sourceMappingURL=file-command.js.map
 ;// CONCATENATED MODULE: external "path"
@@ -30531,8 +30531,8 @@ function getExecOutput(commandLine, args, options) {
         let stdout = '';
         let stderr = '';
         //Using string decoder covers the case where a mult-byte character is split
-        const stdoutDecoder = new StringDecoder('utf8');
-        const stderrDecoder = new StringDecoder('utf8');
+        const stdoutDecoder = new external_string_decoder_.StringDecoder('utf8');
+        const stderrDecoder = new external_string_decoder_.StringDecoder('utf8');
         const originalStdoutListener = (_a = options === null || options === void 0 ? void 0 : options.listeners) === null || _a === void 0 ? void 0 : _a.stdout;
         const originalStdErrListener = (_b = options === null || options === void 0 ? void 0 : options.listeners) === null || _b === void 0 ? void 0 : _b.stderr;
         const stdErrListener = (data) => {
@@ -30786,10 +30786,10 @@ function getBooleanInput(name, options) {
 function setOutput(name, value) {
     const filePath = process.env['GITHUB_OUTPUT'] || '';
     if (filePath) {
-        return issueFileCommand('OUTPUT', prepareKeyValueMessage(name, value));
+        return file_command_issueFileCommand('OUTPUT', file_command_prepareKeyValueMessage(name, value));
     }
-    process.stdout.write(os.EOL);
-    issueCommand('set-output', { name }, toCommandValue(value));
+    process.stdout.write(external_os_namespaceObject.EOL);
+    command_issueCommand('set-output', { name }, utils_toCommandValue(value));
 }
 /**
  * Enables or disables the echoing of commands into stdout for the rest of the step.
@@ -30833,7 +30833,7 @@ function core_debug(message) {
  * @param properties optional properties to add to the annotation.
  */
 function error(message, properties = {}) {
-    command_issueCommand('error', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('error', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Adds a warning issue
@@ -30841,7 +30841,7 @@ function error(message, properties = {}) {
  * @param properties optional properties to add to the annotation.
  */
 function warning(message, properties = {}) {
-    issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Adds a notice issue
@@ -30849,7 +30849,7 @@ function warning(message, properties = {}) {
  * @param properties optional properties to add to the annotation.
  */
 function notice(message, properties = {}) {
-    command_issueCommand('notice', utils_toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+    command_issueCommand('notice', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
  * Writes info to log with console.log.
@@ -30945,6 +30945,8 @@ function getIDToken(aud) {
 //# sourceMappingURL=core.js.map
 ;// CONCATENATED MODULE: external "node:fs/promises"
 const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 ;// CONCATENATED MODULE: ./packages/action-common/src/errors.ts
 class ActionError extends Error {
     code;
@@ -30960,338 +30962,267 @@ function isActionError(error) {
     return error instanceof ActionError;
 }
 
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
-;// CONCATENATED MODULE: ./packages/docs-validation/src/confluence-validation.ts
-
-
-const MARKDOWN_SUFFIXES = new Set([".md", ".mdx"]);
-const FENCE_RE = /^[ \t]{0,3}(```+|~~~+)/;
-const INLINE_CODE_RE = /(`+)(.+?)\1/g;
-const JSX_STYLE_RE = /style\s*=\s*\{\{/i;
-const HTML_STRING_STYLE_RE = /(?:^|\s)style\s*=\s*["']/i;
-const TABLE_START_RE = /<table\b/i;
-const TABLE_END_RE = /<\/table\b/i;
-const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/;
-async function iterMarkdownFiles(root) {
-    const rootStat = await (0,promises_namespaceObject.stat)(root).catch(() => undefined);
-    if (!rootStat) {
-        return [];
-    }
-    if (rootStat.isFile()) {
-        return isMarkdownFile(root) ? [root] : [];
-    }
-    if (!rootStat.isDirectory()) {
-        return [];
-    }
-    const results = [];
-    await collectMarkdownFiles(root, results);
-    return results.sort((left, right) => left.localeCompare(right));
-}
-function validateMarkdownText(text, filePath) {
-    const issues = [];
-    let foundJsxStyle = false;
-    let foundHtmlStringStyle = false;
-    let foundUnescapedAmpersand = false;
-    let inFencedCodeBlock = false;
-    let inRawHtmlTable = false;
-    for (const line of text.split(/\r?\n/)) {
-        if (FENCE_RE.test(line)) {
-            inFencedCodeBlock = !inFencedCodeBlock;
-            continue;
-        }
-        if (inFencedCodeBlock) {
-            continue;
-        }
-        const searchableLine = stripInlineCode(line);
-        if (!foundJsxStyle && JSX_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.jsx_style_attribute",
-                filePath,
-                message: "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse.",
-            });
-            foundJsxStyle = true;
-        }
-        if (!foundHtmlStringStyle && HTML_STRING_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.html_string_style_attribute",
-                filePath,
-                message: "Raw HTML contains string-based style attributes like style='...' or style=\"...\". To keep markdown compatible with both Confluence and MDX-based tooling, remove inline styles and use CSS classes instead.",
-            });
-            foundHtmlStringStyle = true;
-        }
-        if (TABLE_START_RE.test(searchableLine)) {
-            inRawHtmlTable = true;
-        }
-        if (inRawHtmlTable &&
-            !foundUnescapedAmpersand &&
-            UNESCAPED_AMP_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.raw_html_unescaped_ampersand",
-                filePath,
-                message: "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML.",
-            });
-            foundUnescapedAmpersand = true;
-        }
-        if (TABLE_END_RE.test(searchableLine)) {
-            inRawHtmlTable = false;
-        }
-    }
-    return issues;
-}
-async function validatePath(root) {
-    const markdownFiles = await iterMarkdownFiles(root);
-    const issues = [];
-    for (const markdownFile of markdownFiles) {
-        const text = await (0,promises_namespaceObject.readFile)(markdownFile, "utf8");
-        issues.push(...validateMarkdownText(text, markdownFile));
-    }
-    return issues;
-}
-function isMarkdownFile(filePath) {
-    const lowerCasePath = filePath.toLowerCase();
-    return [...MARKDOWN_SUFFIXES].some((suffix) => lowerCasePath.endsWith(suffix));
-}
-async function collectMarkdownFiles(directory, results) {
-    const entries = await (0,promises_namespaceObject.readdir)(directory, { withFileTypes: true });
-    for (const entry of entries) {
-        const entryPath = (0,external_node_path_namespaceObject.join)(directory, entry.name);
-        if (entry.isDirectory()) {
-            await collectMarkdownFiles(entryPath, results);
-        }
-        else if (entry.isFile() && isMarkdownFile(entryPath)) {
-            results.push(entryPath);
-        }
-    }
-}
-function stripInlineCode(line) {
-    return line.replace(INLINE_CODE_RE, "");
-}
-
-;// CONCATENATED MODULE: external "node:os"
-const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
-;// CONCATENATED MODULE: ./actions/docs-sync/src/git-sync.ts
-
-
-
-
-
-async function syncDocs(inputs) {
-    const cloneDir = await (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), "docs-sync-"));
-    const clonePlan = buildClonePlan(inputs, cloneDir);
-    try {
-        await runGit([
-            "config",
-            "--global",
-            "--add",
-            "safe.directory",
-            process.env.GITHUB_WORKSPACE ?? process.cwd(),
-        ]);
-        await runGit(["config", "--global", "user.email", inputs.userEmail]);
-        await runGit(["config", "--global", "user.name", inputs.userName]);
-        await runGit(clonePlan.cloneArgs, {
-            code: "DOCSYNC_CLONE_FAILED",
-            step: "clone_destination_repo",
-            message: "Failed cloning destination repository.",
-        });
-        if (await hasRemoteBranch(cloneDir, inputs.destinationBranch)) {
-            await runGit(clonePlan.checkoutExistingArgs, {
-                code: "DOCSYNC_BRANCH_CHECKOUT_FAILED",
-                step: "clone_destination_repo",
-                message: `Failed checking out destination branch '${inputs.destinationBranch}'.`,
-            }, cloneDir);
-        }
-        else {
-            await runGit(clonePlan.checkoutNewArgs, {
-                code: "DOCSYNC_BRANCH_CREATE_FAILED",
-                step: "clone_destination_repo",
-                message: `Failed creating destination branch '${inputs.destinationBranch}'.`,
-            }, cloneDir);
-        }
-        await copySource(inputs, cloneDir);
-        await runGit(["add", "-A"], {
-            code: "DOCSYNC_GIT_ADD_FAILED",
-            step: "commit_changes",
-            message: "git add failed.",
-        }, cloneDir);
-        if (!(await hasStagedChanges(cloneDir))) {
-            return false;
-        }
-        const message = inputs.commitMessage ??
-            `Update from ${inputs.userActor} from this repository https://${inputs.gitServer}/${process.env.GITHUB_REPOSITORY ?? "unknown/repository"}/commit/${process.env.GITHUB_SHA ?? "unknown-sha"}`;
-        await runGit(["commit", "--message", message], {
-            code: "DOCSYNC_COMMIT_FAILED",
-            step: "commit_changes",
-            message: "git commit failed.",
-        }, cloneDir);
-        await runGit(["push", "-u", "origin", `HEAD:${inputs.destinationBranch}`], {
-            code: "DOCSYNC_PUSH_FAILED",
-            step: "push_changes",
-            message: "git push failed. Check permissions or branch protection.",
-        }, cloneDir);
-        return true;
-    }
-    finally {
-        await (0,promises_namespaceObject.rm)(cloneDir, { force: true, recursive: true });
-    }
-}
-function buildClonePlan(inputs, cloneDir) {
-    const repoUrl = `https://x-access-token:${inputs.githubToken}@${inputs.gitServer}/${inputs.destinationRepo}.git`;
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/metadata.ts
+function parsePackageMetadata(packageJsonText, repositorySlug, oneAudiCliText) {
+    const packageJson = parseJsonRecord(packageJsonText);
+    const oneAudiCli = oneAudiCliText
+        ? parseJsonRecord(oneAudiCliText)
+        : undefined;
+    const fallbackRepoName = repositorySlug.split("/").pop() ?? repositorySlug;
+    const repoName = readString(packageJson.name) ?? fallbackRepoName;
     return {
-        cloneArgs: [
-            "clone",
-            "--depth",
-            "1",
-            "--no-single-branch",
-            repoUrl,
-            cloneDir,
-        ],
-        checkoutExistingArgs: [
-            "checkout",
-            "--track",
-            `origin/${inputs.destinationBranch}`,
-        ],
-        checkoutNewArgs: ["checkout", "-b", inputs.destinationBranch],
+        repoName,
+        repoVersion: readString(packageJson.version) ?? "",
+        dependencies: readObject(packageJson.dependencies),
+        devDependencies: readObject(packageJson.devDependencies),
+        appstoreData: packageJson.appStore ?? {},
+        browserlistData: packageJson.browserslist ?? {},
+        repository: packageJson.repository ?? {},
+        awsDomain: readNestedString(oneAudiCli, ["project", "awsDomain"]) ?? "",
     };
 }
-async function copySource(inputs, cloneDir) {
-    const destinationFolder = (0,external_node_path_namespaceObject.join)(cloneDir, inputs.destinationFolder);
-    const destinationPath = inputs.rename
-        ? (0,external_node_path_namespaceObject.join)(destinationFolder, inputs.rename)
-        : destinationFolder;
-    await (0,promises_namespaceObject.mkdir)(destinationFolder, { recursive: true });
-    if (inputs.useRsync) {
-        await runCopyCommand("rsync", ["-avrh", "--delete", inputs.sourceFile, destinationPath], "rsync failed while copying source path.");
-        return;
-    }
-    await (0,promises_namespaceObject.cp)(inputs.sourceFile, destinationPath, {
-        recursive: true,
-        force: true,
-        errorOnExist: false,
-    }).catch(() => {
-        throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", "Failed copying source path to destination.");
-    });
+function buildMetadataReport(input) {
+    const { packageMetadata } = input;
+    return {
+        [packageMetadata.repoName]: {
+            repo_version: packageMetadata.repoVersion,
+            awsDomain: packageMetadata.awsDomain,
+            published_version: input.publishedVersion,
+            release_history: input.releaseHistory,
+            dependabot_prs: input.dependabotPrs,
+            npm_audit: input.npmAudit,
+            repository: packageMetadata.repository,
+            dependencies: packageMetadata.dependencies,
+            devDependencies: packageMetadata.devDependencies,
+            appstoreData: packageMetadata.appstoreData,
+            browserlistData: packageMetadata.browserlistData,
+        },
+    };
 }
-async function runCopyCommand(command, args, message) {
-    const exitCode = await exec_exec(command, args, { ignoreReturnCode: true });
-    if (exitCode !== 0) {
-        throw new ActionError("DOCSYNC_COPY_FAILED", "copy_source", message);
-    }
+function parseJsonRecord(text) {
+    const parsed = JSON.parse(text);
+    return readObject(parsed);
 }
-async function hasRemoteBranch(cwd, branch) {
-    const exitCode = await exec_exec("git", ["show-ref", "--verify", "--quiet", `refs/remotes/origin/${branch}`], {
-        cwd,
-        ignoreReturnCode: true,
-        silent: true,
-    });
-    if (exitCode === 0) {
-        return true;
-    }
-    if (exitCode === 1) {
-        return false;
-    }
-    throw new ActionError("DOCSYNC_BRANCH_DETECTION_FAILED", "clone_destination_repo", `Failed checking whether destination branch '${branch}' exists after cloning.`);
+function readObject(value) {
+    return isRecord(value) ? value : {};
 }
-async function runGit(args, failure, cwd) {
-    const exitCode = await exec_exec("git", args, {
-        cwd,
-        ignoreReturnCode: true,
-    });
-    if (exitCode !== 0) {
-        if (failure) {
-            throw new ActionError(failure.code, failure.step, failure.message);
+function readString(value) {
+    return typeof value === "string" && value.trim() ? value : undefined;
+}
+function readNestedString(value, path) {
+    let current = value;
+    for (const key of path) {
+        if (!isRecord(current)) {
+            return undefined;
         }
-        throw new ActionError("DOCSYNC_GIT_FAILED", "git", `git ${args[0] ?? "command"} failed.`);
+        current = current[key];
+    }
+    return readString(current);
+}
+function isRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/collect.ts
+
+
+
+
+
+async function collectMetadataReport(inputs, runner = defaultCommandRunner) {
+    const packageJsonPath = "package.json";
+    await ensureFileExists(packageJsonPath);
+    const packageJsonText = await (0,promises_namespaceObject.readFile)(packageJsonPath, "utf8");
+    const oneAudiCliText = await readOptionalFile("oneaudi-cli.json");
+    const packageMetadata = parsePackageMetadata(packageJsonText, inputs.repository, oneAudiCliText);
+    const [dependabotPrs, releaseHistory, publishedVersion, npmAudit] = await Promise.all([
+        fetchDependabotPullRequests(inputs, runner),
+        fetchReleaseHistory(inputs, runner),
+        fetchPublishedVersion(inputs, runner),
+        runNpmAudit(runner),
+    ]);
+    return buildMetadataReport({
+        packageMetadata,
+        publishedVersion,
+        releaseHistory,
+        dependabotPrs,
+        npmAudit,
+    });
+}
+async function ensureFileExists(filePath) {
+    try {
+        await (0,promises_namespaceObject.access)(filePath);
+    }
+    catch {
+        throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", `${filePath} is required in the repository root.`);
     }
 }
-async function hasStagedChanges(cwd) {
-    const exitCode = await exec_exec("git", ["diff", "--cached", "--quiet", "--exit-code"], {
-        cwd,
+async function readOptionalFile(filePath) {
+    try {
+        return await (0,promises_namespaceObject.readFile)(filePath, "utf8");
+    }
+    catch {
+        return undefined;
+    }
+}
+async function fetchDependabotPullRequests(inputs, runner) {
+    const result = await safeRun(runner, "gh", [
+        "pr",
+        "list",
+        "--repo",
+        inputs.repository,
+        "--author",
+        "dependabot[bot]",
+        "--state",
+        "open",
+        "--json",
+        "title,url,createdAt",
+    ], { ...process.env, GH_TOKEN: inputs.githubToken }, "dependabot PR lookup", []);
+    const parsed = parseJsonArray(result.stdout, []);
+    return parsed
+        .map((entry) => {
+        const title = collect_readString(entry.title);
+        const url = collect_readString(entry.url);
+        const createdAt = collect_readString(entry.createdAt);
+        if (!title || !url || !createdAt) {
+            return undefined;
+        }
+        return `${title} - ${url} - Created at: ${createdAt}`;
+    })
+        .filter((value) => Boolean(value));
+}
+async function fetchPublishedVersion(inputs, runner) {
+    const result = await safeRun(runner, "gh", ["release", "view", "--repo", inputs.repository, "--json", "tagName"], { ...process.env, GH_TOKEN: inputs.githubToken }, "release lookup", null);
+    if (!result.stdout.trim()) {
+        return null;
+    }
+    const parsed = collect_parseJsonRecord(result.stdout, {});
+    return collect_readString(parsed.tagName) ?? null;
+}
+async function fetchReleaseHistory(inputs, runner) {
+    const result = await safeRun(runner, "gh", ["api", `repos/${inputs.repository}/releases`], { ...process.env, GH_TOKEN: inputs.githubToken }, "release history lookup", []);
+    const releases = parseJsonArray(result.stdout, []);
+    return releases.map((release) => ({
+        tag: collect_readString(release.tag_name) ?? null,
+        name: collect_readString(release.name) ?? null,
+        date: collect_readString(release.published_at) ?? null,
+        notes: collect_readString(release.body) ?? null,
+    }));
+}
+async function runNpmAudit(runner) {
+    const result = await safeRun(runner, "npm", ["audit", "--json"], process.env, "npm audit", {});
+    if (!result.stdout.trim()) {
+        return {};
+    }
+    return parseJsonUnknown(result.stdout, {});
+}
+async function safeRun(runner, command, args, env, description, fallback) {
+    try {
+        const result = await runner(command, args, env);
+        if (result.exitCode !== 0 && command !== "npm") {
+            warning(`${description} failed with exit code ${result.exitCode}. Continuing with fallback data.`);
+            return {
+                exitCode: result.exitCode,
+                stdout: JSON.stringify(fallback),
+                stderr: result.stderr,
+            };
+        }
+        return result;
+    }
+    catch (error) {
+        warning(`${description} failed: ${error instanceof Error ? error.message : String(error)}. Continuing with fallback data.`);
+        return {
+            exitCode: 1,
+            stdout: JSON.stringify(fallback),
+            stderr: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
+async function defaultCommandRunner(command, args, env) {
+    const result = await getExecOutput(command, args, {
+        env: normalizeEnv(env),
         ignoreReturnCode: true,
         silent: true,
     });
-    if (exitCode === 0) {
-        return false;
+    return {
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+    };
+}
+function normalizeEnv(env) {
+    if (!env) {
+        return undefined;
     }
-    if (exitCode === 1) {
-        return true;
+    return Object.fromEntries(Object.entries(env).filter((entry) => typeof entry[1] === "string"));
+}
+function parseJsonUnknown(text, fallback) {
+    try {
+        return JSON.parse(text);
     }
-    throw new ActionError("DOCSYNC_GIT_STATUS_FAILED", "commit_changes", "git diff --cached failed.");
+    catch {
+        return fallback;
+    }
+}
+function collect_parseJsonRecord(text, fallback) {
+    try {
+        const parsed = JSON.parse(text);
+        return collect_isRecord(parsed) ? parsed : fallback;
+    }
+    catch {
+        return fallback;
+    }
+}
+function parseJsonArray(text, fallback) {
+    try {
+        const parsed = JSON.parse(text);
+        return Array.isArray(parsed) ? parsed.filter(collect_isRecord) : fallback;
+    }
+    catch {
+        return fallback;
+    }
+}
+function collect_isRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+function collect_readString(value) {
+    return typeof value === "string" && value.trim() ? value : undefined;
 }
 
-;// CONCATENATED MODULE: ./actions/docs-sync/src/inputs.ts
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/inputs.ts
 
 
-function readDocsSyncInputs() {
-    const token = process.env.API_TOKEN_GITHUB ?? "";
-    if (token) {
-        core_setSecret(token);
-    }
-    return parseDocsSyncInputsFromRecord({
-        source_file: getInput("source_file"),
-        destination_repo: getInput("destination_repo"),
-        destination_folder: getInput("destination_folder"),
-        user_email: getInput("user_email"),
-        user_name: getInput("user_name"),
-        user_actor: getInput("user_actor"),
-        destination_branch: getInput("destination_branch"),
-        commit_message: getInput("commit_message"),
-        rename: getInput("rename"),
-        use_rsync: getInput("use_rsync"),
-        git_server: getInput("git_server"),
-    }, token);
+function readRepoMetadataCollectInputs() {
+    const parsed = parseRepoMetadataCollectInputsFromRecord({
+        github_token: getInput("github_token"),
+        workflow_run_id: getInput("workflow_run_id"),
+        repository: getInput("repository"),
+    });
+    core_setSecret(parsed.githubToken);
+    return parsed;
 }
-function parseDocsSyncInputsFromRecord(inputs, githubToken) {
-    const sourceFile = requireInput(inputs, "source_file");
-    const destinationRepo = requireInput(inputs, "destination_repo");
-    const userEmail = requireInput(inputs, "user_email");
-    const userName = requireInput(inputs, "user_name");
-    const userActor = requireInput(inputs, "user_actor");
-    const destinationBranch = optionalInput(inputs, "destination_branch") ?? "main";
-    if (!githubToken.trim()) {
-        throw new ActionError("DOCSYNC_MISSING_SECRET", "validate_inputs", "API_TOKEN_GITHUB is required.");
+function parseRepoMetadataCollectInputsFromRecord(inputs) {
+    const githubToken = requireInput(inputs, "github_token");
+    const workflowRunId = requireInput(inputs, "workflow_run_id");
+    const repository = requireInput(inputs, "repository");
+    if (!repository.includes("/")) {
+        throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", "repository must be in owner/name form.");
     }
     return {
-        sourceFile,
-        destinationRepo,
-        destinationFolder: optionalInput(inputs, "destination_folder") ?? "",
-        userEmail,
-        userName,
-        userActor,
-        destinationBranch,
-        commitMessage: optionalInput(inputs, "commit_message"),
-        rename: optionalInput(inputs, "rename"),
-        useRsync: parseBooleanInput(inputs.use_rsync, "use_rsync", false),
-        gitServer: optionalInput(inputs, "git_server") ?? "github.com",
         githubToken,
+        workflowRunId,
+        repository,
     };
 }
 function requireInput(inputs, name) {
-    const value = optionalInput(inputs, name);
+    const value = inputs[name]?.trim();
     if (!value) {
-        throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `${name} is required.`);
+        throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", `${name} is required.`);
     }
     return value;
 }
-function optionalInput(inputs, name) {
-    const value = inputs[name]?.trim();
-    return value ? value : undefined;
-}
-function parseBooleanInput(value, name, defaultValue) {
-    const normalized = value?.trim().toLowerCase();
-    if (!normalized) {
-        return defaultValue;
-    }
-    if (normalized === "true") {
-        return true;
-    }
-    if (normalized === "false") {
-        return false;
-    }
-    throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `${name} must be 'true' or 'false'.`);
-}
 
-;// CONCATENATED MODULE: ./actions/docs-sync/src/index.ts
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/index.ts
 
 
 
@@ -31299,29 +31230,13 @@ function parseBooleanInput(value, name, defaultValue) {
 
 
 async function run() {
-    const inputs = readDocsSyncInputs();
-    await ensureSourceExists(inputs.sourceFile);
-    const validationIssues = await validatePath(inputs.sourceFile);
-    if (validationIssues.length > 0) {
-        for (const issue of validationIssues) {
-            error(`${issue.filePath} | ${issue.ruleId} | ${issue.message}`);
-        }
-        throw new ActionError("DOCSYNC_INVALID_CONTENT", "validate_docs", "Source content contains Confluence-incompatible markdown/MDX. Fix the reported files upstream before docs-sync can copy them.");
-    }
-    info(`Resolved docs sync target: repo=${inputs.destinationRepo} branch=${inputs.destinationBranch} folder=${inputs.destinationFolder || "."}`);
-    const pushed = await syncDocs(inputs);
-    if (pushed) {
-        notice("Documentation changes pushed to the destination repository.");
-    }
-    else {
-        notice("No documentation changes detected.");
-    }
-}
-async function ensureSourceExists(sourceFile) {
-    const sourceStat = await (0,promises_namespaceObject.stat)(sourceFile).catch(() => undefined);
-    if (!sourceStat) {
-        throw new ActionError("DOCSYNC_INVALID_INPUT", "validate_inputs", `source_file '${sourceFile}' does not exist.`);
-    }
+    const inputs = readRepoMetadataCollectInputs();
+    info(`Collecting repository metadata for ${inputs.repository}.`);
+    const report = await collectMetadataReport(inputs);
+    const reportFile = (0,external_node_path_namespaceObject.resolve)("metadata-report.json");
+    await (0,promises_namespaceObject.writeFile)(reportFile, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    setOutput("report_file", reportFile);
+    notice(`Metadata report written to ${reportFile}.`);
 }
 function handleRunFailure(error) {
     if (isActionError(error)) {
