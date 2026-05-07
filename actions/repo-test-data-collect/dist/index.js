@@ -31071,6 +31071,7 @@ function buildE2eCoverageMetricsV1(e2eTestCoverage, e2eTestCoverageBreakdown) {
 
 
 
+
 async function collectCoverageReport(inputs, runner = defaultCommandRunner) {
     const packageJsonText = await (0,promises_namespaceObject.readFile)("package.json", "utf8").catch(() => {
         throw new ActionError("COLLECTION_INVALID_INPUT", "validate_inputs", "package.json is required in the repository root.");
@@ -31089,8 +31090,13 @@ async function collectCoverageReport(inputs, runner = defaultCommandRunner) {
     });
 }
 async function collectJestCoverage(coverageFilePath) {
+    const fallbackCoverageFilePath = (0,external_node_path_namespaceObject.join)((0,external_node_path_namespaceObject.dirname)(coverageFilePath), "coverage-final.json");
     const fileExists = await pathExists(coverageFilePath);
     if (!fileExists) {
+        if (await pathExists(fallbackCoverageFilePath)) {
+            info(`${coverageFilePath} not found. Falling back to ${fallbackCoverageFilePath}.`);
+            return collectJestCoverageFromFinalJson(fallbackCoverageFilePath);
+        }
         info(`${coverageFilePath} not found. Skipping Jest coverage collection.`);
         return undefined;
     }
@@ -31107,6 +31113,14 @@ async function collectJestCoverage(coverageFilePath) {
         functionCoverage,
         branchCoverage,
     ]);
+    if (lineCoverage === 0 &&
+        statementCoverage === 0 &&
+        functionCoverage === 0 &&
+        branchCoverage === 0 &&
+        (await pathExists(fallbackCoverageFilePath))) {
+        warning(`${coverageFilePath} reported 0 for every Jest metric. Falling back to ${fallbackCoverageFilePath}.`);
+        return collectJestCoverageFromFinalJson(fallbackCoverageFilePath);
+    }
     return {
         line_coverage: lineCoverage,
         statement_coverage: statementCoverage,
@@ -31117,17 +31131,126 @@ async function collectJestCoverage(coverageFilePath) {
 }
 async function collectLighthouseScore(lighthouseFilePath) {
     const fileExists = await pathExists(lighthouseFilePath);
-    if (!fileExists) {
-        info(`${lighthouseFilePath} not found. Skipping Lighthouse collection.`);
+    if (fileExists) {
+        const raw = await (0,promises_namespaceObject.readFile)(lighthouseFilePath, "utf8");
+        const parsed = parseJsonArray(raw);
+        const first = parsed[0];
+        const score = first ? readNumber(first.actual) : undefined;
+        if (score !== undefined) {
+            return score;
+        }
+        warning(`${lighthouseFilePath} did not contain a numeric Lighthouse score. Falling back to Lighthouse report JSON files.`);
+    }
+    else {
+        info(`${lighthouseFilePath} not found. Falling back to Lighthouse report JSON files.`);
+    }
+    const fallbackScore = await collectLighthouseScoreFromReports((0,external_node_path_namespaceObject.dirname)(lighthouseFilePath));
+    if (fallbackScore !== undefined) {
+        return fallbackScore;
+    }
+    return fileExists ? null : undefined;
+}
+async function collectJestCoverageFromFinalJson(coverageFilePath) {
+    const raw = await (0,promises_namespaceObject.readFile)(coverageFilePath, "utf8");
+    const parsed = parseJsonRecord(raw);
+    let coveredLines = 0;
+    let totalLines = 0;
+    let coveredStatements = 0;
+    let totalStatements = 0;
+    let coveredFunctions = 0;
+    let totalFunctions = 0;
+    let coveredBranches = 0;
+    let totalBranches = 0;
+    for (const value of Object.values(parsed)) {
+        const fileCoverage = readObject(value);
+        const statementCounts = readNumericRecord(fileCoverage.s);
+        const functionCounts = readNumericRecord(fileCoverage.f);
+        const branchCounts = readBranchCountRecord(fileCoverage.b);
+        const statementMap = readObject(fileCoverage.statementMap);
+        totalStatements += Object.keys(statementCounts).length;
+        coveredStatements += Object.values(statementCounts).filter((count) => count > 0).length;
+        totalFunctions += Object.keys(functionCounts).length;
+        coveredFunctions += Object.values(functionCounts).filter((count) => count > 0).length;
+        for (const counts of Object.values(branchCounts)) {
+            totalBranches += counts.length;
+            coveredBranches += counts.filter((count) => count > 0).length;
+        }
+        const lineHits = new Map();
+        for (const [statementKey, statementLocation] of Object.entries(statementMap)) {
+            const location = readObject(statementLocation);
+            const start = readObject(location.start);
+            const lineNumber = readNumber(start.line);
+            if (lineNumber === undefined) {
+                continue;
+            }
+            const covered = (statementCounts[statementKey] ?? 0) > 0;
+            lineHits.set(lineNumber, (lineHits.get(lineNumber) ?? false) || covered);
+        }
+        totalLines += lineHits.size;
+        coveredLines += [...lineHits.values()].filter(Boolean).length;
+    }
+    if (totalLines === 0 &&
+        totalStatements === 0 &&
+        totalFunctions === 0 &&
+        totalBranches === 0) {
+        warning(`${coverageFilePath} did not contain any usable Jest coverage counters.`);
         return undefined;
     }
-    const raw = await (0,promises_namespaceObject.readFile)(lighthouseFilePath, "utf8");
-    const parsed = parseJsonArray(raw);
-    const first = parsed[0];
-    if (!first) {
-        return null;
+    const lineCoverage = toCoveragePercentage(coveredLines, totalLines);
+    const statementCoverage = toCoveragePercentage(coveredStatements, totalStatements);
+    const functionCoverage = toCoveragePercentage(coveredFunctions, totalFunctions);
+    const branchCoverage = toCoveragePercentage(coveredBranches, totalBranches);
+    const averageCoverage = calculateAverageCoverage([
+        lineCoverage,
+        statementCoverage,
+        functionCoverage,
+        branchCoverage,
+    ]);
+    return {
+        line_coverage: lineCoverage,
+        statement_coverage: statementCoverage,
+        function_coverage: functionCoverage,
+        branch_coverage: branchCoverage,
+        average_coverage: averageCoverage,
+    };
+}
+async function collectLighthouseScoreFromReports(lighthouseDirectory) {
+    if (!(await pathExists(lighthouseDirectory))) {
+        return undefined;
     }
-    return readNumber(first.actual) ?? null;
+    const entries = await (0,promises_namespaceObject.readdir)(lighthouseDirectory, { withFileTypes: true });
+    for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".json")) {
+            continue;
+        }
+        const filePath = (0,external_node_path_namespaceObject.join)(lighthouseDirectory, entry.name);
+        const raw = await (0,promises_namespaceObject.readFile)(filePath, "utf8");
+        const parsed = parseJsonRecord(raw);
+        const score = readLighthouseScoreFromReport(parsed);
+        if (score !== undefined) {
+            return score;
+        }
+    }
+    return undefined;
+}
+function readLighthouseScoreFromReport(report) {
+    const categories = readObject(report.categories);
+    const preferredCategoryNames = ["accessibility", "performance"];
+    for (const categoryName of preferredCategoryNames) {
+        const category = readObject(categories[categoryName]);
+        const score = readNumber(category.score);
+        if (score !== undefined) {
+            return score;
+        }
+    }
+    for (const categoryValue of Object.values(categories)) {
+        const category = readObject(categoryValue);
+        const score = readNumber(category.score);
+        if (score !== undefined) {
+            return score;
+        }
+    }
+    return undefined;
 }
 async function collectCypressCoverage(cypressCoverageTempDir, runner) {
     if (!cypressCoverageTempDir) {
@@ -31243,9 +31366,25 @@ function readObject(value) {
         ? value
         : {};
 }
+function readNumericRecord(value) {
+    const record = readObject(value);
+    return Object.fromEntries(Object.entries(record).filter((entry) => typeof entry[1] === "number"));
+}
+function readBranchCountRecord(value) {
+    const record = readObject(value);
+    return Object.fromEntries(Object.entries(record).flatMap(([key, counts]) => Array.isArray(counts) && counts.every((count) => typeof count === "number")
+        ? [[key, counts]]
+        : []));
+}
 function readPct(metric) {
     const record = readObject(metric);
     return readNumber(record.pct) ?? 0;
+}
+function toCoveragePercentage(covered, total) {
+    if (total === 0) {
+        return 100;
+    }
+    return (covered / total) * 100;
 }
 function readNumber(value) {
     if (typeof value === "number" && Number.isFinite(value)) {

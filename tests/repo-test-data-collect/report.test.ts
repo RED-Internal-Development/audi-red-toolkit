@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -253,6 +253,133 @@ describe("repo-test-data-collect reporting", () => {
 
       expect(report).toEqual({
         "@oneaudi/fa-audired-test-app": {},
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  test("falls back to coverage-final.json when coverage-summary reports all zeroes", async () => {
+    const originalCwd = process.cwd();
+    const projectRoot = await mkdtemp(
+      join(tmpdir(), "repo-test-data-collect-jest-fallback-"),
+    );
+    tempRoots.push(projectRoot);
+
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "@oneaudi/fa-jest-fallback" }),
+      "utf8",
+    );
+    await mkdir(join(projectRoot, "coverage"), { recursive: true });
+    await writeFile(
+      join(projectRoot, "coverage", "coverage-summary.json"),
+      JSON.stringify({
+        total: {
+          lines: { pct: 0 },
+          statements: { pct: 0 },
+          functions: { pct: 0 },
+          branches: { pct: 0 },
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(projectRoot, "coverage", "coverage-final.json"),
+      JSON.stringify({
+        "/tmp/example.ts": {
+          statementMap: {
+            "0": { start: { line: 1 }, end: { line: 1 } },
+          },
+          s: { "0": 1 },
+          fnMap: {
+            "0": { loc: { start: { line: 1 }, end: { line: 1 } } },
+          },
+          f: { "0": 1 },
+          branchMap: {
+            "0": {
+              locations: [
+                { start: { line: 1 }, end: { line: 1 } },
+                { start: { line: 1 }, end: { line: 1 } },
+              ],
+            },
+          },
+          b: { "0": [1, 0] },
+        },
+      }),
+      "utf8",
+    );
+
+    process.chdir(projectRoot);
+
+    try {
+      const report = await collectCoverageReport({
+        githubToken: "token",
+        jestCoverageFilePath: "coverage/coverage-summary.json",
+        lighthouseCoverageFilePath: "missing-lh.json",
+        cypressCoverageTempDir: undefined,
+      });
+
+      expect(report).toEqual({
+        "@oneaudi/fa-jest-fallback": {
+          unit_test_coverage: 87.5,
+          unit_test_coverage_data: {
+            line_coverage: 100,
+            statement_coverage: 100,
+            function_coverage: 100,
+            branch_coverage: 50,
+            average_coverage: 87.5,
+          },
+        },
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  test("falls back to lighthouse report JSON when assertion-results is unusable", async () => {
+    const originalCwd = process.cwd();
+    const projectRoot = await mkdtemp(
+      join(tmpdir(), "repo-test-data-collect-lighthouse-fallback-"),
+    );
+    tempRoots.push(projectRoot);
+
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "@oneaudi/fa-lighthouse-fallback" }),
+      "utf8",
+    );
+    await mkdir(join(projectRoot, ".lighthouseci"), { recursive: true });
+    await writeFile(
+      join(projectRoot, ".lighthouseci", "assertion-results.json"),
+      JSON.stringify([{ actual: null }]),
+      "utf8",
+    );
+    await writeFile(
+      join(projectRoot, ".lighthouseci", "lhr-123.json"),
+      JSON.stringify({
+        categories: {
+          accessibility: { score: 0.98 },
+          performance: { score: 0.82 },
+        },
+      }),
+      "utf8",
+    );
+
+    process.chdir(projectRoot);
+
+    try {
+      const report = await collectCoverageReport({
+        githubToken: "token",
+        jestCoverageFilePath: "missing.json",
+        lighthouseCoverageFilePath: ".lighthouseci/assertion-results.json",
+        cypressCoverageTempDir: undefined,
+      });
+
+      expect(report).toEqual({
+        "@oneaudi/fa-lighthouse-fallback": {
+          lighthouse_score: 0.98,
+        },
       });
     } finally {
       process.chdir(originalCwd);
