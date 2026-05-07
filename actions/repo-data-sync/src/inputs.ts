@@ -15,6 +15,7 @@ export interface ReportSyncInputs {
   docsBranch: string;
   appType: string | undefined;
   profileKey: string | undefined;
+  testCollectionPolicy: string | undefined;
   prodSupportEnabled: boolean;
 }
 
@@ -34,6 +35,7 @@ export function readRepoDataSyncInputs(): ReportSyncInputs {
     docs_branch: core.getInput("docs_branch"),
     app_type: core.getInput("app_type"),
     profile_key: core.getInput("profile_key"),
+    test_collection_policy: core.getInput("test_collection_policy"),
     prod_support_enabled: core.getInput("prod_support_enabled"),
   });
 }
@@ -61,6 +63,7 @@ export function parseRepoDataSyncInputsFromRecord(
     docsBranch: requireInput(inputs, "docs_branch"),
     appType: optionalInput(inputs, "app_type"),
     profileKey: optionalInput(inputs, "profile_key"),
+    testCollectionPolicy: optionalInput(inputs, "test_collection_policy"),
     prodSupportEnabled: parseBoolean(
       optionalInput(inputs, "prod_support_enabled") ?? "false",
       "prod_support_enabled",

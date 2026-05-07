@@ -45,6 +45,10 @@ inputs:
     description: Optional resolved profile key for the new profile dashboard dataset.
     required: false
     default: ""
+  test_collection_policy:
+    description: Optional JSON object describing profile-driven test collection expectations.
+    required: false
+    default: ""
   prod_support_enabled:
     description: Whether VWGOA prod support deployment is enabled.
     required: false

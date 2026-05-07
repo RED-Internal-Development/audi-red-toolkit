@@ -6,6 +6,32 @@ import { afterAll, describe, expect, test } from "vitest";
 
 import { executeRepoDataSync } from "../../actions/repo-data-sync/src/sync.js";
 
+const featureAppPolicy = JSON.stringify({
+  unit_test: {
+    enabled: true,
+    status_key: "unitTest",
+    source_fields: ["unit_test_coverage", "unit_test_coverage_data"],
+  },
+  e2e_coverage: {
+    enabled: true,
+    status_key: "e2eCoverage",
+    source_fields: ["e2e_test_coverage", "e2e_test_coverage_breakdown"],
+  },
+  lighthouse: {
+    enabled: true,
+    status_key: "lighthouse",
+    source_fields: ["lighthouse_score"],
+  },
+});
+
+const backendServicePolicy = JSON.stringify({
+  unit_test: {
+    enabled: true,
+    status_key: "unitTest",
+    source_fields: ["unit_test_coverage", "unit_test_coverage_data"],
+  },
+});
+
 describe("repo-data-sync execution", () => {
   const tempRoots: string[] = [];
 
@@ -87,6 +113,7 @@ describe("repo-data-sync execution", () => {
         docsBranch: "release",
         appType: "feature_app",
         profileKey: "feature_app",
+        testCollectionPolicy: featureAppPolicy,
         prodSupportEnabled: true,
       },
       {
@@ -180,6 +207,104 @@ describe("repo-data-sync execution", () => {
             unitTest: { status: "found" },
             e2eCoverage: { status: "found" },
             lighthouse: { status: "found" },
+          },
+        },
+      ],
+    });
+  });
+
+  test("emits collection status only for configured profile metrics", async () => {
+    const root = await mkdtemp(join(tmpdir(), "repo-data-sync-backend-"));
+    tempRoots.push(root);
+
+    await mkdir(join(root, "metadata-report"), { recursive: true });
+    await mkdir(join(root, "collection-report"), { recursive: true });
+    await mkdir(join(root, "audired-jest-report"), { recursive: true });
+    await mkdir(join(root, "data"), { recursive: true });
+
+    await writeJson(join(root, "metadata-report", "metadata-report.json"), {
+      "@oneaudi/backend-example": {
+        app_name: "backend-example",
+        default_branch: "main",
+      },
+    });
+
+    await writeJson(join(root, "audired-jest-report", "report.json"), {
+      "@oneaudi/backend-example": {
+        unit_test_coverage: 91,
+        unit_test_coverage_data: {
+          line_coverage: 93,
+          statement_coverage: 92,
+          function_coverage: 90,
+          branch_coverage: 89,
+          average_coverage: 91,
+        },
+      },
+    });
+
+    const result = await executeRepoDataSync(
+      {
+        metadataFile: join(root, "metadata-report", "metadata-report.json"),
+        collectionReportFile: join(root, "collection-report", "report.json"),
+        cypressReportFile: undefined,
+        lighthouseReportFile: undefined,
+        jestReportFile: join(root, "audired-jest-report", "report.json"),
+        dataDir: join(root, "data"),
+        collectionOutputDir: join(root, "assembled-collection-report"),
+        docsDestinationTeamFolder: "docs/backend-services/platform",
+        docsDestinationAppFolder:
+          "docs/backend-services/platform/backend-example",
+        docsBranch: "release",
+        appType: "backend_service",
+        profileKey: "backend_service",
+        testCollectionPolicy: backendServicePolicy,
+        prodSupportEnabled: false,
+      },
+      {
+        now: () => new Date("2025-01-02T03:04:05.000Z"),
+      },
+    );
+
+    const profileDashboardReport = await readJson(result.profileDashboardFile);
+
+    expect(profileDashboardReport).toEqual({
+      schemaVersion: "1.0",
+      generatedAt: "2025-01-02T03:04:05.000Z",
+      repositories: [
+        {
+          repository: {
+            owner: "@oneaudi",
+            name: "backend-example",
+            fullName: "@oneaudi/backend-example",
+            displayName: "backend-example",
+          },
+          appType: "backend_service",
+          profileKey: "backend_service",
+          generatedAt: "2025-01-02T03:04:05.000Z",
+          metadata: {
+            app_name: "backend-example",
+            default_branch: "main",
+            prod_support_enabled: false,
+            docs: {
+              docs_destination_team_folder: "docs/backend-services/platform",
+              docs_destination_app_folder:
+                "docs/backend-services/platform/backend-example",
+              docs_branch: "release",
+            },
+          },
+          metrics: {
+            unitTest: {
+              overallCoverage: 91,
+              breakdown: {
+                lines: 93,
+                statements: 92,
+                functions: 90,
+                branches: 89,
+              },
+            },
+          },
+          collectionStatus: {
+            unitTest: { status: "found" },
           },
         },
       ],
