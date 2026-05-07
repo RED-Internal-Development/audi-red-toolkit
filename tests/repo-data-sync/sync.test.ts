@@ -22,6 +22,7 @@ describe("repo-data-sync execution", () => {
     await mkdir(join(root, "metadata-report"), { recursive: true });
     await mkdir(join(root, "collection-report"), { recursive: true });
     await mkdir(join(root, "audired-cypress-report"), { recursive: true });
+    await mkdir(join(root, "audired-lighthouse-report"), { recursive: true });
     await mkdir(join(root, "audired-jest-report"), { recursive: true });
     await mkdir(join(root, "data"), { recursive: true });
 
@@ -40,6 +41,11 @@ describe("repo-data-sync execution", () => {
     await writeJson(join(root, "audired-cypress-report", "report.json"), {
       "@oneaudi/fa-example": {
         e2e_test_coverage: 62,
+      },
+    });
+    await writeJson(join(root, "audired-lighthouse-report", "report.json"), {
+      "@oneaudi/fa-example": {
+        lighthouse_score: 0.91,
       },
     });
     await writeJson(join(root, "audired-jest-report", "report.json"), {
@@ -68,6 +74,11 @@ describe("repo-data-sync execution", () => {
         metadataFile: join(root, "metadata-report", "metadata-report.json"),
         collectionReportFile: join(root, "collection-report", "report.json"),
         cypressReportFile: join(root, "audired-cypress-report", "report.json"),
+        lighthouseReportFile: join(
+          root,
+          "audired-lighthouse-report",
+          "report.json",
+        ),
         jestReportFile: join(root, "audired-jest-report", "report.json"),
         dataDir: join(root, "data"),
         collectionOutputDir: join(root, "assembled-collection-report"),

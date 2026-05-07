@@ -12,6 +12,10 @@ inputs:
     description: Optional path to the Cypress report artifact.
     required: false
     default: ""
+  lighthouse_report_file:
+    description: Optional path to the Lighthouse report artifact.
+    required: false
+    default: ""
   jest_report_file:
     description: Optional path to the Jest report artifact.
     required: false

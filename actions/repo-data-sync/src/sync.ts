@@ -51,6 +51,12 @@ export async function executeRepoDataSync(
   repoEntry = await mergeOptionalReport(
     repoEntry,
     repoName,
+    inputs.lighthouseReportFile,
+    "lighthouse_report_file",
+  );
+  repoEntry = await mergeOptionalReport(
+    repoEntry,
+    repoName,
     inputs.jestReportFile,
     "jest_report_file",
   );

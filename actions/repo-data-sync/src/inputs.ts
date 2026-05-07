@@ -6,6 +6,7 @@ export interface ReportSyncInputs {
   metadataFile: string;
   collectionReportFile: string | undefined;
   cypressReportFile: string | undefined;
+  lighthouseReportFile: string | undefined;
   jestReportFile: string | undefined;
   dataDir: string;
   collectionOutputDir: string;
@@ -24,6 +25,7 @@ export function readRepoDataSyncInputs(): ReportSyncInputs {
     metadata_file: core.getInput("metadata_file"),
     collection_report_file: core.getInput("collection_report_file"),
     cypress_report_file: core.getInput("cypress_report_file"),
+    lighthouse_report_file: core.getInput("lighthouse_report_file"),
     jest_report_file: core.getInput("jest_report_file"),
     data_dir: core.getInput("data_dir"),
     collection_output_dir: core.getInput("collection_output_dir"),
@@ -43,6 +45,7 @@ export function parseRepoDataSyncInputsFromRecord(
     metadataFile: requireInput(inputs, "metadata_file"),
     collectionReportFile: optionalInput(inputs, "collection_report_file"),
     cypressReportFile: optionalInput(inputs, "cypress_report_file"),
+    lighthouseReportFile: optionalInput(inputs, "lighthouse_report_file"),
     jestReportFile: optionalInput(inputs, "jest_report_file"),
     dataDir: optionalInput(inputs, "data_dir") ?? "data",
     collectionOutputDir:

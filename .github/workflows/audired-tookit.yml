@@ -109,10 +109,20 @@ jobs:
       project_type: ${{ steps.detect.outputs.project_type }}
       has_jest: ${{ steps.detect.outputs.has_jest }}
       has_cypress: ${{ steps.detect.outputs.has_cypress }}
+      collect_unit_test: ${{ steps.detect.outputs.collect_unit_test }}
+      collect_e2e_coverage: ${{ steps.detect.outputs.collect_e2e_coverage }}
+      collect_lighthouse: ${{ steps.detect.outputs.collect_lighthouse }}
       docs_base_path: ${{ steps.detect.outputs.docs_base_path }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
+
+      - name: Checkout toolkit config
+        uses: actions/checkout@v6
+        with:
+          repository: RED-Internal-Development/audi-red-toolkit
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
 
       - name: Detect project type
         id: detect
@@ -123,9 +133,13 @@ jobs:
 
           HAS_CYPRESS=false
           HAS_JEST=false
+          COLLECT_UNIT_TEST=false
+          COLLECT_E2E_COVERAGE=false
+          COLLECT_LIGHTHOUSE=false
           DETECTION_MODE=""
           RESOLVED_APP_TYPE=""
           DOCS_PATH="feature_apps"
+          PROFILE_FILE="toolkit-config/config/app-type-profiles.yml"
 
           resolve_profile_key() {
             case "$1" in
@@ -146,6 +160,40 @@ jobs:
             [[ -n "$(resolve_profile_key "$1")" ]]
           }
 
+          detect_test_capabilities() {
+            if [ ! -f "package.json" ]; then
+              return
+            fi
+
+            if jq -e '.scripts | to_entries[] | select(.value | contains("cypress"))' package.json > /dev/null 2>&1; then
+              HAS_CYPRESS=true
+            fi
+
+            if [ -d "cypress" ] || [ -d "tests/cypress" ] || [ -f "cypress.config.js" ] || [ -f "cypress.config.ts" ]; then
+              HAS_CYPRESS=true
+            fi
+
+            if jq -e '.scripts | to_entries[] | select(.key | test("test|jest"))' package.json > /dev/null 2>&1; then
+              HAS_JEST=true
+            fi
+
+            if [ -f "jest.config.js" ] || [ -f "jest.config.ts" ] || jq -e '.jest' package.json > /dev/null 2>&1; then
+              HAS_JEST=true
+            fi
+          }
+
+          read_policy_flag() {
+            ruby -ryaml -e '
+              data = YAML.load_file(ARGV[0]) || {}
+              profile = data.fetch(ARGV[1], {})
+              path = ARGV[2].split(".")
+              value = path.reduce(profile) { |acc, key| acc.is_a?(Hash) ? acc[key] : nil }
+              puts(value == true ? "true" : "false")
+            ' "$PROFILE_FILE" "$RESOLVED_APP_TYPE" "$1"
+          }
+
+          detect_test_capabilities
+
           # app_type takes precedence when set
           if [[ -n "$INPUT_APP_TYPE" ]]; then
             if ! validate_app_type "$INPUT_APP_TYPE"; then
@@ -165,27 +213,7 @@ jobs:
             # Auto-detect based on package.json and file structure
             DETECTION_MODE="auto-detect (deprecated)"
             echo "::warning::Using auto-detect is deprecated. Please provide app_type."
-            
-            if [ -f "package.json" ]; then
-              # Check for Cypress
-              if jq -e '.scripts | to_entries[] | select(.value | contains("cypress"))' package.json > /dev/null 2>&1; then
-                HAS_CYPRESS=true
-              fi
-              
-              if [ -d "cypress" ]; then
-                HAS_CYPRESS=true
-              fi
-              
-              # Check for Jest
-              if jq -e '.scripts | to_entries[] | select(.key | test("test|jest"))' package.json > /dev/null 2>&1; then
-                HAS_JEST=true
-              fi
-              
-              if [ -f "jest.config.js" ] || [ -f "jest.config.ts" ] || jq -e '.jest' package.json > /dev/null 2>&1; then
-                HAS_JEST=true
-              fi
-            fi
-            
+
             # Determine app_type
             if [[ "$HAS_CYPRESS" == "true" ]]; then
               RESOLVED_APP_TYPE="feature_app"
@@ -204,10 +232,22 @@ jobs:
             *) DOCS_PATH="feature_apps" ;;
           esac
 
+          if [[ ! -f "$PROFILE_FILE" ]]; then
+            echo "::error::Profile file not found: $PROFILE_FILE"
+            exit 1
+          fi
+
+          COLLECT_UNIT_TEST="$(read_policy_flag "test_collection.unit_test.enabled")"
+          COLLECT_E2E_COVERAGE="$(read_policy_flag "test_collection.e2e_coverage.enabled")"
+          COLLECT_LIGHTHOUSE="$(read_policy_flag "test_collection.lighthouse.enabled")"
+
           # Keep both outputs for backward compatibility; both carry normalized app_type.
           echo "app_type=$RESOLVED_APP_TYPE" >> $GITHUB_OUTPUT
           echo "project_type=$RESOLVED_APP_TYPE" >> $GITHUB_OUTPUT
           echo "docs_base_path=$DOCS_PATH" >> $GITHUB_OUTPUT
+          echo "collect_unit_test=$COLLECT_UNIT_TEST" >> $GITHUB_OUTPUT
+          echo "collect_e2e_coverage=$COLLECT_E2E_COVERAGE" >> $GITHUB_OUTPUT
+          echo "collect_lighthouse=$COLLECT_LIGHTHOUSE" >> $GITHUB_OUTPUT
           
           # Always output test framework availability
           echo "has_cypress=$HAS_CYPRESS" >> $GITHUB_OUTPUT
@@ -217,6 +257,9 @@ jobs:
           echo "✅ Resolution mode: $DETECTION_MODE"
           echo "✅ Cypress available: $HAS_CYPRESS"
           echo "✅ Jest available: $HAS_JEST"
+          echo "✅ Collect unit test: $COLLECT_UNIT_TEST"
+          echo "✅ Collect e2e coverage: $COLLECT_E2E_COVERAGE"
+          echo "✅ Collect lighthouse: $COLLECT_LIGHTHOUSE"
           echo "✅ Docs base path: $DOCS_PATH"
 
   doc_sync:
@@ -540,7 +583,7 @@ jobs:
   data_sync:
     runs-on: ubuntu-latest
     if: ${{ always() && inputs.enable_data_sync }}
-    needs: [detect_project, cypress_sync, jest_sync]
+    needs: [detect_project, cypress_sync, jest_sync, lighthouse_sync]
     outputs:
       docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
       docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
@@ -587,11 +630,22 @@ jobs:
           path: metadata-report
 
       - name: Download cypress report artifact
-        if: github.event_name == 'schedule' && needs.cypress_sync.outputs.cypress_run == 'true'
+        if: |
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+          needs.cypress_sync.outputs.cypress_run == 'true'
         uses: actions/download-artifact@v5
         with:
           name: audired-cypress-report
           path: audired-cypress-report
+
+      - name: Download lighthouse report artifact
+        if: |
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+          needs.lighthouse_sync.outputs.lighthouse_run == 'true'
+        uses: actions/download-artifact@v5
+        with:
+          name: audired-lighthouse-report
+          path: audired-lighthouse-report
 
       - name: Download jest report artifact
         if: |
@@ -691,6 +745,7 @@ jobs:
           metadata_file: metadata-report/metadata-report.json
           collection_report_file: collection-report/report.json
           cypress_report_file: audired-cypress-report/report.json
+          lighthouse_report_file: audired-lighthouse-report/report.json
           jest_report_file: audired-jest-report/report.json
           data_dir: data
           collection_output_dir: collection-report
@@ -857,6 +912,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect_project
     if: |
+      needs.detect_project.outputs.collect_unit_test == 'true' &&
       needs.detect_project.outputs.has_jest == 'true' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     outputs:
@@ -933,6 +989,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect_project
     if: |
+      needs.detect_project.outputs.collect_e2e_coverage == 'true' &&
       needs.detect_project.outputs.has_cypress == 'true' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     outputs:
@@ -995,3 +1052,68 @@ jobs:
         with:
           name: audired-cypress-report
           path: ${{ steps.collect_cypress.outputs.report_file }}
+
+  lighthouse_sync:
+    runs-on: ubuntu-latest
+    needs: detect_project
+    if: |
+      needs.detect_project.outputs.collect_lighthouse == 'true' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    outputs:
+      lighthouse_run: ${{ steps.check_script.outputs.exists }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Check if Lighthouse script exists
+        id: check_script
+        shell: bash
+        run: |
+          if jq -e '.scripts["lighthouse:ci"] or .scripts["lighthouse"]' package.json > /dev/null; then
+            echo "Lighthouse script found"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No Lighthouse script found"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_script.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install dependencies
+        if: steps.check_script.outputs.exists == 'true'
+        shell: bash
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Lighthouse
+        if: steps.check_script.outputs.exists == 'true'
+        shell: bash
+        run: |
+          if jq -e '.scripts["lighthouse:ci"]' package.json > /dev/null; then
+            npm run lighthouse:ci
+          else
+            npm run lighthouse
+          fi
+
+      - name: Collect Lighthouse Coverage using Toolkit Action
+        if: steps.check_script.outputs.exists == 'true'
+        id: collect_lighthouse
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          lighthouse_coverage_file_path: .lighthouseci/assertion-results.json
+
+      - name: Upload Lighthouse Coverage Report
+        if: steps.check_script.outputs.exists == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: audired-lighthouse-report
+          path: ${{ steps.collect_lighthouse.outputs.report_file }}
+          retention-days: 30
