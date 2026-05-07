@@ -161,11 +161,10 @@ async function collectCypressCoverage(
       (value) => value === undefined,
     )
   ) {
-    throw new ActionError(
-      "COLLECTION_INVALID_COVERAGE",
-      "collect_cypress",
-      "Coverage summary returned 'Unknown' for all Cypress metrics.",
+    core.warning(
+      "Coverage summary returned 'Unknown' for all Cypress metrics. Skipping Cypress coverage collection.",
     );
+    return undefined;
   }
 
   const normalizedStatements = metricToNumber(statements, "Statements");

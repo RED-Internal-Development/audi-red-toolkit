@@ -30987,6 +30987,83 @@ function buildCollectionReport(metrics) {
 function calculateAverageCoverage(values) {
     return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
+function buildProfileDashboardReportV1(input) {
+    return {
+        schemaVersion: "1.0",
+        generatedAt: input.generatedAt,
+        repositories: input.repositories,
+    };
+}
+function buildFeatureAppProfileDashboardEntryV1(input) {
+    return {
+        repository: buildRepositoryRefV1(input.repoName),
+        appType: "feature_app",
+        profileKey: input.profileKey ?? "feature_app",
+        generatedAt: input.generatedAt,
+        metadata: input.metadata ?? {},
+        metrics: {
+            unitTest: buildUnitTestMetricsV1(input.unitTestCoverage, input.unitTestCoverageData),
+            e2eCoverage: input.e2eTestCoverage !== undefined ||
+                input.e2eTestCoverageBreakdown !== undefined
+                ? buildE2eCoverageMetricsV1(input.e2eTestCoverage, input.e2eTestCoverageBreakdown)
+                : undefined,
+            lighthouse: input.lighthouseScore !== undefined
+                ? { overallScore: input.lighthouseScore ?? null }
+                : undefined,
+        },
+        collectionStatus: input.collectionStatus,
+        dashboardSections: input.dashboardSections,
+    };
+}
+function buildBackendServiceProfileDashboardEntryV1(input) {
+    return {
+        repository: buildRepositoryRefV1(input.repoName),
+        appType: "backend_service",
+        profileKey: input.profileKey ?? "backend_service",
+        generatedAt: input.generatedAt,
+        metadata: input.metadata ?? {},
+        metrics: {
+            unitTest: buildUnitTestMetricsV1(input.unitTestCoverage, input.unitTestCoverageData),
+        },
+        collectionStatus: input.collectionStatus,
+        dashboardSections: input.dashboardSections,
+    };
+}
+function buildRepositoryRefV1(repoName) {
+    const [owner = repoName, name = repoName] = repoName.split("/");
+    return {
+        owner,
+        name,
+        fullName: repoName,
+        displayName: name,
+    };
+}
+function buildUnitTestMetricsV1(unitTestCoverage, unitTestCoverageData) {
+    return {
+        overallCoverage: unitTestCoverage ?? null,
+        breakdown: unitTestCoverageData
+            ? {
+                lines: unitTestCoverageData.line_coverage,
+                statements: unitTestCoverageData.statement_coverage,
+                functions: unitTestCoverageData.function_coverage,
+                branches: unitTestCoverageData.branch_coverage,
+            }
+            : undefined,
+    };
+}
+function buildE2eCoverageMetricsV1(e2eTestCoverage, e2eTestCoverageBreakdown) {
+    return {
+        overallCoverage: e2eTestCoverage ?? null,
+        breakdown: e2eTestCoverageBreakdown
+            ? {
+                lines: e2eTestCoverageBreakdown.e2e_test_coverage_lines,
+                statements: e2eTestCoverageBreakdown.e2e_test_coverage_statements,
+                functions: e2eTestCoverageBreakdown.e2e_test_coverage_functions,
+                branches: e2eTestCoverageBreakdown.e2e_test_coverage_branches,
+            }
+            : undefined,
+    };
+}
 
 ;// CONCATENATED MODULE: ./actions/repo-test-data-collect/src/collect.ts
 
@@ -31076,7 +31153,8 @@ async function collectCypressCoverage(cypressCoverageTempDir, runner) {
     const functions = parseCoverageMetric(result.stdout, "Functions");
     const lines = parseCoverageMetric(result.stdout, "Lines");
     if ([statements, branches, functions, lines].every((value) => value === undefined)) {
-        throw new ActionError("COLLECTION_INVALID_COVERAGE", "collect_cypress", "Coverage summary returned 'Unknown' for all Cypress metrics.");
+        warning("Coverage summary returned 'Unknown' for all Cypress metrics. Skipping Cypress coverage collection.");
+        return undefined;
     }
     const normalizedStatements = metricToNumber(statements, "Statements");
     const normalizedBranches = metricToNumber(branches, "Branches");

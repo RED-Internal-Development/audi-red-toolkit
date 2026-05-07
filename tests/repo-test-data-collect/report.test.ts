@@ -220,4 +220,42 @@ describe("repo-test-data-collect reporting", () => {
       process.chdir(originalCwd);
     }
   });
+
+  test("skips Cypress coverage when nyc reports Unknown for all metrics", async () => {
+    const originalCwd = process.cwd();
+    const coverageRoot = await mkdtemp(
+      join(tmpdir(), "repo-test-data-collect-nyc-unknown-"),
+    );
+    tempRoots.push(coverageRoot);
+    process.chdir(
+      "/Users/jaydeepvachhani/red_repos/RED-Toolkit-New/fa-audired-test-app",
+    );
+
+    try {
+      const report = await collectCoverageReport(
+        {
+          githubToken: "token",
+          jestCoverageFilePath: "missing.json",
+          lighthouseCoverageFilePath: "missing-lh.json",
+          cypressCoverageTempDir: coverageRoot,
+        },
+        async () => ({
+          exitCode: 0,
+          stdout: [
+            "Statements   : Unknown%",
+            "Branches     : Unknown%",
+            "Functions    : Unknown%",
+            "Lines        : Unknown%",
+          ].join("\n"),
+          stderr: "",
+        }),
+      );
+
+      expect(report).toEqual({
+        "@oneaudi/fa-audired-test-app": {},
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
 });
