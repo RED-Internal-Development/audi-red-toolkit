@@ -28145,16 +28145,16 @@ function file_command_issueFileCommand(command, message) {
     if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
     }
-    if (!fs.existsSync(filePath)) {
+    if (!external_fs_namespaceObject.existsSync(filePath)) {
         throw new Error(`Missing file at path: ${filePath}`);
     }
-    fs.appendFileSync(filePath, `${toCommandValue(message)}${os.EOL}`, {
+    external_fs_namespaceObject.appendFileSync(filePath, `${utils_toCommandValue(message)}${external_os_namespaceObject.EOL}`, {
         encoding: 'utf8'
     });
 }
 function file_command_prepareKeyValueMessage(key, value) {
-    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
-    const convertedValue = toCommandValue(value);
+    const delimiter = `ghadelimiter_${external_crypto_namespaceObject.randomUUID()}`;
+    const convertedValue = utils_toCommandValue(value);
     // These should realistically never happen, but just in case someone finds a
     // way to exploit uuid generation let's not allow keys or values that contain
     // the delimiter.
@@ -28164,7 +28164,7 @@ function file_command_prepareKeyValueMessage(key, value) {
     if (convertedValue.includes(delimiter)) {
         throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
     }
-    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
+    return `${key}<<${delimiter}${external_os_namespaceObject.EOL}${convertedValue}${external_os_namespaceObject.EOL}${delimiter}`;
 }
 //# sourceMappingURL=file-command.js.map
 ;// CONCATENATED MODULE: external "path"
@@ -29394,7 +29394,7 @@ const _summary = new Summary();
  * @deprecated use `core.summary`
  */
 const markdownSummary = (/* unused pure expression or super */ null && (_summary));
-const summary = _summary;
+const summary = (/* unused pure expression or super */ null && (_summary));
 //# sourceMappingURL=summary.js.map
 ;// CONCATENATED MODULE: ./node_modules/@actions/core/lib/path-utils.js
 
@@ -30504,14 +30504,14 @@ var exec_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arg
  */
 function exec_exec(commandLine, args, options) {
     return exec_awaiter(this, void 0, void 0, function* () {
-        const commandArgs = tr.argStringToArray(commandLine);
+        const commandArgs = argStringToArray(commandLine);
         if (commandArgs.length === 0) {
             throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
         }
         // Path to tool to execute should be first arg
         const toolPath = commandArgs[0];
         args = commandArgs.slice(1).concat(args || []);
-        const runner = new tr.ToolRunner(toolPath, args, options);
+        const runner = new ToolRunner(toolPath, args, options);
         return runner.exec();
     });
 }
@@ -30531,8 +30531,8 @@ function getExecOutput(commandLine, args, options) {
         let stdout = '';
         let stderr = '';
         //Using string decoder covers the case where a mult-byte character is split
-        const stdoutDecoder = new StringDecoder('utf8');
-        const stderrDecoder = new StringDecoder('utf8');
+        const stdoutDecoder = new external_string_decoder_.StringDecoder('utf8');
+        const stderrDecoder = new external_string_decoder_.StringDecoder('utf8');
         const originalStdoutListener = (_a = options === null || options === void 0 ? void 0 : options.listeners) === null || _a === void 0 ? void 0 : _a.stdout;
         const originalStdErrListener = (_b = options === null || options === void 0 ? void 0 : options.listeners) === null || _b === void 0 ? void 0 : _b.stderr;
         const stdErrListener = (data) => {
@@ -30786,10 +30786,10 @@ function getBooleanInput(name, options) {
 function setOutput(name, value) {
     const filePath = process.env['GITHUB_OUTPUT'] || '';
     if (filePath) {
-        return issueFileCommand('OUTPUT', prepareKeyValueMessage(name, value));
+        return file_command_issueFileCommand('OUTPUT', file_command_prepareKeyValueMessage(name, value));
     }
-    process.stdout.write(os.EOL);
-    issueCommand('set-output', { name }, toCommandValue(value));
+    process.stdout.write(external_os_namespaceObject.EOL);
+    command_issueCommand('set-output', { name }, utils_toCommandValue(value));
 }
 /**
  * Enables or disables the echoing of commands into stdout for the rest of the step.
@@ -30840,7 +30840,7 @@ function error(message, properties = {}) {
  * @param message warning issue message. Errors will be converted to string via toString()
  * @param properties optional properties to add to the annotation.
  */
-function core_warning(message, properties = {}) {
+function warning(message, properties = {}) {
     command_issueCommand('warning', toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 /**
@@ -30945,6 +30945,8 @@ function getIDToken(aud) {
 //# sourceMappingURL=core.js.map
 ;// CONCATENATED MODULE: external "node:fs/promises"
 const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 ;// CONCATENATED MODULE: ./packages/action-common/src/errors.ts
 class ActionError extends Error {
     code;
@@ -30960,1326 +30962,267 @@ function isActionError(error) {
     return error instanceof ActionError;
 }
 
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
-;// CONCATENATED MODULE: ./packages/docs-validation/src/confluence-validation.ts
-
-
-const MARKDOWN_SUFFIXES = new Set([".md", ".mdx"]);
-const FENCE_RE = /^[ \t]{0,3}(```+|~~~+)/;
-const INLINE_CODE_RE = /(`+)(.+?)\1/g;
-const JSX_STYLE_RE = /style\s*=\s*\{\{/i;
-const HTML_STRING_STYLE_RE = /(?:^|\s)style\s*=\s*["']/i;
-const TABLE_START_RE = /<table\b/i;
-const TABLE_END_RE = /<\/table\b/i;
-const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/;
-async function iterMarkdownFiles(root) {
-    const rootStat = await (0,promises_namespaceObject.stat)(root).catch(() => undefined);
-    if (!rootStat) {
-        return [];
-    }
-    if (rootStat.isFile()) {
-        return isMarkdownFile(root) ? [root] : [];
-    }
-    if (!rootStat.isDirectory()) {
-        return [];
-    }
-    const results = [];
-    await collectMarkdownFiles(root, results);
-    return results.sort((left, right) => left.localeCompare(right));
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/metadata.ts
+function parsePackageMetadata(packageJsonText, repositorySlug, oneAudiCliText) {
+    const packageJson = parseJsonRecord(packageJsonText);
+    const oneAudiCli = oneAudiCliText
+        ? parseJsonRecord(oneAudiCliText)
+        : undefined;
+    const fallbackRepoName = repositorySlug.split("/").pop() ?? repositorySlug;
+    const repoName = readString(packageJson.name) ?? fallbackRepoName;
+    return {
+        repoName,
+        repoVersion: readString(packageJson.version) ?? "",
+        dependencies: readObject(packageJson.dependencies),
+        devDependencies: readObject(packageJson.devDependencies),
+        appstoreData: packageJson.appStore ?? {},
+        browserlistData: packageJson.browserslist ?? {},
+        repository: packageJson.repository ?? {},
+        awsDomain: readNestedString(oneAudiCli, ["project", "awsDomain"]) ?? "",
+    };
 }
-function validateMarkdownText(text, filePath) {
-    const issues = [];
-    let foundJsxStyle = false;
-    let foundHtmlStringStyle = false;
-    let foundUnescapedAmpersand = false;
-    let inFencedCodeBlock = false;
-    let inRawHtmlTable = false;
-    for (const line of text.split(/\r?\n/)) {
-        if (FENCE_RE.test(line)) {
-            inFencedCodeBlock = !inFencedCodeBlock;
-            continue;
+function buildMetadataReport(input) {
+    const { packageMetadata } = input;
+    return {
+        [packageMetadata.repoName]: {
+            repo_version: packageMetadata.repoVersion,
+            awsDomain: packageMetadata.awsDomain,
+            published_version: input.publishedVersion,
+            release_history: input.releaseHistory,
+            dependabot_prs: input.dependabotPrs,
+            npm_audit: input.npmAudit,
+            repository: packageMetadata.repository,
+            dependencies: packageMetadata.dependencies,
+            devDependencies: packageMetadata.devDependencies,
+            appstoreData: packageMetadata.appstoreData,
+            browserlistData: packageMetadata.browserlistData,
+        },
+    };
+}
+function parseJsonRecord(text) {
+    const parsed = JSON.parse(text);
+    return readObject(parsed);
+}
+function readObject(value) {
+    return isRecord(value) ? value : {};
+}
+function readString(value) {
+    return typeof value === "string" && value.trim() ? value : undefined;
+}
+function readNestedString(value, path) {
+    let current = value;
+    for (const key of path) {
+        if (!isRecord(current)) {
+            return undefined;
         }
-        if (inFencedCodeBlock) {
-            continue;
-        }
-        const searchableLine = stripInlineCode(line);
-        if (!foundJsxStyle && JSX_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.jsx_style_attribute",
-                filePath,
-                message: "Raw HTML contains JSX-style attributes such as style={{...}} which MSI Confluence cannot parse.",
-            });
-            foundJsxStyle = true;
-        }
-        if (!foundHtmlStringStyle && HTML_STRING_STYLE_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.html_string_style_attribute",
-                filePath,
-                message: "Raw HTML contains string-based style attributes like style='...' or style=\"...\". To keep markdown compatible with both Confluence and MDX-based tooling, remove inline styles and use CSS classes instead.",
-            });
-            foundHtmlStringStyle = true;
-        }
-        if (TABLE_START_RE.test(searchableLine)) {
-            inRawHtmlTable = true;
-        }
-        if (inRawHtmlTable &&
-            !foundUnescapedAmpersand &&
-            UNESCAPED_AMP_RE.test(searchableLine)) {
-            issues.push({
-                ruleId: "confluence.raw_html_unescaped_ampersand",
-                filePath,
-                message: "Raw HTML table contains unescaped ampersands; replace '&' with '&amp;' inside raw HTML.",
-            });
-            foundUnescapedAmpersand = true;
-        }
-        if (TABLE_END_RE.test(searchableLine)) {
-            inRawHtmlTable = false;
-        }
+        current = current[key];
     }
-    return issues;
+    return readString(current);
 }
-async function validatePath(root) {
-    const markdownFiles = await iterMarkdownFiles(root);
-    const issues = [];
-    for (const markdownFile of markdownFiles) {
-        const text = await (0,promises_namespaceObject.readFile)(markdownFile, "utf8");
-        issues.push(...validateMarkdownText(text, markdownFile));
-    }
-    return issues;
-}
-function isMarkdownFile(filePath) {
-    const lowerCasePath = filePath.toLowerCase();
-    return [...MARKDOWN_SUFFIXES].some((suffix) => lowerCasePath.endsWith(suffix));
-}
-async function collectMarkdownFiles(directory, results) {
-    const entries = await (0,promises_namespaceObject.readdir)(directory, { withFileTypes: true });
-    for (const entry of entries) {
-        const entryPath = (0,external_node_path_namespaceObject.join)(directory, entry.name);
-        if (entry.isDirectory()) {
-            await collectMarkdownFiles(entryPath, results);
-        }
-        else if (entry.isFile() && isMarkdownFile(entryPath)) {
-            results.push(entryPath);
-        }
-    }
-}
-function stripInlineCode(line) {
-    return line.replace(INLINE_CODE_RE, "");
+function isRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-;// CONCATENATED MODULE: ./actions/msi-sync/src/inputs.ts
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/collect.ts
 
 
-function readMsiSyncInputs() {
-    const token = getInput("token");
-    if (token) {
-        core_setSecret(token);
-    }
-    return parseMsiSyncInputsFromRecord({
-        from: getInput("from"),
-        parentPageId: getInput("parentPageId"),
-        deploymentConfig: getInput("deploymentConfig"),
-        baseUrl: getInput("baseUrl"),
-        spaceKey: getInput("spaceKey"),
-        token,
-        diagrams_source: getInput("diagrams_source"),
+
+
+
+async function collectMetadataReport(inputs, runner = defaultCommandRunner) {
+    const packageJsonPath = "package.json";
+    await ensureFileExists(packageJsonPath);
+    const packageJsonText = await (0,promises_namespaceObject.readFile)(packageJsonPath, "utf8");
+    const oneAudiCliText = await readOptionalFile("oneaudi-cli.json");
+    const packageMetadata = parsePackageMetadata(packageJsonText, inputs.repository, oneAudiCliText);
+    const [dependabotPrs, releaseHistory, publishedVersion, npmAudit] = await Promise.all([
+        fetchDependabotPullRequests(inputs, runner),
+        fetchReleaseHistory(inputs, runner),
+        fetchPublishedVersion(inputs, runner),
+        runNpmAudit(runner),
+    ]);
+    return buildMetadataReport({
+        packageMetadata,
+        publishedVersion,
+        releaseHistory,
+        dependabotPrs,
+        npmAudit,
     });
 }
-function parseMsiSyncInputsFromRecord(inputs) {
+async function ensureFileExists(filePath) {
+    try {
+        await (0,promises_namespaceObject.access)(filePath);
+    }
+    catch {
+        throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", `${filePath} is required in the repository root.`);
+    }
+}
+async function readOptionalFile(filePath) {
+    try {
+        return await (0,promises_namespaceObject.readFile)(filePath, "utf8");
+    }
+    catch {
+        return undefined;
+    }
+}
+async function fetchDependabotPullRequests(inputs, runner) {
+    const result = await safeRun(runner, "gh", [
+        "pr",
+        "list",
+        "--repo",
+        inputs.repository,
+        "--author",
+        "dependabot[bot]",
+        "--state",
+        "open",
+        "--json",
+        "title,url,createdAt",
+    ], { ...process.env, GH_TOKEN: inputs.githubToken }, "dependabot PR lookup", []);
+    const parsed = parseJsonArray(result.stdout, []);
+    return parsed
+        .map((entry) => {
+        const title = collect_readString(entry.title);
+        const url = collect_readString(entry.url);
+        const createdAt = collect_readString(entry.createdAt);
+        if (!title || !url || !createdAt) {
+            return undefined;
+        }
+        return `${title} - ${url} - Created at: ${createdAt}`;
+    })
+        .filter((value) => Boolean(value));
+}
+async function fetchPublishedVersion(inputs, runner) {
+    const result = await safeRun(runner, "gh", ["release", "view", "--repo", inputs.repository, "--json", "tagName"], { ...process.env, GH_TOKEN: inputs.githubToken }, "release lookup", null);
+    if (!result.stdout.trim()) {
+        return null;
+    }
+    const parsed = collect_parseJsonRecord(result.stdout, {});
+    return collect_readString(parsed.tagName) ?? null;
+}
+async function fetchReleaseHistory(inputs, runner) {
+    const result = await safeRun(runner, "gh", ["api", `repos/${inputs.repository}/releases`], { ...process.env, GH_TOKEN: inputs.githubToken }, "release history lookup", []);
+    const releases = parseJsonArray(result.stdout, []);
+    return releases.map((release) => ({
+        tag: collect_readString(release.tag_name) ?? null,
+        name: collect_readString(release.name) ?? null,
+        date: collect_readString(release.published_at) ?? null,
+        notes: collect_readString(release.body) ?? null,
+    }));
+}
+async function runNpmAudit(runner) {
+    const result = await safeRun(runner, "npm", ["audit", "--json"], process.env, "npm audit", {});
+    if (!result.stdout.trim()) {
+        return {};
+    }
+    return parseJsonUnknown(result.stdout, {});
+}
+async function safeRun(runner, command, args, env, description, fallback) {
+    try {
+        const result = await runner(command, args, env);
+        if (result.exitCode !== 0 && command !== "npm") {
+            warning(`${description} failed with exit code ${result.exitCode}. Continuing with fallback data.`);
+            return {
+                exitCode: result.exitCode,
+                stdout: JSON.stringify(fallback),
+                stderr: result.stderr,
+            };
+        }
+        return result;
+    }
+    catch (error) {
+        warning(`${description} failed: ${error instanceof Error ? error.message : String(error)}. Continuing with fallback data.`);
+        return {
+            exitCode: 1,
+            stdout: JSON.stringify(fallback),
+            stderr: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
+async function defaultCommandRunner(command, args, env) {
+    const result = await getExecOutput(command, args, {
+        env: normalizeEnv(env),
+        ignoreReturnCode: true,
+        silent: true,
+    });
     return {
-        from: requireInput(inputs, "from"),
-        parentPageId: requireInput(inputs, "parentPageId"),
-        deploymentConfig: optionalInput(inputs, "deploymentConfig"),
-        baseUrl: requireInput(inputs, "baseUrl"),
-        spaceKey: requireInput(inputs, "spaceKey"),
-        token: requireInput(inputs, "token"),
-        diagramsSource: optionalInput(inputs, "diagrams_source"),
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+    };
+}
+function normalizeEnv(env) {
+    if (!env) {
+        return undefined;
+    }
+    return Object.fromEntries(Object.entries(env).filter((entry) => typeof entry[1] === "string"));
+}
+function parseJsonUnknown(text, fallback) {
+    try {
+        return JSON.parse(text);
+    }
+    catch {
+        return fallback;
+    }
+}
+function collect_parseJsonRecord(text, fallback) {
+    try {
+        const parsed = JSON.parse(text);
+        return collect_isRecord(parsed) ? parsed : fallback;
+    }
+    catch {
+        return fallback;
+    }
+}
+function parseJsonArray(text, fallback) {
+    try {
+        const parsed = JSON.parse(text);
+        return Array.isArray(parsed) ? parsed.filter(collect_isRecord) : fallback;
+    }
+    catch {
+        return fallback;
+    }
+}
+function collect_isRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+function collect_readString(value) {
+    return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/inputs.ts
+
+
+function readRepoMetadataCollectInputs() {
+    const parsed = parseRepoMetadataCollectInputsFromRecord({
+        github_token: getInput("github_token"),
+        workflow_run_id: getInput("workflow_run_id"),
+        repository: getInput("repository"),
+    });
+    core_setSecret(parsed.githubToken);
+    return parsed;
+}
+function parseRepoMetadataCollectInputsFromRecord(inputs) {
+    const githubToken = requireInput(inputs, "github_token");
+    const workflowRunId = requireInput(inputs, "workflow_run_id");
+    const repository = requireInput(inputs, "repository");
+    if (!repository.includes("/")) {
+        throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", "repository must be in owner/name form.");
+    }
+    return {
+        githubToken,
+        workflowRunId,
+        repository,
     };
 }
 function requireInput(inputs, name) {
-    const value = optionalInput(inputs, name);
+    const value = inputs[name]?.trim();
     if (!value) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `${name} is required.`);
+        throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", `${name} is required.`);
     }
     return value;
 }
-function optionalInput(inputs, name) {
-    const value = inputs[name]?.trim();
-    return value ? value : undefined;
-}
 
-;// CONCATENATED MODULE: ./actions/msi-sync/src/page-registry.ts
-function chooseExistingPage(pages, title, parentId) {
-    const matching = pages.filter((page) => page.title?.toLowerCase() === title.toLowerCase());
-    if (!parentId) {
-        return matching[0];
-    }
-    return matching.find((page) => (page.ancestors ?? []).some((ancestor) => ancestor.id === parentId));
-}
-function isDirectoryFileCollision(directoryName, filename) {
-    return directoryName.toLowerCase() === filename.replace(/\.(md|mdx)$/i, "").toLowerCase();
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/discovery.ts
-
-
-
-async function discoverPublishTree(root) {
-    const resolvedRoot = (0,external_node_path_namespaceObject.resolve)(root);
-    const files = [];
-    const collisions = [];
-    await walk(resolvedRoot, resolvedRoot, files, collisions);
-    return {
-        files: files.sort((left, right) => left.relativePath.localeCompare(right.relativePath)),
-        collisions,
-    };
-}
-async function walk(root, current, files, collisions) {
-    const entries = await (0,promises_namespaceObject.readdir)(current, { withFileTypes: true });
-    const markdownEntries = entries.filter((entry) => entry.isFile() && /\.(md|mdx)$/i.test(entry.name));
-    for (const entry of markdownEntries) {
-        const absolutePath = (0,external_node_path_namespaceObject.join)(current, entry.name);
-        files.push({
-            absolutePath,
-            relativePath: (0,external_node_path_namespaceObject.relative)(root, absolutePath),
-        });
-        const currentName = current.split(/[\\/]/).pop() ?? "";
-        if (isDirectoryFileCollision(currentName, entry.name)) {
-            collisions.push({
-                directoryPath: (0,external_node_path_namespaceObject.relative)(root, current),
-                filename: entry.name,
-            });
-        }
-    }
-    for (const entry of entries.filter((entry) => entry.isDirectory())) {
-        await walk(root, (0,external_node_path_namespaceObject.join)(current, entry.name), files, collisions);
-    }
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/page-titles.ts
-
-function resolveAppName(rootDirectory, currentPath) {
-    const relativePath = (0,external_node_path_namespaceObject.relative)(rootDirectory, currentPath);
-    const parts = relativePath === "" ? [] : relativePath.split(external_node_path_namespaceObject.sep);
-    return parts[0] || (0,external_node_path_namespaceObject.basename)(rootDirectory);
-}
-function getDirectoryPageTitle(directoryName, appName) {
-    return `${directoryName} (${appName})`;
-}
-function getFilePageTitle(filename, appName) {
-    const stem = filename.replace(/\.(md|mdx)$/i, "");
-    return `${stem} (${appName})`;
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/plan.ts
-
-
-
-
-
-
-async function buildPublishPlan(options) {
-    const sourceRoot = (0,external_node_path_namespaceObject.resolve)(options.sourceRoot);
-    const publishTree = await discoverPublishTree(sourceRoot);
-    const deploymentConfig = await loadDeploymentConfig(options.deploymentConfigPath);
-    const roots = [
-        {
-            key: `base:${options.parentPageId}`,
-            kind: "base",
-            parentPageId: options.parentPageId,
-            sourceRoot,
-            folderPaths: [],
-        },
-        ...deploymentConfig.roots.map((root) => ({
-            key: `deployment:${root.parentPageId}`,
-            kind: "deploymentConfig",
-            parentPageId: root.parentPageId,
-            sourceRoot,
-            folderPaths: root.folderPaths,
-        })),
-    ];
-    const entries = roots.flatMap((root) => buildEntriesForRoot(root, publishTree.files));
-    return {
-        sourceRoot,
-        roots,
-        entries,
-        warnings: deploymentConfig.warnings,
-    };
-}
-function buildEntriesForRoot(deploymentRoot, sourceFiles) {
-    const selectedFiles = selectFilesForRoot(deploymentRoot, sourceFiles);
-    const directoryPaths = collectDirectoryPaths(selectedFiles);
-    const directFilesByDirectory = groupFilesByDirectory(selectedFiles);
-    const entries = [];
-    const directoryContexts = new Map();
-    directoryContexts.set("", {
-        parentReference: { type: "page-id", value: deploymentRoot.parentPageId },
-    });
-    for (const directoryPath of directoryPaths) {
-        const parentDirectory = getParentDirectory(directoryPath);
-        const parentContext = directoryContexts.get(parentDirectory);
-        if (!parentContext) {
-            throw new ActionError("MSI_INVALID_INPUT", "build_publish_plan", `Unable to resolve parent directory for '${directoryPath}'.`);
-        }
-        const directFiles = directFilesByDirectory.get(directoryPath) ?? [];
-        const collisionOwnerFile = directFiles.find((file) => isDirectoryFileCollision((0,external_node_path_namespaceObject.basename)(directoryPath), (0,external_node_path_namespaceObject.basename)(file.relativePath)));
-        if (collisionOwnerFile) {
-            const fileEntry = createFileEntry(deploymentRoot, collisionOwnerFile, parentContext.parentReference, "file-owner");
-            entries.push(fileEntry);
-            directoryContexts.set(directoryPath, {
-                parentReference: { type: "plan-entry", value: fileEntry.id },
-                collisionOwnerFile,
-            });
-            continue;
-        }
-        const sourcePath = (0,external_node_path_namespaceObject.join)(deploymentRoot.sourceRoot, directoryPath);
-        const appName = resolvePlanAppName(deploymentRoot, directoryPath);
-        const directoryEntry = {
-            id: `${deploymentRoot.key}:dir:${directoryPath}`,
-            sourcePath,
-            relativePath: directoryPath,
-            appName,
-            pageTitle: getDirectoryPageTitle((0,external_node_path_namespaceObject.basename)(directoryPath), appName),
-            pageKind: "directory",
-            parent: parentContext.parentReference,
-            deploymentRoot,
-        };
-        entries.push(directoryEntry);
-        directoryContexts.set(directoryPath, {
-            parentReference: { type: "plan-entry", value: directoryEntry.id },
-        });
-    }
-    for (const file of selectedFiles) {
-        const directoryPath = getParentDirectory(file.relativePath);
-        const directoryContext = directoryContexts.get(directoryPath);
-        if (!directoryContext) {
-            throw new ActionError("MSI_INVALID_INPUT", "build_publish_plan", `Unable to resolve parent page for '${file.relativePath}'.`);
-        }
-        if (directoryContext.collisionOwnerFile?.relativePath === file.relativePath) {
-            continue;
-        }
-        entries.push(createFileEntry(deploymentRoot, file, directoryContext.parentReference, "nested-file"));
-    }
-    return entries;
-}
-function createFileEntry(deploymentRoot, file, parent, pageKind) {
-    const appName = resolvePlanAppName(deploymentRoot, file.relativePath);
-    return {
-        id: `${deploymentRoot.key}:file:${file.relativePath}`,
-        sourcePath: file.file.absolutePath,
-        sourceFilePath: file.file.absolutePath,
-        relativePath: file.relativePath,
-        appName,
-        pageTitle: getFilePageTitle((0,external_node_path_namespaceObject.basename)(file.relativePath), appName),
-        pageKind,
-        parent,
-        deploymentRoot,
-    };
-}
-function selectFilesForRoot(deploymentRoot, sourceFiles) {
-    if (deploymentRoot.kind === "base") {
-        return sourceFiles.map((file) => ({
-            file,
-            relativePath: file.relativePath,
-        }));
-    }
-    const selectedFiles = new Map();
-    for (const folderPath of deploymentRoot.folderPaths) {
-        const folderAbsolutePath = (0,external_node_path_namespaceObject.join)(deploymentRoot.sourceRoot, folderPath);
-        if (!existsWithinSourceRoot(deploymentRoot.sourceRoot, folderAbsolutePath)) {
-            throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig folder path '${folderPath}' must stay within the source root.`);
-        }
-        for (const file of sourceFiles) {
-            if (!isPathInsideFolder(file.relativePath, folderPath)) {
-                continue;
-            }
-            selectedFiles.set(file.relativePath, {
-                file,
-                relativePath: file.relativePath,
-            });
-        }
-    }
-    return [...selectedFiles.values()].sort((left, right) => left.relativePath.localeCompare(right.relativePath));
-}
-function collectDirectoryPaths(files) {
-    const directories = new Set();
-    for (const file of files) {
-        let current = getParentDirectory(file.relativePath);
-        while (current !== "") {
-            directories.add(current);
-            current = getParentDirectory(current);
-        }
-    }
-    return [...directories].sort((left, right) => {
-        const depthDelta = getPathDepth(left) - getPathDepth(right);
-        return depthDelta === 0 ? left.localeCompare(right) : depthDelta;
-    });
-}
-function groupFilesByDirectory(files) {
-    const groupedFiles = new Map();
-    for (const file of files) {
-        const directoryPath = getParentDirectory(file.relativePath);
-        const bucket = groupedFiles.get(directoryPath);
-        if (bucket) {
-            bucket.push(file);
-            continue;
-        }
-        groupedFiles.set(directoryPath, [file]);
-    }
-    for (const bucket of groupedFiles.values()) {
-        bucket.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
-    }
-    return groupedFiles;
-}
-async function loadDeploymentConfig(deploymentConfigPath) {
-    if (!deploymentConfigPath) {
-        return { roots: [], warnings: [] };
-    }
-    const resolvedPath = (0,external_node_path_namespaceObject.resolve)(deploymentConfigPath);
-    const configStat = await (0,promises_namespaceObject.stat)(resolvedPath).catch(() => undefined);
-    if (!configStat) {
-        return {
-            roots: [],
-            warnings: [`Deployment config '${deploymentConfigPath}' not found, skipping.`],
-        };
-    }
-    if (!configStat.isFile()) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig '${deploymentConfigPath}' must reference a JSON file.`);
-    }
-    const rawConfig = await (0,promises_namespaceObject.readFile)(resolvedPath, "utf8");
-    let parsedConfig;
-    try {
-        parsedConfig = JSON.parse(rawConfig);
-    }
-    catch (error) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig '${deploymentConfigPath}' must contain valid JSON: ${getErrorMessage(error)}`);
-    }
-    if (!isRecord(parsedConfig)) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", "deploymentConfig must be a JSON object keyed by parent page id.");
-    }
-    const roots = [];
-    for (const [parentPageId, value] of Object.entries(parsedConfig)) {
-        if (!isRecord(value)) {
-            throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig entry '${parentPageId}' must be an object with folder_paths.`);
-        }
-        if (!("folder_paths" in value)) {
-            throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig entry '${parentPageId}' is missing folder_paths.`);
-        }
-        const folderPaths = value.folder_paths;
-        if (!Array.isArray(folderPaths) || folderPaths.some((path) => typeof path !== "string")) {
-            throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig entry '${parentPageId}'.folder_paths must be a string array.`);
-        }
-        roots.push({
-            parentPageId,
-            folderPaths: dedupeFolderPaths(folderPaths.map((path) => normalizeFolderPath(path))),
-        });
-    }
-    return { roots, warnings: [] };
-}
-function dedupeFolderPaths(folderPaths) {
-    return [...new Set(folderPaths)].sort((left, right) => left.localeCompare(right));
-}
-function normalizeFolderPath(folderPath) {
-    const trimmedFolderPath = folderPath.trim();
-    if (!trimmedFolderPath) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", "deploymentConfig folder_paths entries must not be empty.");
-    }
-    if ((0,external_node_path_namespaceObject.isAbsolute)(trimmedFolderPath)) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig folder path '${folderPath}' must be relative to the source root.`);
-    }
-    const normalizedFolderPath = (0,external_node_path_namespaceObject.normalize)(trimmedFolderPath);
-    if (normalizedFolderPath === ".." ||
-        normalizedFolderPath.startsWith(`..${external_node_path_namespaceObject.sep}`)) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", `deploymentConfig folder path '${folderPath}' must stay within the source root.`);
-    }
-    return normalizedFolderPath;
-}
-function resolvePlanAppName(deploymentRoot, relativePath) {
-    const syntheticRoot = deploymentRoot.kind === "base"
-        ? deploymentRoot.sourceRoot
-        : (0,external_node_path_namespaceObject.join)(deploymentRoot.sourceRoot, "__deployment__", deploymentRoot.parentPageId);
-    return resolveAppName(syntheticRoot, (0,external_node_path_namespaceObject.join)(syntheticRoot, relativePath));
-}
-function isPathInsideFolder(relativePath, folderPath) {
-    return relativePath === folderPath || relativePath.startsWith(`${folderPath}${external_node_path_namespaceObject.sep}`);
-}
-function getParentDirectory(relativePath) {
-    const parentDirectory = (0,external_node_path_namespaceObject.dirname)(relativePath);
-    return parentDirectory === "." ? "" : parentDirectory;
-}
-function getPathDepth(relativePath) {
-    return relativePath.split(/[\\/]/).length;
-}
-function isRecord(value) {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function existsWithinSourceRoot(sourceRoot, candidatePath) {
-    const normalizedSourceRoot = `${(0,external_node_path_namespaceObject.normalize)(sourceRoot)}${external_node_path_namespaceObject.sep}`;
-    const normalizedCandidatePath = (0,external_node_path_namespaceObject.normalize)(candidatePath);
-    return normalizedCandidatePath === (0,external_node_path_namespaceObject.normalize)(sourceRoot) ||
-        normalizedCandidatePath.startsWith(normalizedSourceRoot);
-}
-function getErrorMessage(error) {
-    return error instanceof Error ? error.message : String(error);
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/summary.ts
-const REFERRAL_ID_RE = /"referralId"\s*:\s*"([^"]+)"/;
-class PublishStats {
-    failures = [];
-    recordFailure(operation, title, statusCode, referralId, context) {
-        this.failures.push({
-            operation,
-            title,
-            statusCode,
-            referralId,
-            targetType: context?.targetType ?? "page",
-            parentTitle: context?.parentTitle,
-        });
-    }
-    hasFailures() {
-        return this.failures.length > 0;
-    }
-    renderSummary() {
-        const byStep = new Map();
-        for (const failure of this.failures) {
-            const key = `${failure.targetType}:${failure.operation}`;
-            byStep.set(key, (byStep.get(key) ?? 0) + 1);
-        }
-        return [
-            `MSI_PARTIAL_PUBLISH_FAILURE | publish | Found ${this.failures.length} publish failure(s).`,
-            `steps | ${[...byStep.entries()]
-                .map(([key, count]) => `${key}=${count}`)
-                .join(" | ")}`,
-            ...this.failures.map((failure) => [
-                failure.targetType,
-                failure.operation,
-                failure.title,
-                failure.statusCode,
-                failure.referralId,
-                failure.parentTitle ? `page=${failure.parentTitle}` : undefined,
-            ]
-                .filter(Boolean)
-                .join(" | ")),
-        ].join("\n");
-    }
-}
-function extractReferralId(responseText) {
-    return REFERRAL_ID_RE.exec(responseText)?.[1];
-}
-
-;// CONCATENATED MODULE: external "node:os"
-const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
-;// CONCATENATED MODULE: ./actions/msi-sync/src/confluence-client.ts
-class ConfluenceRequestError extends Error {
-    method;
-    url;
-    statusCode;
-    body;
-    constructor(method, url, statusCode, body) {
-        super(`Confluence request failed: ${method} ${url} (${statusCode})`);
-        this.method = method;
-        this.url = url;
-        this.name = "ConfluenceRequestError";
-        this.statusCode = String(statusCode);
-        this.body = body;
-    }
-}
-class ConfluenceHttpClient {
-    options;
-    apiBaseUrl;
-    doFetch;
-    constructor(options) {
-        this.options = options;
-        this.apiBaseUrl = `${options.baseUrl.replace(/\/+$/, "")}/rest/api`;
-        this.doFetch = options.fetch ?? fetch;
-    }
-    async getPagesByTitle(title) {
-        const searchParams = new URLSearchParams({
-            spaceKey: this.options.spaceKey,
-            title,
-            expand: "ancestors",
-            type: "page",
-        });
-        const response = await this.requestJson(`/content?${searchParams.toString()}`);
-        return response.results ?? [];
-    }
-    async getPageById(pageId, expand = "ancestors") {
-        return this.requestJson(`/content/${encodeURIComponent(pageId)}?expand=${encodeURIComponent(expand)}`);
-    }
-    async getPageVersion(pageId) {
-        const response = await this.requestJson(`/content/${encodeURIComponent(pageId)}?expand=version`);
-        const version = response.version?.number;
-        if (typeof version !== "number") {
-            throw new Error(`Confluence page ${pageId} did not return a version.`);
-        }
-        return version;
-    }
-    async createPage(input) {
-        return this.mutateJson("/content", "POST", {
-            type: "page",
-            title: input.title,
-            space: { key: this.options.spaceKey },
-            ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
-            body: {
-                storage: {
-                    value: input.html,
-                    representation: "storage",
-                },
-            },
-        });
-    }
-    async updatePage(input) {
-        try {
-            const currentVersion = await this.getPageVersion(input.id);
-            return this.mutateJson(`/content/${encodeURIComponent(input.id)}`, "PUT", {
-                id: input.id,
-                type: "page",
-                title: input.title,
-                space: { key: this.options.spaceKey },
-                ...(input.parentId ? { ancestors: [{ id: input.parentId }] } : {}),
-                version: { number: currentVersion + 1 },
-                body: {
-                    storage: {
-                        value: input.html,
-                        representation: "storage",
-                    },
-                },
-            });
-        }
-        catch (error) {
-            if (error instanceof ConfluenceRequestError) {
-                return {
-                    ok: false,
-                    statusCode: error.statusCode,
-                    body: error.body,
-                };
-            }
-            throw error;
-        }
-    }
-    async listPageAttachments(pageId) {
-        const response = await this.requestJson(`/content/${encodeURIComponent(pageId)}/child/attachment`);
-        return response.results ?? [];
-    }
-    async createAttachment(input) {
-        return this.uploadAttachment(`/content/${encodeURIComponent(input.pageId)}/child/attachment`, input);
-    }
-    async updateAttachment(input) {
-        return this.uploadAttachment(`/content/${encodeURIComponent(input.pageId)}/child/attachment/${encodeURIComponent(input.attachmentId)}/data`, input);
-    }
-    async requestJson(path) {
-        const response = await this.doFetch(this.toUrl(path), {
-            method: "GET",
-            headers: this.baseHeaders(),
-        });
-        if (!response.ok) {
-            throw new ConfluenceRequestError("GET", this.toUrl(path), response.status, await response.text());
-        }
-        return (await response.json());
-    }
-    async mutateJson(path, method, payload) {
-        const response = await this.doFetch(this.toUrl(path), {
-            method,
-            headers: {
-                ...this.baseHeaders(),
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-        });
-        if (!response.ok) {
-            return {
-                ok: false,
-                statusCode: String(response.status),
-                body: await response.text(),
-            };
-        }
-        const body = (await response.json());
-        return {
-            ok: true,
-            id: body.id ?? "",
-            title: body.title,
-        };
-    }
-    async uploadAttachment(path, input) {
-        const formData = new FormData();
-        const fileBytes = new Uint8Array(input.data);
-        formData.append("file", new File([fileBytes], input.filename, {
-            type: input.contentType ?? "application/octet-stream",
-        }));
-        formData.append("minorEdit", "true");
-        const response = await this.doFetch(this.toUrl(path), {
-            method: "POST",
-            headers: {
-                ...this.baseHeaders(),
-                "X-Atlassian-Token": "no-check",
-            },
-            body: formData,
-        });
-        if (!response.ok) {
-            return {
-                ok: false,
-                statusCode: String(response.status),
-                body: await response.text(),
-            };
-        }
-        const body = (await response.json());
-        const attachment = body.results?.[0];
-        return {
-            ok: true,
-            id: attachment?.id ?? "",
-            title: attachment?.title,
-        };
-    }
-    baseHeaders() {
-        return {
-            Accept: "application/json",
-            Authorization: `Bearer ${this.options.token}`,
-        };
-    }
-    toUrl(path) {
-        return `${this.apiBaseUrl}${path}`;
-    }
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/publish.ts
-
-
-
-async function publishPage(client, stats, page) {
-    const result = await publishTypedPage(client, stats, "file", page);
-    return result?.pageId;
-}
-function publishDirectoryPage(client, stats, page) {
-    return publishTypedPage(client, stats, "directory", page);
-}
-function publishFilePage(client, stats, page) {
-    return publishTypedPage(client, stats, "file", page);
-}
-async function publishTypedPage(client, stats, pageKind, page) {
-    let existingPages;
-    try {
-        existingPages = await client.getPagesByTitle(page.title);
-    }
-    catch (error) {
-        recordRequestFailure(stats, "lookup", page.title, error);
-        return undefined;
-    }
-    const existing = chooseExistingPage(existingPages, page.title, page.parentId);
-    const pageResult = existing
-        ? await client.updatePage({
-            id: existing.id,
-            title: page.title,
-            html: page.html,
-            parentId: page.parentId,
-        })
-        : await client.createPage(page);
-    const pageOperation = existing ? "updated" : "created";
-    if (!pageResult.ok) {
-        stats.recordFailure(existing ? "update" : "create", page.title, pageResult.statusCode, extractReferralId(pageResult.body));
-        return undefined;
-    }
-    const attachmentResults = await publishAttachments(client, stats, pageResult.id, page.title, pageOperation, page.attachments ?? []);
-    if (!attachmentResults) {
-        return undefined;
-    }
-    return {
-        pageId: pageResult.id,
-        pageTitle: page.title,
-        pageKind,
-        pageOperation,
-        attachmentStrategy: page.attachments?.length
-            ? pageOperation === "created"
-                ? "create-all"
-                : "upsert-existing"
-            : "none",
-        attachmentResults,
-    };
-}
-async function publishAttachments(client, stats, pageId, pageTitle, pageOperation, attachments) {
-    if (attachments.length === 0) {
-        return [];
-    }
-    const results = [];
-    let existingAttachmentsByTitle = new Map();
-    if (pageOperation === "updated") {
-        try {
-            const existingAttachments = await client.listPageAttachments(pageId);
-            existingAttachmentsByTitle = new Map(existingAttachments.map((attachment) => [
-                attachment.title.toLowerCase(),
-                attachment,
-            ]));
-        }
-        catch (error) {
-            recordRequestFailure(stats, "list", pageTitle, error, {
-                targetType: "attachment",
-                parentTitle: pageTitle,
-            });
-            return undefined;
-        }
-    }
-    let hasFailure = false;
-    for (const attachment of attachments) {
-        const existing = existingAttachmentsByTitle.get(attachment.filename.toLowerCase());
-        const uploadResult = existing
-            ? await client.updateAttachment({
-                pageId,
-                attachmentId: existing.id,
-                filename: attachment.filename,
-                data: attachment.data,
-                contentType: attachment.contentType,
-            })
-            : await client.createAttachment({
-                pageId,
-                filename: attachment.filename,
-                data: attachment.data,
-                contentType: attachment.contentType,
-            });
-        if (!uploadResult.ok) {
-            hasFailure = true;
-            stats.recordFailure("upload", attachment.filename, uploadResult.statusCode, extractReferralId(uploadResult.body), {
-                targetType: "attachment",
-                parentTitle: pageTitle,
-            });
-            continue;
-        }
-        results.push({
-            attachmentId: uploadResult.id,
-            filename: attachment.filename,
-            operation: existing ? "updated" : "created",
-        });
-    }
-    return hasFailure ? undefined : results;
-}
-function recordRequestFailure(stats, operation, title, error, context) {
-    if (error instanceof ConfluenceRequestError) {
-        stats.recordFailure(operation, title, error.statusCode, extractReferralId(error.body), context);
-        return;
-    }
-    stats.recordFailure(operation, title, "ERROR", undefined, context);
-}
-
-;// CONCATENATED MODULE: ./node_modules/marked/lib/marked.esm.js
-/**
- * marked v18.0.2 - a markdown parser
- * Copyright (c) 2018-2026, MarkedJS. (MIT License)
- * Copyright (c) 2011-2018, Christopher Jeffrey. (MIT License)
- * https://github.com/markedjs/marked
- */
-
-/**
- * DO NOT EDIT THIS FILE
- * The code in this file is generated from files in ./src/
- */
-
-function z(){return{async:!1,breaks:!1,extensions:null,gfm:!0,hooks:null,pedantic:!1,renderer:null,silent:!1,tokenizer:null,walkTokens:null}}var T=z();function G(l){T=l}var _={exec:()=>null};function k(l,e=""){let t=typeof l=="string"?l:l.source,n={replace:(s,r)=>{let i=typeof r=="string"?r:r.source;return i=i.replace(m.caret,"$1"),t=t.replace(s,i),n},getRegex:()=>new RegExp(t,e)};return n}var Re=((l="")=>{try{return!!new RegExp("(?<=1)(?<!1)"+l)}catch{return!1}})(),m={codeRemoveIndent:/^(?: {1,4}| {0,3}\t)/gm,outputLinkReplace:/\\([\[\]])/g,indentCodeCompensation:/^(\s+)(?:```)/,beginningSpace:/^\s+/,endingHash:/#$/,startingSpaceChar:/^ /,endingSpaceChar:/ $/,nonSpaceChar:/[^ ]/,newLineCharGlobal:/\n/g,tabCharGlobal:/\t/g,multipleSpaceGlobal:/\s+/g,blankLine:/^[ \t]*$/,doubleBlankLine:/\n[ \t]*\n[ \t]*$/,blockquoteStart:/^ {0,3}>/,blockquoteSetextReplace:/\n {0,3}((?:=+|-+) *)(?=\n|$)/g,blockquoteSetextReplace2:/^ {0,3}>[ \t]?/gm,listReplaceNesting:/^ {1,4}(?=( {4})*[^ ])/g,listIsTask:/^\[[ xX]\] +\S/,listReplaceTask:/^\[[ xX]\] +/,listTaskCheckbox:/\[[ xX]\]/,anyLine:/\n.*\n/,hrefBrackets:/^<(.*)>$/,tableDelimiter:/[:|]/,tableAlignChars:/^\||\| *$/g,tableRowBlankLine:/\n[ \t]*$/,tableAlignRight:/^ *-+: *$/,tableAlignCenter:/^ *:-+: *$/,tableAlignLeft:/^ *:-+ *$/,startATag:/^<a /i,endATag:/^<\/a>/i,startPreScriptTag:/^<(pre|code|kbd|script)(\s|>)/i,endPreScriptTag:/^<\/(pre|code|kbd|script)(\s|>)/i,startAngleBracket:/^</,endAngleBracket:/>$/,pedanticHrefTitle:/^([^'"]*[^\s])\s+(['"])(.*)\2/,unicodeAlphaNumeric:/[\p{L}\p{N}]/u,escapeTest:/[&<>"']/,escapeReplace:/[&<>"']/g,escapeTestNoEncode:/[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/,escapeReplaceNoEncode:/[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g,caret:/(^|[^\[])\^/g,percentDecode:/%25/g,findPipe:/\|/g,splitPipe:/ \|/,slashPipe:/\\\|/g,carriageReturn:/\r\n|\r/g,spaceLine:/^ +$/gm,notSpaceStart:/^\S*/,endingNewline:/\n$/,listItemRegex:l=>new RegExp(`^( {0,3}${l})((?:[	 ][^\\n]*)?(?:\\n|$))`),nextBulletRegex:l=>new RegExp(`^ {0,${Math.min(3,l-1)}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`),hrRegex:l=>new RegExp(`^ {0,${Math.min(3,l-1)}}((?:- *){3,}|(?:_ *){3,}|(?:\\* *){3,})(?:\\n+|$)`),fencesBeginRegex:l=>new RegExp(`^ {0,${Math.min(3,l-1)}}(?:\`\`\`|~~~)`),headingBeginRegex:l=>new RegExp(`^ {0,${Math.min(3,l-1)}}#`),htmlBeginRegex:l=>new RegExp(`^ {0,${Math.min(3,l-1)}}<(?:[a-z].*>|!--)`,"i"),blockquoteBeginRegex:l=>new RegExp(`^ {0,${Math.min(3,l-1)}}>`)},Te=/^(?:[ \t]*(?:\n|$))+/,Oe=/^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/,we=/^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/,I=/^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/,ye=/^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/,Q=/ {0,3}(?:[*+-]|\d{1,9}[.)])/,ie=/^(?!bull |blockCode|fences|blockquote|heading|html|table)((?:.|\n(?!\s*?\n|bull |blockCode|fences|blockquote|heading|html|table))+?)\n {0,3}(=+|-+) *(?:\n+|$)/,oe=k(ie).replace(/bull/g,Q).replace(/blockCode/g,/(?: {4}| {0,3}\t)/).replace(/fences/g,/ {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g,/ {0,3}>/).replace(/heading/g,/ {0,3}#{1,6}/).replace(/html/g,/ {0,3}<[^\n>]+>\n/).replace(/\|table/g,"").getRegex(),Pe=k(ie).replace(/bull/g,Q).replace(/blockCode/g,/(?: {4}| {0,3}\t)/).replace(/fences/g,/ {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g,/ {0,3}>/).replace(/heading/g,/ {0,3}#{1,6}/).replace(/html/g,/ {0,3}<[^\n>]+>\n/).replace(/table/g,/ {0,3}\|?(?:[:\- ]*\|)+[\:\- ]*\n/).getRegex(),j=/^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table| +\n)[^\n]+)*)/,Se=/^[^\n]+/,F=/(?!\s*\])(?:\\[\s\S]|[^\[\]\\])+/,$e=k(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label",F).replace("title",/(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/).getRegex(),Le=k(/^(bull)([ \t][^\n]+?)?(?:\n|$)/).replace(/bull/g,Q).getRegex(),v="address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul",U=/<!--(?:-?>|[\s\S]*?(?:-->|$))/,_e=k("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n+|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>\\n*|$)|<![A-Z][\\s\\S]*?(?:>\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>\\n*|$)|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][\\w-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</(?!script|pre|style|textarea)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))","i").replace("comment",U).replace("tag",v).replace("attribute",/ +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(),ae=k(j).replace("hr",I).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("|lheading","").replace("|table","").replace("blockquote"," {0,3}>").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list"," {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html","</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag",v).getRegex(),Me=k(/^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/).replace("paragraph",ae).getRegex(),K={blockquote:Me,code:Oe,def:$e,fences:we,heading:ye,hr:I,html:_e,lheading:oe,list:Le,newline:Te,paragraph:ae,table:_,text:Se},re=k("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr",I).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("blockquote"," {0,3}>").replace("code","(?: {4}| {0,3}	)[^\\n]").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list"," {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html","</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag",v).getRegex(),ze={...K,lheading:Pe,table:re,paragraph:k(j).replace("hr",I).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("|lheading","").replace("table",re).replace("blockquote"," {0,3}>").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list"," {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html","</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag",v).getRegex()},Ee={...K,html:k(`^ *(?:comment *(?:\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))`).replace("comment",U).replace(/tag/g,"(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(),def:/^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/,heading:/^(#{1,6})(.*)(?:\n+|$)/,fences:_,lheading:/^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/,paragraph:k(j).replace("hr",I).replace("heading",` *#{1,6} *[^
-]`).replace("lheading",oe).replace("|table","").replace("blockquote"," {0,3}>").replace("|fences","").replace("|list","").replace("|html","").replace("|tag","").getRegex()},Ae=/^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/,Ce=/^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/,le=/^( {2,}|\\)\n(?!\s*$)/,Ie=/^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/,E=/[\p{P}\p{S}]/u,H=/[\s\p{P}\p{S}]/u,W=/[^\s\p{P}\p{S}]/u,Be=k(/^((?![*_])punctSpace)/,"u").replace(/punctSpace/g,H).getRegex(),ue=/(?!~)[\p{P}\p{S}]/u,De=/(?!~)[\s\p{P}\p{S}]/u,qe=/(?:[^\s\p{P}\p{S}]|~)/u,ve=k(/link|precode-code|html/,"g").replace("link",/\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-",Re?"(?<!`)()":"(^^|[^`])").replace("code",/(?<b>`+)[^`]+\k<b>(?!`)/).replace("html",/<(?! )[^<>]*?>/).getRegex(),pe=/^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/,He=k(pe,"u").replace(/punct/g,E).getRegex(),Ze=k(pe,"u").replace(/punct/g,ue).getRegex(),ce="^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)",Ge=k(ce,"gu").replace(/notPunctSpace/g,W).replace(/punctSpace/g,H).replace(/punct/g,E).getRegex(),Ne=k(ce,"gu").replace(/notPunctSpace/g,qe).replace(/punctSpace/g,De).replace(/punct/g,ue).getRegex(),Qe=k("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)","gu").replace(/notPunctSpace/g,W).replace(/punctSpace/g,H).replace(/punct/g,E).getRegex(),je=k(/^~~?(?:((?!~)punct)|[^\s~])/,"u").replace(/punct/g,E).getRegex(),Fe="^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)",Ue=k(Fe,"gu").replace(/notPunctSpace/g,W).replace(/punctSpace/g,H).replace(/punct/g,E).getRegex(),Ke=k(/\\(punct)/,"gu").replace(/punct/g,E).getRegex(),We=k(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme",/[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email",/[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(),Xe=k(U).replace("(?:-->|$)","-->").getRegex(),Je=k("^comment|^</[a-zA-Z][\\w:-]*\\s*>|^<[a-zA-Z][\\w-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment",Xe).replace("attribute",/\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(),q=/(?:\[(?:\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/,Ve=k(/^!?\[(label)\]\(\s*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?\s*\)/).replace("label",q).replace("href",/<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]*/).replace("title",/"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(),he=k(/^!?\[(label)\]\[(ref)\]/).replace("label",q).replace("ref",F).getRegex(),ke=k(/^!?\[(ref)\](?:\[\])?/).replace("ref",F).getRegex(),Ye=k("reflink|nolink(?!\\()","g").replace("reflink",he).replace("nolink",ke).getRegex(),se=/[hH][tT][tT][pP][sS]?|[fF][tT][pP]/,X={_backpedal:_,anyPunctuation:Ke,autolink:We,blockSkip:ve,br:le,code:Ce,del:_,delLDelim:_,delRDelim:_,emStrongLDelim:He,emStrongRDelimAst:Ge,emStrongRDelimUnd:Qe,escape:Ae,link:Ve,nolink:ke,punctuation:Be,reflink:he,reflinkSearch:Ye,tag:Je,text:Ie,url:_},et={...X,link:k(/^!?\[(label)\]\((.*?)\)/).replace("label",q).getRegex(),reflink:k(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label",q).getRegex()},N={...X,emStrongRDelimAst:Ne,emStrongLDelim:Ze,delLDelim:je,delRDelim:Ue,url:k(/^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("protocol",se).replace("email",/[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/).getRegex(),_backpedal:/(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/,del:/^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/,text:k(/^([`~]+|[^`~])(?:(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)))/).replace("protocol",se).getRegex()},tt={...N,br:k(le).replace("{2,}","*").getRegex(),text:k(N.text).replace("\\b_","\\b_| {2,}\\n").replace(/\{2,\}/g,"*").getRegex()},B={normal:K,gfm:ze,pedantic:Ee},A={normal:X,gfm:N,breaks:tt,pedantic:et};var nt={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"},de=l=>nt[l];function O(l,e){if(e){if(m.escapeTest.test(l))return l.replace(m.escapeReplace,de)}else if(m.escapeTestNoEncode.test(l))return l.replace(m.escapeReplaceNoEncode,de);return l}function J(l){try{l=encodeURI(l).replace(m.percentDecode,"%")}catch{return null}return l}function V(l,e){let t=l.replace(m.findPipe,(r,i,o)=>{let u=!1,a=i;for(;--a>=0&&o[a]==="\\";)u=!u;return u?"|":" |"}),n=t.split(m.splitPipe),s=0;if(n[0].trim()||n.shift(),n.length>0&&!n.at(-1)?.trim()&&n.pop(),e)if(n.length>e)n.splice(e);else for(;n.length<e;)n.push("");for(;s<n.length;s++)n[s]=n[s].trim().replace(m.slashPipe,"|");return n}function $(l,e,t){let n=l.length;if(n===0)return"";let s=0;for(;s<n;){let r=l.charAt(n-s-1);if(r===e&&!t)s++;else if(r!==e&&t)s++;else break}return l.slice(0,n-s)}function Y(l){let e=l.split(`
-`),t=e.length-1;for(;t>=0&&m.blankLine.test(e[t]);)t--;return e.length-t<=2?l:e.slice(0,t+1).join(`
-`)}function ge(l,e){if(l.indexOf(e[1])===-1)return-1;let t=0;for(let n=0;n<l.length;n++)if(l[n]==="\\")n++;else if(l[n]===e[0])t++;else if(l[n]===e[1]&&(t--,t<0))return n;return t>0?-2:-1}function fe(l,e=0){let t=e,n="";for(let s of l)if(s==="	"){let r=4-t%4;n+=" ".repeat(r),t+=r}else n+=s,t++;return n}function me(l,e,t,n,s){let r=e.href,i=e.title||null,o=l[1].replace(s.other.outputLinkReplace,"$1");n.state.inLink=!0;let u={type:l[0].charAt(0)==="!"?"image":"link",raw:t,href:r,title:i,text:o,tokens:n.inlineTokens(o)};return n.state.inLink=!1,u}function rt(l,e,t){let n=l.match(t.other.indentCodeCompensation);if(n===null)return e;let s=n[1];return e.split(`
-`).map(r=>{let i=r.match(t.other.beginningSpace);if(i===null)return r;let[o]=i;return o.length>=s.length?r.slice(s.length):r}).join(`
-`)}var w=class{options;rules;lexer;constructor(e){this.options=e||T}space(e){let t=this.rules.block.newline.exec(e);if(t&&t[0].length>0)return{type:"space",raw:t[0]}}code(e){let t=this.rules.block.code.exec(e);if(t){let n=this.options.pedantic?t[0]:Y(t[0]),s=n.replace(this.rules.other.codeRemoveIndent,"");return{type:"code",raw:n,codeBlockStyle:"indented",text:s}}}fences(e){let t=this.rules.block.fences.exec(e);if(t){let n=t[0],s=rt(n,t[3]||"",this.rules);return{type:"code",raw:n,lang:t[2]?t[2].trim().replace(this.rules.inline.anyPunctuation,"$1"):t[2],text:s}}}heading(e){let t=this.rules.block.heading.exec(e);if(t){let n=t[2].trim();if(this.rules.other.endingHash.test(n)){let s=$(n,"#");(this.options.pedantic||!s||this.rules.other.endingSpaceChar.test(s))&&(n=s.trim())}return{type:"heading",raw:$(t[0],`
-`),depth:t[1].length,text:n,tokens:this.lexer.inline(n)}}}hr(e){let t=this.rules.block.hr.exec(e);if(t)return{type:"hr",raw:$(t[0],`
-`)}}blockquote(e){let t=this.rules.block.blockquote.exec(e);if(t){let n=$(t[0],`
-`).split(`
-`),s="",r="",i=[];for(;n.length>0;){let o=!1,u=[],a;for(a=0;a<n.length;a++)if(this.rules.other.blockquoteStart.test(n[a]))u.push(n[a]),o=!0;else if(!o)u.push(n[a]);else break;n=n.slice(a);let c=u.join(`
-`),p=c.replace(this.rules.other.blockquoteSetextReplace,`
-    $1`).replace(this.rules.other.blockquoteSetextReplace2,"");s=s?`${s}
-${c}`:c,r=r?`${r}
-${p}`:p;let d=this.lexer.state.top;if(this.lexer.state.top=!0,this.lexer.blockTokens(p,i,!0),this.lexer.state.top=d,n.length===0)break;let h=i.at(-1);if(h?.type==="code")break;if(h?.type==="blockquote"){let R=h,f=R.raw+`
-`+n.join(`
-`),S=this.blockquote(f);i[i.length-1]=S,s=s.substring(0,s.length-R.raw.length)+S.raw,r=r.substring(0,r.length-R.text.length)+S.text;break}else if(h?.type==="list"){let R=h,f=R.raw+`
-`+n.join(`
-`),S=this.list(f);i[i.length-1]=S,s=s.substring(0,s.length-h.raw.length)+S.raw,r=r.substring(0,r.length-R.raw.length)+S.raw,n=f.substring(i.at(-1).raw.length).split(`
-`);continue}}return{type:"blockquote",raw:s,tokens:i,text:r}}}list(e){let t=this.rules.block.list.exec(e);if(t){let n=t[1].trim(),s=n.length>1,r={type:"list",raw:"",ordered:s,start:s?+n.slice(0,-1):"",loose:!1,items:[]};n=s?`\\d{1,9}\\${n.slice(-1)}`:`\\${n}`,this.options.pedantic&&(n=s?n:"[*+-]");let i=this.rules.other.listItemRegex(n),o=!1;for(;e;){let a=!1,c="",p="";if(!(t=i.exec(e))||this.rules.block.hr.test(e))break;c=t[0],e=e.substring(c.length);let d=fe(t[2].split(`
-`,1)[0],t[1].length),h=e.split(`
-`,1)[0],R=!d.trim(),f=0;if(this.options.pedantic?(f=2,p=d.trimStart()):R?f=t[1].length+1:(f=d.search(this.rules.other.nonSpaceChar),f=f>4?1:f,p=d.slice(f),f+=t[1].length),R&&this.rules.other.blankLine.test(h)&&(c+=h+`
-`,e=e.substring(h.length+1),a=!0),!a){let S=this.rules.other.nextBulletRegex(f),ee=this.rules.other.hrRegex(f),te=this.rules.other.fencesBeginRegex(f),ne=this.rules.other.headingBeginRegex(f),xe=this.rules.other.htmlBeginRegex(f),be=this.rules.other.blockquoteBeginRegex(f);for(;e;){let Z=e.split(`
-`,1)[0],C;if(h=Z,this.options.pedantic?(h=h.replace(this.rules.other.listReplaceNesting,"  "),C=h):C=h.replace(this.rules.other.tabCharGlobal,"    "),te.test(h)||ne.test(h)||xe.test(h)||be.test(h)||S.test(h)||ee.test(h))break;if(C.search(this.rules.other.nonSpaceChar)>=f||!h.trim())p+=`
-`+C.slice(f);else{if(R||d.replace(this.rules.other.tabCharGlobal,"    ").search(this.rules.other.nonSpaceChar)>=4||te.test(d)||ne.test(d)||ee.test(d))break;p+=`
-`+h}R=!h.trim(),c+=Z+`
-`,e=e.substring(Z.length+1),d=C.slice(f)}}r.loose||(o?r.loose=!0:this.rules.other.doubleBlankLine.test(c)&&(o=!0)),r.items.push({type:"list_item",raw:c,task:!!this.options.gfm&&this.rules.other.listIsTask.test(p),loose:!1,text:p,tokens:[]}),r.raw+=c}let u=r.items.at(-1);if(u)u.raw=u.raw.trimEnd(),u.text=u.text.trimEnd();else return;r.raw=r.raw.trimEnd();for(let a of r.items){if(this.lexer.state.top=!1,a.tokens=this.lexer.blockTokens(a.text,[]),a.task){if(a.text=a.text.replace(this.rules.other.listReplaceTask,""),a.tokens[0]?.type==="text"||a.tokens[0]?.type==="paragraph"){a.tokens[0].raw=a.tokens[0].raw.replace(this.rules.other.listReplaceTask,""),a.tokens[0].text=a.tokens[0].text.replace(this.rules.other.listReplaceTask,"");for(let p=this.lexer.inlineQueue.length-1;p>=0;p--)if(this.rules.other.listIsTask.test(this.lexer.inlineQueue[p].src)){this.lexer.inlineQueue[p].src=this.lexer.inlineQueue[p].src.replace(this.rules.other.listReplaceTask,"");break}}let c=this.rules.other.listTaskCheckbox.exec(a.raw);if(c){let p={type:"checkbox",raw:c[0]+" ",checked:c[0]!=="[ ]"};a.checked=p.checked,r.loose?a.tokens[0]&&["paragraph","text"].includes(a.tokens[0].type)&&"tokens"in a.tokens[0]&&a.tokens[0].tokens?(a.tokens[0].raw=p.raw+a.tokens[0].raw,a.tokens[0].text=p.raw+a.tokens[0].text,a.tokens[0].tokens.unshift(p)):a.tokens.unshift({type:"paragraph",raw:p.raw,text:p.raw,tokens:[p]}):a.tokens.unshift(p)}}if(!r.loose){let c=a.tokens.filter(d=>d.type==="space"),p=c.length>0&&c.some(d=>this.rules.other.anyLine.test(d.raw));r.loose=p}}if(r.loose)for(let a of r.items){a.loose=!0;for(let c of a.tokens)c.type==="text"&&(c.type="paragraph")}return r}}html(e){let t=this.rules.block.html.exec(e);if(t){let n=Y(t[0]);return{type:"html",block:!0,raw:n,pre:t[1]==="pre"||t[1]==="script"||t[1]==="style",text:n}}}def(e){let t=this.rules.block.def.exec(e);if(t){let n=t[1].toLowerCase().replace(this.rules.other.multipleSpaceGlobal," "),s=t[2]?t[2].replace(this.rules.other.hrefBrackets,"$1").replace(this.rules.inline.anyPunctuation,"$1"):"",r=t[3]?t[3].substring(1,t[3].length-1).replace(this.rules.inline.anyPunctuation,"$1"):t[3];return{type:"def",tag:n,raw:$(t[0],`
-`),href:s,title:r}}}table(e){let t=this.rules.block.table.exec(e);if(!t||!this.rules.other.tableDelimiter.test(t[2]))return;let n=V(t[1]),s=t[2].replace(this.rules.other.tableAlignChars,"").split("|"),r=t[3]?.trim()?t[3].replace(this.rules.other.tableRowBlankLine,"").split(`
-`):[],i={type:"table",raw:$(t[0],`
-`),header:[],align:[],rows:[]};if(n.length===s.length){for(let o of s)this.rules.other.tableAlignRight.test(o)?i.align.push("right"):this.rules.other.tableAlignCenter.test(o)?i.align.push("center"):this.rules.other.tableAlignLeft.test(o)?i.align.push("left"):i.align.push(null);for(let o=0;o<n.length;o++)i.header.push({text:n[o],tokens:this.lexer.inline(n[o]),header:!0,align:i.align[o]});for(let o of r)i.rows.push(V(o,i.header.length).map((u,a)=>({text:u,tokens:this.lexer.inline(u),header:!1,align:i.align[a]})));return i}}lheading(e){let t=this.rules.block.lheading.exec(e);if(t){let n=t[1].trim();return{type:"heading",raw:$(t[0],`
-`),depth:t[2].charAt(0)==="="?1:2,text:n,tokens:this.lexer.inline(n)}}}paragraph(e){let t=this.rules.block.paragraph.exec(e);if(t){let n=t[1].charAt(t[1].length-1)===`
-`?t[1].slice(0,-1):t[1];return{type:"paragraph",raw:t[0],text:n,tokens:this.lexer.inline(n)}}}text(e){let t=this.rules.block.text.exec(e);if(t)return{type:"text",raw:t[0],text:t[0],tokens:this.lexer.inline(t[0])}}escape(e){let t=this.rules.inline.escape.exec(e);if(t)return{type:"escape",raw:t[0],text:t[1]}}tag(e){let t=this.rules.inline.tag.exec(e);if(t)return!this.lexer.state.inLink&&this.rules.other.startATag.test(t[0])?this.lexer.state.inLink=!0:this.lexer.state.inLink&&this.rules.other.endATag.test(t[0])&&(this.lexer.state.inLink=!1),!this.lexer.state.inRawBlock&&this.rules.other.startPreScriptTag.test(t[0])?this.lexer.state.inRawBlock=!0:this.lexer.state.inRawBlock&&this.rules.other.endPreScriptTag.test(t[0])&&(this.lexer.state.inRawBlock=!1),{type:"html",raw:t[0],inLink:this.lexer.state.inLink,inRawBlock:this.lexer.state.inRawBlock,block:!1,text:t[0]}}link(e){let t=this.rules.inline.link.exec(e);if(t){let n=t[2].trim();if(!this.options.pedantic&&this.rules.other.startAngleBracket.test(n)){if(!this.rules.other.endAngleBracket.test(n))return;let i=$(n.slice(0,-1),"\\");if((n.length-i.length)%2===0)return}else{let i=ge(t[2],"()");if(i===-2)return;if(i>-1){let u=(t[0].indexOf("!")===0?5:4)+t[1].length+i;t[2]=t[2].substring(0,i),t[0]=t[0].substring(0,u).trim(),t[3]=""}}let s=t[2],r="";if(this.options.pedantic){let i=this.rules.other.pedanticHrefTitle.exec(s);i&&(s=i[1],r=i[3])}else r=t[3]?t[3].slice(1,-1):"";return s=s.trim(),this.rules.other.startAngleBracket.test(s)&&(this.options.pedantic&&!this.rules.other.endAngleBracket.test(n)?s=s.slice(1):s=s.slice(1,-1)),me(t,{href:s&&s.replace(this.rules.inline.anyPunctuation,"$1"),title:r&&r.replace(this.rules.inline.anyPunctuation,"$1")},t[0],this.lexer,this.rules)}}reflink(e,t){let n;if((n=this.rules.inline.reflink.exec(e))||(n=this.rules.inline.nolink.exec(e))){let s=(n[2]||n[1]).replace(this.rules.other.multipleSpaceGlobal," "),r=t[s.toLowerCase()];if(!r){let i=n[0].charAt(0);return{type:"text",raw:i,text:i}}return me(n,r,n[0],this.lexer,this.rules)}}emStrong(e,t,n=""){let s=this.rules.inline.emStrongLDelim.exec(e);if(!s||!s[1]&&!s[2]&&!s[3]&&!s[4]||s[4]&&n.match(this.rules.other.unicodeAlphaNumeric))return;if(!(s[1]||s[3]||"")||!n||this.rules.inline.punctuation.exec(n)){let i=[...s[0]].length-1,o,u,a=i,c=0,p=s[0][0]==="*"?this.rules.inline.emStrongRDelimAst:this.rules.inline.emStrongRDelimUnd;for(p.lastIndex=0,t=t.slice(-1*e.length+i);(s=p.exec(t))!==null;){if(o=s[1]||s[2]||s[3]||s[4]||s[5]||s[6],!o)continue;if(u=[...o].length,s[3]||s[4]){a+=u;continue}else if((s[5]||s[6])&&i%3&&!((i+u)%3)){c+=u;continue}if(a-=u,a>0)continue;u=Math.min(u,u+a+c);let d=[...s[0]][0].length,h=e.slice(0,i+s.index+d+u);if(Math.min(i,u)%2){let f=h.slice(1,-1);return{type:"em",raw:h,text:f,tokens:this.lexer.inlineTokens(f)}}let R=h.slice(2,-2);return{type:"strong",raw:h,text:R,tokens:this.lexer.inlineTokens(R)}}}}codespan(e){let t=this.rules.inline.code.exec(e);if(t){let n=t[2].replace(this.rules.other.newLineCharGlobal," "),s=this.rules.other.nonSpaceChar.test(n),r=this.rules.other.startingSpaceChar.test(n)&&this.rules.other.endingSpaceChar.test(n);return s&&r&&(n=n.substring(1,n.length-1)),{type:"codespan",raw:t[0],text:n}}}br(e){let t=this.rules.inline.br.exec(e);if(t)return{type:"br",raw:t[0]}}del(e,t,n=""){let s=this.rules.inline.delLDelim.exec(e);if(!s)return;if(!(s[1]||"")||!n||this.rules.inline.punctuation.exec(n)){let i=[...s[0]].length-1,o,u,a=i,c=this.rules.inline.delRDelim;for(c.lastIndex=0,t=t.slice(-1*e.length+i);(s=c.exec(t))!==null;){if(o=s[1]||s[2]||s[3]||s[4]||s[5]||s[6],!o||(u=[...o].length,u!==i))continue;if(s[3]||s[4]){a+=u;continue}if(a-=u,a>0)continue;u=Math.min(u,u+a);let p=[...s[0]][0].length,d=e.slice(0,i+s.index+p+u),h=d.slice(i,-i);return{type:"del",raw:d,text:h,tokens:this.lexer.inlineTokens(h)}}}}autolink(e){let t=this.rules.inline.autolink.exec(e);if(t){let n,s;return t[2]==="@"?(n=t[1],s="mailto:"+n):(n=t[1],s=n),{type:"link",raw:t[0],text:n,href:s,tokens:[{type:"text",raw:n,text:n}]}}}url(e){let t;if(t=this.rules.inline.url.exec(e)){let n,s;if(t[2]==="@")n=t[0],s="mailto:"+n;else{let r;do r=t[0],t[0]=this.rules.inline._backpedal.exec(t[0])?.[0]??"";while(r!==t[0]);n=t[0],t[1]==="www."?s="http://"+t[0]:s=t[0]}return{type:"link",raw:t[0],text:n,href:s,tokens:[{type:"text",raw:n,text:n}]}}}inlineText(e){let t=this.rules.inline.text.exec(e);if(t){let n=this.lexer.state.inRawBlock;return{type:"text",raw:t[0],text:t[0],escaped:n}}}};var x=class l{tokens;options;state;inlineQueue;tokenizer;constructor(e){this.tokens=[],this.tokens.links=Object.create(null),this.options=e||T,this.options.tokenizer=this.options.tokenizer||new w,this.tokenizer=this.options.tokenizer,this.tokenizer.options=this.options,this.tokenizer.lexer=this,this.inlineQueue=[],this.state={inLink:!1,inRawBlock:!1,top:!0};let t={other:m,block:B.normal,inline:A.normal};this.options.pedantic?(t.block=B.pedantic,t.inline=A.pedantic):this.options.gfm&&(t.block=B.gfm,this.options.breaks?t.inline=A.breaks:t.inline=A.gfm),this.tokenizer.rules=t}static get rules(){return{block:B,inline:A}}static lex(e,t){return new l(t).lex(e)}static lexInline(e,t){return new l(t).inlineTokens(e)}lex(e){e=e.replace(m.carriageReturn,`
-`),this.blockTokens(e,this.tokens);for(let t=0;t<this.inlineQueue.length;t++){let n=this.inlineQueue[t];this.inlineTokens(n.src,n.tokens)}return this.inlineQueue=[],this.tokens}blockTokens(e,t=[],n=!1){this.tokenizer.lexer=this,this.options.pedantic&&(e=e.replace(m.tabCharGlobal,"    ").replace(m.spaceLine,""));let s=1/0;for(;e;){if(e.length<s)s=e.length;else{this.infiniteLoopError(e.charCodeAt(0));break}let r;if(this.options.extensions?.block?.some(o=>(r=o.call({lexer:this},e,t))?(e=e.substring(r.raw.length),t.push(r),!0):!1))continue;if(r=this.tokenizer.space(e)){e=e.substring(r.raw.length);let o=t.at(-1);r.raw.length===1&&o!==void 0?o.raw+=`
-`:t.push(r);continue}if(r=this.tokenizer.code(e)){e=e.substring(r.raw.length);let o=t.at(-1);o?.type==="paragraph"||o?.type==="text"?(o.raw+=(o.raw.endsWith(`
-`)?"":`
-`)+r.raw,o.text+=`
-`+r.text,this.inlineQueue.at(-1).src=o.text):t.push(r);continue}if(r=this.tokenizer.fences(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.heading(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.hr(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.blockquote(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.list(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.html(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.def(e)){e=e.substring(r.raw.length);let o=t.at(-1);o?.type==="paragraph"||o?.type==="text"?(o.raw+=(o.raw.endsWith(`
-`)?"":`
-`)+r.raw,o.text+=`
-`+r.raw,this.inlineQueue.at(-1).src=o.text):this.tokens.links[r.tag]||(this.tokens.links[r.tag]={href:r.href,title:r.title},t.push(r));continue}if(r=this.tokenizer.table(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.lheading(e)){e=e.substring(r.raw.length),t.push(r);continue}let i=e;if(this.options.extensions?.startBlock){let o=1/0,u=e.slice(1),a;this.options.extensions.startBlock.forEach(c=>{a=c.call({lexer:this},u),typeof a=="number"&&a>=0&&(o=Math.min(o,a))}),o<1/0&&o>=0&&(i=e.substring(0,o+1))}if(this.state.top&&(r=this.tokenizer.paragraph(i))){let o=t.at(-1);n&&o?.type==="paragraph"?(o.raw+=(o.raw.endsWith(`
-`)?"":`
-`)+r.raw,o.text+=`
-`+r.text,this.inlineQueue.pop(),this.inlineQueue.at(-1).src=o.text):t.push(r),n=i.length!==e.length,e=e.substring(r.raw.length);continue}if(r=this.tokenizer.text(e)){e=e.substring(r.raw.length);let o=t.at(-1);o?.type==="text"?(o.raw+=(o.raw.endsWith(`
-`)?"":`
-`)+r.raw,o.text+=`
-`+r.text,this.inlineQueue.pop(),this.inlineQueue.at(-1).src=o.text):t.push(r);continue}if(e){this.infiniteLoopError(e.charCodeAt(0));break}}return this.state.top=!0,t}inline(e,t=[]){return this.inlineQueue.push({src:e,tokens:t}),t}inlineTokens(e,t=[]){this.tokenizer.lexer=this;let n=e,s=null;if(this.tokens.links){let a=Object.keys(this.tokens.links);if(a.length>0)for(;(s=this.tokenizer.rules.inline.reflinkSearch.exec(n))!==null;)a.includes(s[0].slice(s[0].lastIndexOf("[")+1,-1))&&(n=n.slice(0,s.index)+"["+"a".repeat(s[0].length-2)+"]"+n.slice(this.tokenizer.rules.inline.reflinkSearch.lastIndex))}for(;(s=this.tokenizer.rules.inline.anyPunctuation.exec(n))!==null;)n=n.slice(0,s.index)+"++"+n.slice(this.tokenizer.rules.inline.anyPunctuation.lastIndex);let r;for(;(s=this.tokenizer.rules.inline.blockSkip.exec(n))!==null;)r=s[2]?s[2].length:0,n=n.slice(0,s.index+r)+"["+"a".repeat(s[0].length-r-2)+"]"+n.slice(this.tokenizer.rules.inline.blockSkip.lastIndex);n=this.options.hooks?.emStrongMask?.call({lexer:this},n)??n;let i=!1,o="",u=1/0;for(;e;){if(e.length<u)u=e.length;else{this.infiniteLoopError(e.charCodeAt(0));break}i||(o=""),i=!1;let a;if(this.options.extensions?.inline?.some(p=>(a=p.call({lexer:this},e,t))?(e=e.substring(a.raw.length),t.push(a),!0):!1))continue;if(a=this.tokenizer.escape(e)){e=e.substring(a.raw.length),t.push(a);continue}if(a=this.tokenizer.tag(e)){e=e.substring(a.raw.length),t.push(a);continue}if(a=this.tokenizer.link(e)){e=e.substring(a.raw.length),t.push(a);continue}if(a=this.tokenizer.reflink(e,this.tokens.links)){e=e.substring(a.raw.length);let p=t.at(-1);a.type==="text"&&p?.type==="text"?(p.raw+=a.raw,p.text+=a.text):t.push(a);continue}if(a=this.tokenizer.emStrong(e,n,o)){e=e.substring(a.raw.length),t.push(a);continue}if(a=this.tokenizer.codespan(e)){e=e.substring(a.raw.length),t.push(a);continue}if(a=this.tokenizer.br(e)){e=e.substring(a.raw.length),t.push(a);continue}if(a=this.tokenizer.del(e,n,o)){e=e.substring(a.raw.length),t.push(a);continue}if(a=this.tokenizer.autolink(e)){e=e.substring(a.raw.length),t.push(a);continue}if(!this.state.inLink&&(a=this.tokenizer.url(e))){e=e.substring(a.raw.length),t.push(a);continue}let c=e;if(this.options.extensions?.startInline){let p=1/0,d=e.slice(1),h;this.options.extensions.startInline.forEach(R=>{h=R.call({lexer:this},d),typeof h=="number"&&h>=0&&(p=Math.min(p,h))}),p<1/0&&p>=0&&(c=e.substring(0,p+1))}if(a=this.tokenizer.inlineText(c)){e=e.substring(a.raw.length),a.raw.slice(-1)!=="_"&&(o=a.raw.slice(-1)),i=!0;let p=t.at(-1);p?.type==="text"?(p.raw+=a.raw,p.text+=a.text):t.push(a);continue}if(e){this.infiniteLoopError(e.charCodeAt(0));break}}return t}infiniteLoopError(e){let t="Infinite loop on byte: "+e;if(this.options.silent)console.error(t);else throw new Error(t)}};var y=class{options;parser;constructor(e){this.options=e||T}space(e){return""}code({text:e,lang:t,escaped:n}){let s=(t||"").match(m.notSpaceStart)?.[0],r=e.replace(m.endingNewline,"")+`
-`;return s?'<pre><code class="language-'+O(s)+'">'+(n?r:O(r,!0))+`</code></pre>
-`:"<pre><code>"+(n?r:O(r,!0))+`</code></pre>
-`}blockquote({tokens:e}){return`<blockquote>
-${this.parser.parse(e)}</blockquote>
-`}html({text:e}){return e}def(e){return""}heading({tokens:e,depth:t}){return`<h${t}>${this.parser.parseInline(e)}</h${t}>
-`}hr(e){return`<hr>
-`}list(e){let t=e.ordered,n=e.start,s="";for(let o=0;o<e.items.length;o++){let u=e.items[o];s+=this.listitem(u)}let r=t?"ol":"ul",i=t&&n!==1?' start="'+n+'"':"";return"<"+r+i+`>
-`+s+"</"+r+`>
-`}listitem(e){return`<li>${this.parser.parse(e.tokens)}</li>
-`}checkbox({checked:e}){return"<input "+(e?'checked="" ':"")+'disabled="" type="checkbox"> '}paragraph({tokens:e}){return`<p>${this.parser.parseInline(e)}</p>
-`}table(e){let t="",n="";for(let r=0;r<e.header.length;r++)n+=this.tablecell(e.header[r]);t+=this.tablerow({text:n});let s="";for(let r=0;r<e.rows.length;r++){let i=e.rows[r];n="";for(let o=0;o<i.length;o++)n+=this.tablecell(i[o]);s+=this.tablerow({text:n})}return s&&(s=`<tbody>${s}</tbody>`),`<table>
-<thead>
-`+t+`</thead>
-`+s+`</table>
-`}tablerow({text:e}){return`<tr>
-${e}</tr>
-`}tablecell(e){let t=this.parser.parseInline(e.tokens),n=e.header?"th":"td";return(e.align?`<${n} align="${e.align}">`:`<${n}>`)+t+`</${n}>
-`}strong({tokens:e}){return`<strong>${this.parser.parseInline(e)}</strong>`}em({tokens:e}){return`<em>${this.parser.parseInline(e)}</em>`}codespan({text:e}){return`<code>${O(e,!0)}</code>`}br(e){return"<br>"}del({tokens:e}){return`<del>${this.parser.parseInline(e)}</del>`}link({href:e,title:t,tokens:n}){let s=this.parser.parseInline(n),r=J(e);if(r===null)return s;e=r;let i='<a href="'+e+'"';return t&&(i+=' title="'+O(t)+'"'),i+=">"+s+"</a>",i}image({href:e,title:t,text:n,tokens:s}){s&&(n=this.parser.parseInline(s,this.parser.textRenderer));let r=J(e);if(r===null)return O(n);e=r;let i=`<img src="${e}" alt="${O(n)}"`;return t&&(i+=` title="${O(t)}"`),i+=">",i}text(e){return"tokens"in e&&e.tokens?this.parser.parseInline(e.tokens):"escaped"in e&&e.escaped?e.text:O(e.text)}};var L=class{strong({text:e}){return e}em({text:e}){return e}codespan({text:e}){return e}del({text:e}){return e}html({text:e}){return e}text({text:e}){return e}link({text:e}){return""+e}image({text:e}){return""+e}br(){return""}checkbox({raw:e}){return e}};var b=class l{options;renderer;textRenderer;constructor(e){this.options=e||T,this.options.renderer=this.options.renderer||new y,this.renderer=this.options.renderer,this.renderer.options=this.options,this.renderer.parser=this,this.textRenderer=new L}static parse(e,t){return new l(t).parse(e)}static parseInline(e,t){return new l(t).parseInline(e)}parse(e){this.renderer.parser=this;let t="";for(let n=0;n<e.length;n++){let s=e[n];if(this.options.extensions?.renderers?.[s.type]){let i=s,o=this.options.extensions.renderers[i.type].call({parser:this},i);if(o!==!1||!["space","hr","heading","code","table","blockquote","list","html","def","paragraph","text"].includes(i.type)){t+=o||"";continue}}let r=s;switch(r.type){case"space":{t+=this.renderer.space(r);break}case"hr":{t+=this.renderer.hr(r);break}case"heading":{t+=this.renderer.heading(r);break}case"code":{t+=this.renderer.code(r);break}case"table":{t+=this.renderer.table(r);break}case"blockquote":{t+=this.renderer.blockquote(r);break}case"list":{t+=this.renderer.list(r);break}case"checkbox":{t+=this.renderer.checkbox(r);break}case"html":{t+=this.renderer.html(r);break}case"def":{t+=this.renderer.def(r);break}case"paragraph":{t+=this.renderer.paragraph(r);break}case"text":{t+=this.renderer.text(r);break}default:{let i='Token with "'+r.type+'" type was not found.';if(this.options.silent)return console.error(i),"";throw new Error(i)}}}return t}parseInline(e,t=this.renderer){this.renderer.parser=this;let n="";for(let s=0;s<e.length;s++){let r=e[s];if(this.options.extensions?.renderers?.[r.type]){let o=this.options.extensions.renderers[r.type].call({parser:this},r);if(o!==!1||!["escape","html","link","image","strong","em","codespan","br","del","text"].includes(r.type)){n+=o||"";continue}}let i=r;switch(i.type){case"escape":{n+=t.text(i);break}case"html":{n+=t.html(i);break}case"link":{n+=t.link(i);break}case"image":{n+=t.image(i);break}case"checkbox":{n+=t.checkbox(i);break}case"strong":{n+=t.strong(i);break}case"em":{n+=t.em(i);break}case"codespan":{n+=t.codespan(i);break}case"br":{n+=t.br(i);break}case"del":{n+=t.del(i);break}case"text":{n+=t.text(i);break}default:{let o='Token with "'+i.type+'" type was not found.';if(this.options.silent)return console.error(o),"";throw new Error(o)}}}return n}};var P=class{options;block;constructor(e){this.options=e||T}static passThroughHooks=new Set(["preprocess","postprocess","processAllTokens","emStrongMask"]);static passThroughHooksRespectAsync=new Set(["preprocess","postprocess","processAllTokens"]);preprocess(e){return e}postprocess(e){return e}processAllTokens(e){return e}emStrongMask(e){return e}provideLexer(e=this.block){return e?x.lex:x.lexInline}provideParser(e=this.block){return e?b.parse:b.parseInline}};var D=class{defaults=z();options=this.setOptions;parse=this.parseMarkdown(!0);parseInline=this.parseMarkdown(!1);Parser=b;Renderer=y;TextRenderer=L;Lexer=x;Tokenizer=w;Hooks=P;constructor(...e){this.use(...e)}walkTokens(e,t){let n=[];for(let s of e)switch(n=n.concat(t.call(this,s)),s.type){case"table":{let r=s;for(let i of r.header)n=n.concat(this.walkTokens(i.tokens,t));for(let i of r.rows)for(let o of i)n=n.concat(this.walkTokens(o.tokens,t));break}case"list":{let r=s;n=n.concat(this.walkTokens(r.items,t));break}default:{let r=s;this.defaults.extensions?.childTokens?.[r.type]?this.defaults.extensions.childTokens[r.type].forEach(i=>{let o=r[i].flat(1/0);n=n.concat(this.walkTokens(o,t))}):r.tokens&&(n=n.concat(this.walkTokens(r.tokens,t)))}}return n}use(...e){let t=this.defaults.extensions||{renderers:{},childTokens:{}};return e.forEach(n=>{let s={...n};if(s.async=this.defaults.async||s.async||!1,n.extensions&&(n.extensions.forEach(r=>{if(!r.name)throw new Error("extension name required");if("renderer"in r){let i=t.renderers[r.name];i?t.renderers[r.name]=function(...o){let u=r.renderer.apply(this,o);return u===!1&&(u=i.apply(this,o)),u}:t.renderers[r.name]=r.renderer}if("tokenizer"in r){if(!r.level||r.level!=="block"&&r.level!=="inline")throw new Error("extension level must be 'block' or 'inline'");let i=t[r.level];i?i.unshift(r.tokenizer):t[r.level]=[r.tokenizer],r.start&&(r.level==="block"?t.startBlock?t.startBlock.push(r.start):t.startBlock=[r.start]:r.level==="inline"&&(t.startInline?t.startInline.push(r.start):t.startInline=[r.start]))}"childTokens"in r&&r.childTokens&&(t.childTokens[r.name]=r.childTokens)}),s.extensions=t),n.renderer){let r=this.defaults.renderer||new y(this.defaults);for(let i in n.renderer){if(!(i in r))throw new Error(`renderer '${i}' does not exist`);if(["options","parser"].includes(i))continue;let o=i,u=n.renderer[o],a=r[o];r[o]=(...c)=>{let p=u.apply(r,c);return p===!1&&(p=a.apply(r,c)),p||""}}s.renderer=r}if(n.tokenizer){let r=this.defaults.tokenizer||new w(this.defaults);for(let i in n.tokenizer){if(!(i in r))throw new Error(`tokenizer '${i}' does not exist`);if(["options","rules","lexer"].includes(i))continue;let o=i,u=n.tokenizer[o],a=r[o];r[o]=(...c)=>{let p=u.apply(r,c);return p===!1&&(p=a.apply(r,c)),p}}s.tokenizer=r}if(n.hooks){let r=this.defaults.hooks||new P;for(let i in n.hooks){if(!(i in r))throw new Error(`hook '${i}' does not exist`);if(["options","block"].includes(i))continue;let o=i,u=n.hooks[o],a=r[o];P.passThroughHooks.has(i)?r[o]=c=>{if(this.defaults.async&&P.passThroughHooksRespectAsync.has(i))return(async()=>{let d=await u.call(r,c);return a.call(r,d)})();let p=u.call(r,c);return a.call(r,p)}:r[o]=(...c)=>{if(this.defaults.async)return(async()=>{let d=await u.apply(r,c);return d===!1&&(d=await a.apply(r,c)),d})();let p=u.apply(r,c);return p===!1&&(p=a.apply(r,c)),p}}s.hooks=r}if(n.walkTokens){let r=this.defaults.walkTokens,i=n.walkTokens;s.walkTokens=function(o){let u=[];return u.push(i.call(this,o)),r&&(u=u.concat(r.call(this,o))),u}}this.defaults={...this.defaults,...s}}),this}setOptions(e){return this.defaults={...this.defaults,...e},this}lexer(e,t){return x.lex(e,t??this.defaults)}parser(e,t){return b.parse(e,t??this.defaults)}parseMarkdown(e){return(n,s)=>{let r={...s},i={...this.defaults,...r},o=this.onError(!!i.silent,!!i.async);if(this.defaults.async===!0&&r.async===!1)return o(new Error("marked(): The async option was set to true by an extension. Remove async: false from the parse options object to return a Promise."));if(typeof n>"u"||n===null)return o(new Error("marked(): input parameter is undefined or null"));if(typeof n!="string")return o(new Error("marked(): input parameter is of type "+Object.prototype.toString.call(n)+", string expected"));if(i.hooks&&(i.hooks.options=i,i.hooks.block=e),i.async)return(async()=>{let u=i.hooks?await i.hooks.preprocess(n):n,c=await(i.hooks?await i.hooks.provideLexer(e):e?x.lex:x.lexInline)(u,i),p=i.hooks?await i.hooks.processAllTokens(c):c;i.walkTokens&&await Promise.all(this.walkTokens(p,i.walkTokens));let h=await(i.hooks?await i.hooks.provideParser(e):e?b.parse:b.parseInline)(p,i);return i.hooks?await i.hooks.postprocess(h):h})().catch(o);try{i.hooks&&(n=i.hooks.preprocess(n));let a=(i.hooks?i.hooks.provideLexer(e):e?x.lex:x.lexInline)(n,i);i.hooks&&(a=i.hooks.processAllTokens(a)),i.walkTokens&&this.walkTokens(a,i.walkTokens);let p=(i.hooks?i.hooks.provideParser(e):e?b.parse:b.parseInline)(a,i);return i.hooks&&(p=i.hooks.postprocess(p)),p}catch(u){return o(u)}}}onError(e,t){return n=>{if(n.message+=`
-Please report this to https://github.com/markedjs/marked.`,e){let s="<p>An error occurred:</p><pre>"+O(n.message+"",!0)+"</pre>";return t?Promise.resolve(s):s}if(t)return Promise.reject(n);throw n}}};var M=new D;function g(l,e){return M.parse(l,e)}g.options=g.setOptions=function(l){return M.setOptions(l),g.defaults=M.defaults,G(g.defaults),g};g.getDefaults=z;g.defaults=T;g.use=function(...l){return M.use(...l),g.defaults=M.defaults,G(g.defaults),g};g.walkTokens=function(l,e){return M.walkTokens(l,e)};g.parseInline=M.parseInline;g.Parser=b;g.parser=b.parse;g.Renderer=y;g.TextRenderer=L;g.Lexer=x;g.lexer=x.lex;g.Tokenizer=w;g.Hooks=P;g.parse=g;var jt=g.options,Ft=g.setOptions,Ut=g.use,Kt=g.walkTokens,Wt=g.parseInline,Xt=(/* unused pure expression or super */ null && (g)),Jt=b.parse,Vt=x.lex;
-//# sourceMappingURL=marked.esm.js.map
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/render.ts
-
-const VOID_ELEMENT_RE = /<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^<>]*?)?>/gi;
-function stripFrontmatter(markdown) {
-    const lines = markdown.split(/\r?\n/);
-    if (lines[0]?.trim() !== "---") {
-        return markdown;
-    }
-    for (let index = 1; index < lines.length; index += 1) {
-        const line = lines[index]?.trim();
-        if (line === "---" || line === "...") {
-            return lines.slice(index + 1).join("\n").replace(/^\n+/, "");
-        }
-    }
-    return markdown;
-}
-async function renderMarkdownToHtml(markdown) {
-    const html = await g.parse(stripFrontmatter(markdown), {
-        async: true,
-        gfm: true,
-    });
-    return normalizeVoidElements(html);
-}
-function renderDirectoryTitleHtml(title) {
-    return `<h1>${escapeHtml(title)}</h1>`;
-}
-function escapeHtml(value) {
-    return value
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
-}
-function normalizeVoidElements(html) {
-    return html.replace(VOID_ELEMENT_RE, (fullMatch, tagName, attributes = "") => {
-        const normalizedTagName = String(tagName).toLowerCase();
-        const normalizedAttributes = normalizedTagName === "img"
-            ? ensureConfluenceImageWidth(attributes)
-            : attributes;
-        if (fullMatch.endsWith("/>")) {
-            return `<${normalizedTagName}${normalizedAttributes} />`;
-        }
-        return `<${normalizedTagName}${normalizedAttributes} />`;
-    });
-}
-function ensureConfluenceImageWidth(attributes) {
-    if (/\swidth\s*=/i.test(attributes)) {
-        return attributes;
-    }
-    return `${attributes} width="100%"`;
-}
-
-// EXTERNAL MODULE: external "node:crypto"
-var external_node_crypto_ = __nccwpck_require__(7598);
-;// CONCATENATED MODULE: external "node:child_process"
-const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
-// EXTERNAL MODULE: external "node:util"
-var external_node_util_ = __nccwpck_require__(7975);
-;// CONCATENATED MODULE: ./actions/msi-sync/src/mermaid.ts
-
-
-
-
-
-
-const MERMAID_BLOCK_RE = /```mermaid\r?\n([\s\S]*?)```/g;
-const execFileAsync = (0,external_node_util_.promisify)(external_node_child_process_namespaceObject.execFile);
-function extractMermaidBlocks(markdown) {
-    return [...markdown.matchAll(MERMAID_BLOCK_RE)].map((match) => match[1] ?? "");
-}
-function replaceMermaidBlocks(markdown, replacements) {
-    let index = 0;
-    return markdown.replace(MERMAID_BLOCK_RE, () => replacements[index++] ?? "");
-}
-async function renderMermaidBlocks(options) {
-    const blocks = extractMermaidBlocks(options.markdown);
-    if (blocks.length === 0) {
-        return [];
-    }
-    const format = options.format ?? "svg";
-    const outputRelativeDirectory = options.outputRelativeDirectory ?? (0,external_node_path_namespaceObject.basename)(options.outputDirectory);
-    const renderer = options.renderer ?? renderMermaidWithMmdc;
-    await (0,promises_namespaceObject.mkdir)(options.outputDirectory, { recursive: true });
-    const results = [];
-    for (const [index, block] of blocks.entries()) {
-        const filename = `mermaid-${index + 1}.${format}`;
-        const outputPath = (0,external_node_path_namespaceObject.join)(options.outputDirectory, filename);
-        const outputRelativePath = external_node_path_namespaceObject.posix.join(outputRelativeDirectory, filename);
-        try {
-            await renderer({
-                index,
-                source: block,
-                outputPath,
-                outputRelativePath,
-                format,
-            });
-            await ensureRenderedOutput(outputPath, index);
-        }
-        catch (error) {
-            throw wrapMermaidRenderError(error, index);
-        }
-        results.push({
-            index,
-            source: block,
-            outputPath,
-            outputRelativePath,
-            format,
-            replacementMarkdown: `![Mermaid diagram ${index + 1}](${outputRelativePath})`,
-        });
-    }
-    return results;
-}
-async function renderMermaidWithMmdc(request) {
-    const workspace = await (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), "msi-sync-mermaid-"));
-    const inputPath = (0,external_node_path_namespaceObject.join)(workspace, `mermaid-${request.index + 1}.mmd`);
-    try {
-        await (0,promises_namespaceObject.writeFile)(inputPath, request.source, "utf8");
-        await execFileAsync("mmdc", ["-i", inputPath, "-o", request.outputPath]);
-    }
-    finally {
-        await (0,promises_namespaceObject.rm)(workspace, { recursive: true, force: true });
-    }
-}
-async function ensureRenderedOutput(outputPath, index) {
-    const outputStat = await (0,promises_namespaceObject.stat)(outputPath).catch(() => undefined);
-    if (!outputStat?.isFile()) {
-        throw new ActionError("MSI_MERMAID_RENDER_FAILED", "stage_mermaid", `Mermaid block ${index + 1} did not produce an output file at '${outputPath}'.`);
-    }
-}
-function wrapMermaidRenderError(error, index) {
-    if (error instanceof ActionError) {
-        return error;
-    }
-    const message = error instanceof Error ? error.message : String(error);
-    const errorCode = typeof error === "object" && error && "code" in error
-        ? String(error.code)
-        : undefined;
-    if (errorCode === "ENOENT" || message.includes("ENOENT")) {
-        return new ActionError("MSI_MERMAID_RENDER_FAILED", "stage_mermaid", "Mermaid blocks were found, but 'mmdc' is not available on PATH. Install '@mermaid-js/mermaid-cli' or make 'mmdc' available before running MSI sync.");
-    }
-    return new ActionError("MSI_MERMAID_RENDER_FAILED", "stage_mermaid", `Mermaid block ${index + 1} could not be rendered via 'mmdc': ${message}`);
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/staging.ts
-
-
-
-
-
-const MARKDOWN_IMAGE_RE = /!\[[^\]]*]\(([^)]+)\)/g;
-const REMOTE_REFERENCE_RE = /^[a-z][a-z0-9+.-]*:/i;
-function collectAttachmentReferences(markdown) {
-    const results = new Set();
-    for (const match of markdown.matchAll(MARKDOWN_IMAGE_RE)) {
-        const target = normalizeAttachmentReference(match[1]);
-        if (!target || !isLocalAttachmentReference(target)) {
-            continue;
-        }
-        results.add(target);
-    }
-    return [...results];
-}
-function rewriteAttachmentReferences(markdown, replacements) {
-    let rewritten = markdown;
-    for (const [from, to] of replacements.entries()) {
-        rewritten = rewritten.split(`](${from})`).join(`](${to})`);
-    }
-    return rewritten;
-}
-async function stageMarkdownPage(options) {
-    await (0,promises_namespaceObject.mkdir)(options.stageDirectory, { recursive: true });
-    const sourceMarkdown = await (0,promises_namespaceObject.readFile)(options.markdownFilePath, "utf8");
-    const attachmentReferences = collectAttachmentReferences(sourceMarkdown);
-    const attachments = [];
-    const attachmentReplacements = new Map();
-    for (const reference of attachmentReferences) {
-        const sourcePath = await resolveAttachmentSource(reference, options);
-        const stagedRelativePath = buildStagedAssetRelativePath("attachments", sourcePath, reference);
-        const stagedPath = (0,external_node_path_namespaceObject.join)(options.stageDirectory, ...stagedRelativePath.split("/"));
-        await (0,promises_namespaceObject.mkdir)((0,external_node_path_namespaceObject.dirname)(stagedPath), { recursive: true });
-        await (0,promises_namespaceObject.copyFile)(sourcePath, stagedPath);
-        attachments.push({
-            sourcePath,
-            stagedPath,
-            stagedRelativePath,
-            originalReference: reference,
-        });
-        attachmentReplacements.set(reference, stagedRelativePath);
-    }
-    let stagedMarkdown = rewriteAttachmentReferences(sourceMarkdown, attachmentReplacements);
-    const mermaidOutputs = await renderMermaidBlocks({
-        markdown: stagedMarkdown,
-        outputDirectory: (0,external_node_path_namespaceObject.join)(options.stageDirectory, "mermaid"),
-        outputRelativeDirectory: "mermaid",
-        renderer: options.mermaidRenderer,
-    });
-    const mermaidReplacements = new Map(mermaidOutputs.map((output) => [output.index, output.replacementMarkdown]));
-    if (mermaidOutputs.length > 0) {
-        stagedMarkdown = replaceMermaidBlocks(stagedMarkdown, mermaidOutputs.map((output) => output.replacementMarkdown));
-    }
-    const stagedMarkdownPath = (0,external_node_path_namespaceObject.join)(options.stageDirectory, (0,external_node_path_namespaceObject.basename)(options.markdownFilePath));
-    await (0,promises_namespaceObject.writeFile)(stagedMarkdownPath, stagedMarkdown, "utf8");
-    return {
-        sourceMarkdownPath: options.markdownFilePath,
-        stagedMarkdownPath,
-        sourceMarkdown,
-        stagedMarkdown,
-        attachments,
-        mermaidOutputs,
-        attachmentReplacements,
-        mermaidReplacements,
-    };
-}
-function normalizeAttachmentReference(reference) {
-    const normalized = reference?.trim();
-    if (!normalized) {
-        return undefined;
-    }
-    if (normalized.startsWith("<") && normalized.endsWith(">")) {
-        return normalized.slice(1, -1).trim();
-    }
-    return normalized;
-}
-function isLocalAttachmentReference(reference) {
-    return !reference.startsWith("/") && !reference.startsWith("#") && !REMOTE_REFERENCE_RE.test(reference);
-}
-async function resolveAttachmentSource(reference, options) {
-    const candidates = [
-        options.diagramsSource ? (0,external_node_path_namespaceObject.resolve)(options.diagramsSource, reference) : undefined,
-        (0,external_node_path_namespaceObject.resolve)((0,external_node_path_namespaceObject.dirname)(options.markdownFilePath), reference),
-    ].filter((candidate) => Boolean(candidate));
-    for (const candidate of candidates) {
-        const candidateStat = await (0,promises_namespaceObject.stat)(candidate).catch(() => undefined);
-        if (candidateStat?.isFile()) {
-            return candidate;
-        }
-    }
-    const searchRoots = [
-        options.diagramsSource ? `diagrams_source '${options.diagramsSource}'` : undefined,
-        `markdown directory '${(0,external_node_path_namespaceObject.dirname)(options.markdownFilePath)}'`,
-    ]
-        .filter(Boolean)
-        .join(", ");
-    throw new ActionError("MSI_ATTACHMENT_NOT_FOUND", "stage_markdown", `Attachment reference '${reference}' from '${options.markdownFilePath}' could not be resolved. Checked ${searchRoots}.`);
-}
-function buildStagedAssetRelativePath(directory, sourcePath, reference) {
-    const digest = (0,external_node_crypto_.createHash)("sha1")
-        .update(`${reference}\0${sourcePath}`)
-        .digest("hex")
-        .slice(0, 12);
-    return external_node_path_namespaceObject.posix.join(directory, `${digest}-${(0,external_node_path_namespaceObject.basename)(sourcePath)}`);
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/sync.ts
-
-
-
-
-
-
-
-
-
-async function executeMsiSync(inputs, publishPlan, stats, options = {}) {
-    const stageRoot = await (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), "msi-sync-stage-"));
-    const client = options.createClient?.(inputs) ??
-        new ConfluenceHttpClient({
-            baseUrl: inputs.baseUrl,
-            spaceKey: inputs.spaceKey,
-            token: inputs.token,
-        });
-    const publishedPageIds = new Map();
-    const planEntriesById = new Map(publishPlan.entries.map((entry) => [entry.id, entry]));
-    let publishedPages = 0;
-    try {
-        for (const [index, entry] of publishPlan.entries.entries()) {
-            const parentId = resolveParentId(entry, publishedPageIds, planEntriesById, stats);
-            if (!parentId) {
-                continue;
-            }
-            if (entry.pageKind === "directory") {
-                const result = await publishDirectoryPage(client, stats, {
-                    title: entry.pageTitle,
-                    html: renderDirectoryTitleHtml(entry.pageTitle),
-                    parentId,
-                });
-                if (!result) {
-                    continue;
-                }
-                publishedPages += 1;
-                publishedPageIds.set(entry.id, result.pageId);
-                continue;
-            }
-            if (!entry.sourceFilePath) {
-                stats.recordFailure("read", entry.pageTitle, "ERROR", undefined, {
-                    parentTitle: entry.pageTitle,
-                });
-                continue;
-            }
-            const pageStageDirectory = (0,external_node_path_namespaceObject.join)(stageRoot, `${String(index + 1).padStart(4, "0")}-${sanitizePathComponent(entry.id)}`);
-            const stagedPage = await stageMarkdownPage({
-                markdownFilePath: entry.sourceFilePath,
-                stageDirectory: pageStageDirectory,
-                diagramsSource: inputs.diagramsSource,
-            });
-            const publishableAttachments = await toPublishableAttachments(stagedPage);
-            const initialHtml = await renderMarkdownToHtml(stagedPage.stagedMarkdown);
-            const pageResult = await publishFilePage(client, stats, {
-                title: entry.pageTitle,
-                html: initialHtml,
-                parentId,
-                attachments: publishableAttachments,
-            });
-            if (!pageResult) {
-                continue;
-            }
-            publishedPages += 1;
-            publishedPageIds.set(entry.id, pageResult.pageId);
-            if (publishableAttachments.length === 0) {
-                continue;
-            }
-            const finalMarkdown = rewriteAttachmentReferences(stagedPage.stagedMarkdown, buildAttachmentUrlMap(inputs.baseUrl, pageResult.pageId, [
-                ...stagedPage.attachments.map((attachment) => ({
-                    reference: attachment.stagedRelativePath,
-                    filename: (0,external_node_path_namespaceObject.basename)(attachment.stagedPath),
-                })),
-                ...stagedPage.mermaidOutputs.map((output) => ({
-                    reference: output.outputRelativePath,
-                    filename: (0,external_node_path_namespaceObject.basename)(output.outputPath),
-                })),
-            ]));
-            const finalHtml = await renderMarkdownToHtml(finalMarkdown);
-            const updateResult = await client.updatePage({
-                id: pageResult.pageId,
-                title: entry.pageTitle,
-                html: finalHtml,
-                parentId,
-            });
-            if (!updateResult.ok) {
-                stats.recordFailure("update", entry.pageTitle, updateResult.statusCode, extractReferralId(updateResult.body));
-            }
-        }
-    }
-    finally {
-        await (0,promises_namespaceObject.rm)(stageRoot, { recursive: true, force: true });
-    }
-    await writeStepSummary(publishPlan, publishedPages, stats);
-    return { publishedPages };
-}
-function resolveParentId(entry, publishedPageIds, planEntriesById, stats) {
-    if (entry.parent.type === "page-id") {
-        return entry.parent.value;
-    }
-    const parentId = publishedPageIds.get(entry.parent.value);
-    if (parentId) {
-        return parentId;
-    }
-    const parentEntry = planEntriesById.get(entry.parent.value);
-    stats.recordFailure("parent", entry.pageTitle, "SKIPPED", undefined, {
-        parentTitle: parentEntry?.pageTitle,
-    });
-    return undefined;
-}
-async function toPublishableAttachments(stagedPage) {
-    const attachments = [];
-    for (const attachment of stagedPage.attachments) {
-        attachments.push({
-            filename: (0,external_node_path_namespaceObject.basename)(attachment.stagedPath),
-            data: await readBinary(attachment.stagedPath),
-            contentType: detectContentType(attachment.stagedPath),
-        });
-    }
-    for (const output of stagedPage.mermaidOutputs) {
-        attachments.push({
-            filename: (0,external_node_path_namespaceObject.basename)(output.outputPath),
-            data: await readBinary(output.outputPath),
-            contentType: "image/svg+xml",
-        });
-    }
-    return attachments;
-}
-async function readBinary(filePath) {
-    return new Uint8Array(await (0,promises_namespaceObject.readFile)(filePath));
-}
-function buildAttachmentUrlMap(baseUrl, pageId, attachments) {
-    const trimmedBaseUrl = baseUrl.replace(/\/+$/, "");
-    return new Map(attachments.map((attachment) => [
-        attachment.reference,
-        `${trimmedBaseUrl}/download/attachments/${encodeURIComponent(pageId)}/${encodeURIComponent(attachment.filename)}`,
-    ]));
-}
-function detectContentType(filePath) {
-    const lowerPath = filePath.toLowerCase();
-    if (lowerPath.endsWith(".png")) {
-        return "image/png";
-    }
-    if (lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg")) {
-        return "image/jpeg";
-    }
-    if (lowerPath.endsWith(".gif")) {
-        return "image/gif";
-    }
-    if (lowerPath.endsWith(".bmp")) {
-        return "image/bmp";
-    }
-    if (lowerPath.endsWith(".tiff") || lowerPath.endsWith(".tif")) {
-        return "image/tiff";
-    }
-    if (lowerPath.endsWith(".svg")) {
-        return "image/svg+xml";
-    }
-    return "application/octet-stream";
-}
-function sanitizePathComponent(value) {
-    return value.replace(/[^a-zA-Z0-9._-]+/g, "-");
-}
-async function writeStepSummary(publishPlan, publishedPages, stats) {
-    const filePages = publishPlan.entries.filter((entry) => entry.sourceFilePath).length;
-    const warningLines = publishPlan.warnings.map((warning) => `warning | ${warning}`);
-    const summaryLines = [
-        `publish-roots | ${publishPlan.roots.length}`,
-        `file-pages | ${filePages}`,
-        `published-pages | ${publishedPages}`,
-        ...warningLines,
-    ];
-    if (stats.hasFailures()) {
-        summaryLines.push(stats.renderSummary());
-    }
-    else {
-        summaryLines.push("status | success");
-    }
-    await summary
-        .addHeading("MSI Sync")
-        .addCodeBlock(summaryLines.join("\n"), "text")
-        .write();
-}
-
-;// CONCATENATED MODULE: ./actions/msi-sync/src/index.ts
-
-
+;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/index.ts
 
 
 
@@ -32287,41 +31230,13 @@ async function writeStepSummary(publishPlan, publishedPages, stats) {
 
 
 async function run() {
-    const inputs = readMsiSyncInputs();
-    await ensureSourceDirectory(inputs.from);
-    info(`Preparing MSI sync from ${inputs.from} into space ${inputs.spaceKey} under parent page ${inputs.parentPageId}.`);
-    const validationIssues = await validatePath(inputs.from);
-    if (validationIssues.length > 0) {
-        for (const issue of validationIssues) {
-            error(`${issue.filePath} | ${issue.ruleId} | ${issue.message}`);
-        }
-        throw new ActionError("MSI_INVALID_CONTENT", "validate_docs", "Source content contains Confluence-incompatible markdown/MDX. Fix the reported files upstream before MSI sync can publish them.");
-    }
-    const publishPlan = await buildPublishPlan({
-        sourceRoot: inputs.from,
-        parentPageId: inputs.parentPageId,
-        deploymentConfigPath: inputs.deploymentConfig,
-    });
-    const stats = new PublishStats();
-    for (const warning of publishPlan.warnings) {
-        core_warning(warning);
-    }
-    info(`Discovered ${publishPlan.entries.filter((entry) => entry.sourceFilePath).length} markdown file(s) across ${publishPlan.roots.length} publish root(s) for MSI sync.`);
-    if (publishPlan.entries.filter((entry) => entry.sourceFilePath).length === 0) {
-        notice("No markdown files found for MSI sync.");
-        return;
-    }
-    await executeMsiSync(inputs, publishPlan, stats);
-    if (stats.hasFailures()) {
-        throw new ActionError("MSI_PARTIAL_PUBLISH_FAILURE", "publish", stats.renderSummary());
-    }
-    notice("MSI sync publish completed successfully.");
-}
-async function ensureSourceDirectory(directory) {
-    const sourceStat = await (0,promises_namespaceObject.stat)(directory).catch(() => undefined);
-    if (!sourceStat?.isDirectory()) {
-        throw new ActionError("MSI_INVALID_INPUT", "validate_inputs", "'from' must reference an existing directory.");
-    }
+    const inputs = readRepoMetadataCollectInputs();
+    info(`Collecting repository metadata for ${inputs.repository}.`);
+    const report = await collectMetadataReport(inputs);
+    const reportFile = (0,external_node_path_namespaceObject.resolve)("metadata-report.json");
+    await (0,promises_namespaceObject.writeFile)(reportFile, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    setOutput("report_file", reportFile);
+    notice(`Metadata report written to ${reportFile}.`);
 }
 function handleRunFailure(error) {
     if (isActionError(error)) {

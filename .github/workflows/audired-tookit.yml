@@ -552,11 +552,19 @@ jobs:
 
       - name: Collection of metadata from repository
         id: metadata_collection
-        uses: RED-Internal-Development/audi-red-app-metadata-kit@staging
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-metadata-collect@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           workflow_run_id: ${{ github.event.workflow_run.id }}
+
+      - name: Upload metadata artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: metadata-report
+          path: ${{ steps.metadata_collection.outputs.report_file }}
+          retention-days: 1
+          if-no-files-found: error
 
       - name: Checkout AudiRed Doc Sync repository
         uses: actions/checkout@v6
@@ -665,6 +673,7 @@ jobs:
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_OUTPUT
           echo "docs_destination_app_folder=$docs_destination_app_folder" >> $GITHUB_OUTPUT
           echo "app_name=$app_name" >> $GITHUB_OUTPUT
+          echo "profile_key=$profile_key" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_OUTPUT
           echo "docs_branch=$docs_branch" >> $GITHUB_ENV
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> $GITHUB_ENV
@@ -675,96 +684,29 @@ jobs:
           echo "📁 Docs destination folder: $docs_destination_team_folder"
           echo "📁 App/Service folder: $docs_destination_app_folder"
 
-      - name: Update data/report.json with additional metadata
-        run: |
-          data_folder="data"
-          per_repo_folder="$data_folder/per-repo"
-          collection_report_file_path="collection-report/report.json"
-          metadata_file_path="metadata-report/metadata-report.json"
-          cypress_data_file_path="audired-cypress-report/audired-cypress-report.json"
-          output_file_path="combined-data.json"
-
-          repo_name=$(jq -r 'to_entries | .[0].key' "$metadata_file_path")
-          mkdir -p "collection-report"
-
-          if [[ -n "${{ github.event.workflow_run.id }}" && -f "$collection_report_file_path" ]]; then
-            jq --arg repo_name "$repo_name" \
-              '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
-              "$collection_report_file_path" "$metadata_file_path" > "$output_file_path"
-          else
-            cp "$metadata_file_path" "$output_file_path"
-          fi
-
-          if [[ -f "$cypress_data_file_path" ]]; then
-            jq --arg repo_name "$repo_name" \
-              '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
-              "$output_file_path" "$cypress_data_file_path" > "$output_file_path.tmp"
-            mv "$output_file_path.tmp" "$output_file_path"
-          else
-            echo "No cypress data artifact found."
-          fi
-
-          # Merge Jest data from Pattern A (scheduled runs)
-          jest_data_file_path="audired-jest-report/audired-jest-report.json"
-          if [[ -f "$jest_data_file_path" ]]; then
-            echo "Merging Jest coverage data from scheduled run..."
-            jq --arg repo_name "$repo_name" \
-              '.[ $repo_name ] |= (. + (input | .[ $repo_name ]))' \
-              "$output_file_path" "$jest_data_file_path" > "$output_file_path.tmp"
-            mv "$output_file_path.tmp" "$output_file_path"
-            echo "✅ Jest data merged successfully"
-          else
-            echo "No Jest data from scheduled run to merge"
-          fi
-
-          # prod_support_enabled variable
-
-          prod_support_enabled=false
-          if [ "${{ inputs.enable_vwgoa_prod_support_deployment }}" == "true" ]; then
-              prod_support_enabled=true
-          fi
-
-          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-          jq --arg repo_name "$repo_name" \
-            --argjson prod_support "$prod_support_enabled" \
-            --arg docs_destination_team_folder "$docs_destination_team_folder" \
-            --arg docs_destination_app_folder "$docs_destination_app_folder" \
-            --arg docs_branch "$docs_branch" \
-            --arg timestamp "$timestamp" \
-            '.[$repo_name] |= . + {prod_support_enabled: $prod_support, docs: {docs_destination_team_folder: $docs_destination_team_folder, docs_destination_app_folder: $docs_destination_app_folder, docs_branch: $docs_branch}, timestamp: $timestamp}' \
-            "$output_file_path" > collection-report/report.json
-
-          # Push artifact report to existing report.json
-          mkdir -p "$data_folder"
-
-          # Check if report.json exists inside the $data_folder folder; if not, create it
-          if [ ! -f "$data_folder"/report.json ]; then
-              echo "{}" > "$data_folder"/report.json
-          fi
-
-          jq -s '.[0] * .[1]' "$data_folder"/report.json collection-report/report.json > tmp_report.json
-
-          mv tmp_report.json "$data_folder"/report.json
-
-          mkdir -p "$per_repo_folder"
-          safe_repo_name=$(echo "$repo_name" | tr '/@ ' '___')
-          per_repo_file="$per_repo_folder/$safe_repo_name.json"
-          repo_snapshot_file="$per_repo_file.tmp"
-          jq --arg repo_name "$repo_name" '.[$repo_name]' collection-report/report.json > "$repo_snapshot_file"
-          if [[ ! -s "$repo_snapshot_file" ]] || [[ "$(cat "$repo_snapshot_file")" = "null" ]]; then
-            echo "{}" > "$per_repo_file"
-            rm -f "$repo_snapshot_file"
-          else
-            mv "$repo_snapshot_file" "$per_repo_file"
-          fi
+      - name: Assemble report.json data
+        id: report_sync
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-data-sync@main
+        with:
+          metadata_file: metadata-report/metadata-report.json
+          collection_report_file: collection-report/report.json
+          cypress_report_file: audired-cypress-report/report.json
+          jest_report_file: audired-jest-report/report.json
+          data_dir: data
+          collection_output_dir: collection-report
+          docs_destination_team_folder: ${{ steps.create-docs-folders.outputs.docs_destination_team_folder }}
+          docs_destination_app_folder: ${{ steps.create-docs-folders.outputs.docs_destination_app_folder }}
+          docs_branch: ${{ steps.create-docs-folders.outputs.docs_branch }}
+          app_type: ${{ needs.detect_project.outputs.app_type }}
+          profile_key: ${{ steps.create-docs-folders.outputs.profile_key }}
+          prod_support_enabled: ${{ inputs.enable_vwgoa_prod_support_deployment }}
 
       - name: Upload final report
         uses: actions/upload-artifact@v6
         if: always()
         with:
           name: data-report
-          path: collection-report/report.json
+          path: ${{ steps.report_sync.outputs.report_file }}
           retention-days: 1
           if-no-files-found: warn
 
@@ -773,6 +715,9 @@ jobs:
           git config --global user.email ${{ inputs.user_email }}
           git config --global user.name ${{ inputs.user_name }}
           git add data/report.json
+            if [ -d data/profile-dashboard ]; then
+              git add data/profile-dashboard/
+            fi
           if [ -d data/per-repo ]; then
               git add data/per-repo/
           fi
@@ -960,29 +905,28 @@ jobs:
             npm test -- --coverage
           fi
 
-      - name: Collect Jest Coverage using Collection Kit
+      - name: Collect Jest Coverage using Toolkit Action
         if: steps.check_script.outputs.exists == 'true'
-        uses: RED-Internal-Development/audi-red-collection-kit@main
+        id: collect_jest
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
-      
-      - name: Rename report for consistency
-        if: steps.check_script.outputs.exists == 'true'
-        shell: bash
-        run: |
-          if [ -f "report.json" ]; then
-            mv report.json audired-jest-report.json
-            echo "✅ Jest coverage report created via collection-kit"
-            cat audired-jest-report.json
-          fi
 
       - name: Upload Jest Coverage Report
         if: steps.check_script.outputs.exists == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: audired-jest-report
-          path: audired-jest-report.json
+          path: ${{ steps.collect_jest.outputs.report_file }}
+          retention-days: 30
+
+      - name: Upload Collection Report
+        if: steps.check_script.outputs.exists == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: audired-collection-report
+          path: ${{ steps.collect_jest.outputs.report_file }}
           retention-days: 30
 
   cypress_sync:
@@ -1037,97 +981,17 @@ jobs:
           echo "Runs only on a cron job"
           npm run test:e2e-run-dev
 
-      - name: E2E (Cypress) Coverage Collection
+      - name: Collect Cypress Coverage using Toolkit Action
         if: steps.check_script.outputs.exists == 'true'
-        run: |
-          if [ -d ".nyc_output" ]; then
-            COVERAGE_OUTPUT=$(npx nyc report --reporter=text-summary)
-
-            echo "Coverage Output: $COVERAGE_OUTPUT"
-
-            extract_raw() {
-              echo "$COVERAGE_OUTPUT" | grep -oPm1 "^$1\s*:\s*\K([0-9.]+|Unknown)(?=%)"
-            }
-
-            # Pull the *raw* value (may be 'Unknown')
-            RAW_STATEMENTS=$(extract_raw Statements)
-            RAW_BRANCHES=$(extract_raw Branches)
-            RAW_FUNCTIONS=$(extract_raw Functions)
-            RAW_LINES=$(extract_raw Lines)
-
-            # Check if all are Unknown first
-            if [[ $RAW_STATEMENTS == Unknown && \
-                $RAW_BRANCHES   == Unknown && \
-                $RAW_FUNCTIONS  == Unknown && \
-                $RAW_LINES      == Unknown ]]; then
-              echo "::error::Coverage summary returned 'Unknown' for all metrics – cannot proceed."
-              exit 1
-            fi
-
-            # Warn about individual Unknown metrics
-            UNKNOWN_COUNT=0
-            [[ $RAW_STATEMENTS == Unknown ]] && { echo "::warning::Statements coverage is unavailable"; ((UNKNOWN_COUNT++)); }
-            [[ $RAW_BRANCHES == Unknown ]] && { echo "::warning::Branches coverage is unavailable"; ((UNKNOWN_COUNT++)); }
-            [[ $RAW_FUNCTIONS == Unknown ]] && { echo "::warning::Functions coverage is unavailable"; ((UNKNOWN_COUNT++)); }
-            [[ $RAW_LINES == Unknown ]] && { echo "::warning::Lines coverage is unavailable"; ((UNKNOWN_COUNT++)); }
-
-            # Convert to numbers (Unknown -> 0)
-            to_num() { [[ $1 == Unknown ]] && echo 0 || echo "$1"; }
-
-            STATEMENTS=$(to_num "$RAW_STATEMENTS")
-            BRANCHES=$(to_num "$RAW_BRANCHES")
-            FUNCTIONS=$(to_num "$RAW_FUNCTIONS")
-            LINES=$(to_num "$RAW_LINES")
-
-            echo "Line coverage:      ${LINES}%   (raw: ${RAW_LINES})"
-            echo "Statement coverage: ${STATEMENTS}% (raw: ${RAW_STATEMENTS})"
-            echo "Function coverage:  ${FUNCTIONS}% (raw: ${RAW_FUNCTIONS})"
-            echo "Branch coverage:    ${BRANCHES}%  (raw: ${RAW_BRANCHES})"
-
-            # Calculate average but note if partial
-            if [[ $UNKNOWN_COUNT -gt 0 ]]; then
-              AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
-              echo "Average coverage: $AVERAGE_COVERAGE% (Note: $UNKNOWN_COUNT metric(s) unavailable, counted as 0%)"
-            else
-              AVERAGE_COVERAGE=$(echo "($LINES + $STATEMENTS + $FUNCTIONS + $BRANCHES) / 4" | bc -l)
-              echo "Average coverage: $AVERAGE_COVERAGE%"
-            fi
-          else
-            echo ".nyc_output folder does not exist for coverage reporting"
-            AVERAGE_COVERAGE=null
-          fi
-
-          echo "E2E_TEST_COVERAGE=$AVERAGE_COVERAGE" >> $GITHUB_ENV
-          echo "E2E_TEST_COVERAGE_STATEMENTS=$STATEMENTS" >> $GITHUB_ENV
-          echo "E2E_TEST_COVERAGE_BRANCHES=$BRANCHES" >> $GITHUB_ENV
-          echo "E2E_TEST_COVERAGE_FUNCTIONS=$FUNCTIONS" >> $GITHUB_ENV
-          echo "E2E_TEST_COVERAGE_LINES=$LINES" >> $GITHUB_ENV
-
-      - name: Extract repo_name from package.json
-        if: steps.check_script.outputs.exists == 'true'
-        run: |
-          repo_name=$(jq -r '.name' package.json)
-          echo "repo_name=$repo_name" >> $GITHUB_ENV
-
-      - name: Create audired-cypress-report.json
-        if: steps.check_script.outputs.exists == 'true'
-        run: |
-          echo "{}" > audired-cypress-report.json
-          report_json=$(cat audired-cypress-report.json)
-
-          updated_report=$(echo "$report_json" | jq --arg repo_name "$repo_name" \
-              --argjson e2e_test_coverage_statements "$E2E_TEST_COVERAGE_STATEMENTS" \
-              --argjson e2e_test_coverage_branches "$E2E_TEST_COVERAGE_BRANCHES" \
-              --argjson e2e_test_coverage_functions "$E2E_TEST_COVERAGE_FUNCTIONS" \
-              --argjson e2e_test_coverage_lines "$E2E_TEST_COVERAGE_LINES" \
-              --argjson e2e_test_coverage "$E2E_TEST_COVERAGE" \
-              '. + {($repo_name): {"e2e_test_coverage_breakdown": {"e2e_test_coverage_statements": $e2e_test_coverage_statements, "e2e_test_coverage_branches": $e2e_test_coverage_branches, "e2e_test_coverage_functions": $e2e_test_coverage_functions, "e2e_test_coverage_lines": $e2e_test_coverage_lines}, "e2e_test_coverage": $e2e_test_coverage}}')
-
-          echo "$updated_report" > audired-cypress-report.json
+        id: collect_cypress
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          cypress_coverage_temp_dir: .nyc_output
 
       - name: Upload report.json
         if: steps.check_script.outputs.exists == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: audired-cypress-report
-          path: audired-cypress-report.json
+          path: ${{ steps.collect_cypress.outputs.report_file }}
