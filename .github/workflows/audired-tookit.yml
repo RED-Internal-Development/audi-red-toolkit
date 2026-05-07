@@ -121,7 +121,8 @@ jobs:
       - name: Checkout toolkit config
         uses: actions/checkout@v6
         with:
-          repository: RED-Internal-Development/audi-red-toolkit
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
@@ -282,7 +283,8 @@ jobs:
       - name: Checkout toolkit config
         uses: actions/checkout@v6
         with:
-          repository: RED-Internal-Development/audi-red-toolkit
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
@@ -578,7 +580,7 @@ jobs:
           echo "Using source path: $SOURCE"
 
       - name: Push documentation to Audi RED Portal for syndication
-        uses: RED-Internal-Development/audi-red-toolkit/actions/docs-sync@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/docs-sync@fix/test-collection-flow
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
         with:
@@ -607,7 +609,7 @@ jobs:
 
       - name: Collection of metadata from repository
         id: metadata_collection
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-metadata-collect@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-metadata-collect@fix/test-collection-flow
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
@@ -631,7 +633,8 @@ jobs:
       - name: Checkout toolkit config
         uses: actions/checkout@v6
         with:
-          repository: RED-Internal-Development/audi-red-toolkit
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
@@ -752,7 +755,7 @@ jobs:
 
       - name: Assemble report.json data
         id: report_sync
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-data-sync@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-data-sync@fix/test-collection-flow
         with:
           metadata_file: metadata-report/metadata-report.json
           collection_report_file: collection-report/report.json
@@ -812,7 +815,8 @@ jobs:
       - name: Checkout toolkit config
         uses: actions/checkout@v6
         with:
-          repository: RED-Internal-Development/audi-red-toolkit
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
           path: toolkit-config
 
@@ -1019,7 +1023,7 @@ jobs:
       - name: Collect Jest Coverage using Toolkit Action
         if: steps.collector_flags.outputs.jest_run == 'true'
         id: collect_jest
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@fix/test-collection-flow
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
@@ -1032,14 +1036,6 @@ jobs:
           path: ${{ steps.collect_jest.outputs.report_file }}
           retention-days: 30
 
-      - name: Upload Collection Report
-        if: steps.collector_flags.outputs.jest_run == 'true'
-        uses: actions/upload-artifact@v6
-        with:
-          name: audired-collection-report
-          path: ${{ steps.collect_jest.outputs.report_file }}
-          retention-days: 30
-
       - name: Cypress Coverage Run
         if: steps.collector_flags.outputs.cypress_run == 'true'
         run: |
@@ -1049,7 +1045,7 @@ jobs:
       - name: Collect Cypress Coverage using Toolkit Action
         if: steps.collector_flags.outputs.cypress_run == 'true'
         id: collect_cypress
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@fix/test-collection-flow
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           cypress_coverage_temp_dir: .nyc_output
@@ -1074,7 +1070,7 @@ jobs:
       - name: Collect Lighthouse Coverage using Toolkit Action
         if: steps.collector_flags.outputs.lighthouse_run == 'true'
         id: collect_lighthouse
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@fix/test-collection-flow
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           lighthouse_coverage_file_path: .lighthouseci/assertion-results.json
@@ -1085,4 +1081,22 @@ jobs:
         with:
           name: audired-lighthouse-report
           path: ${{ steps.collect_lighthouse.outputs.report_file }}
+          retention-days: 30
+
+      - name: Build Combined Collection Report
+        if: steps.collector_flags.outputs.install_required == 'true'
+        id: collect_combined
+        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@fix/test-collection-flow
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          jest_coverage_file_path: coverage/coverage-summary.json
+          lighthouse_coverage_file_path: .lighthouseci/assertion-results.json
+          cypress_coverage_temp_dir: .nyc_output
+
+      - name: Upload Collection Report
+        if: steps.collector_flags.outputs.install_required == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: audired-collection-report
+          path: ${{ steps.collect_combined.outputs.report_file }}
           retention-days: 30
