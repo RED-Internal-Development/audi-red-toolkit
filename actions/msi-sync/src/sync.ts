@@ -38,12 +38,19 @@ export async function executeMsiSync(
       token: inputs.token,
     });
   const publishedPageIds = new Map<string, string>();
-  const planEntriesById = new Map(publishPlan.entries.map((entry) => [entry.id, entry]));
+  const planEntriesById = new Map(
+    publishPlan.entries.map((entry) => [entry.id, entry]),
+  );
   let publishedPages = 0;
 
   try {
     for (const [index, entry] of publishPlan.entries.entries()) {
-      const parentId = resolveParentId(entry, publishedPageIds, planEntriesById, stats);
+      const parentId = resolveParentId(
+        entry,
+        publishedPageIds,
+        planEntriesById,
+        stats,
+      );
       if (!parentId) {
         continue;
       }
@@ -127,6 +134,9 @@ export async function executeMsiSync(
           entry.pageTitle,
           updateResult.statusCode,
           extractReferralId(updateResult.body),
+          {
+            responseBody: updateResult.body,
+          },
         );
       }
     }
@@ -161,7 +171,9 @@ function resolveParentId(
   return undefined;
 }
 
-async function toPublishableAttachments(stagedPage: Awaited<ReturnType<typeof stageMarkdownPage>>): Promise<PublishableAttachment[]> {
+async function toPublishableAttachments(
+  stagedPage: Awaited<ReturnType<typeof stageMarkdownPage>>,
+): Promise<PublishableAttachment[]> {
   const attachments: PublishableAttachment[] = [];
 
   for (const attachment of stagedPage.attachments) {
@@ -234,8 +246,12 @@ async function writeStepSummary(
   publishedPages: number,
   stats: PublishStats,
 ): Promise<void> {
-  const filePages = publishPlan.entries.filter((entry) => entry.sourceFilePath).length;
-  const warningLines = publishPlan.warnings.map((warning) => `warning | ${warning}`);
+  const filePages = publishPlan.entries.filter(
+    (entry) => entry.sourceFilePath,
+  ).length;
+  const warningLines = publishPlan.warnings.map(
+    (warning) => `warning | ${warning}`,
+  );
   const summaryLines = [
     `publish-roots | ${publishPlan.roots.length}`,
     `file-pages | ${filePages}`,
