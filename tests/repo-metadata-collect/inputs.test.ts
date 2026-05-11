@@ -17,6 +17,19 @@ describe("repo-metadata-collect input parsing", () => {
     });
   });
 
+  test("allows workflow_run_id to be omitted for manual dispatches", () => {
+    expect(
+      parseRepoMetadataCollectInputsFromRecord({
+        github_token: "token",
+        repository: "RED-Internal-Development/example-repo",
+      }),
+    ).toEqual({
+      githubToken: "token",
+      workflowRunId: undefined,
+      repository: "RED-Internal-Development/example-repo",
+    });
+  });
+
   test("requires owner/name repository format", () => {
     expect(() =>
       parseRepoMetadataCollectInputsFromRecord({

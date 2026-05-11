@@ -5,8 +5,8 @@ inputs:
     description: GitHub token used for querying repository metadata.
     required: true
   workflow_run_id:
-    description: Workflow run id preserved for compatibility with existing callers.
-    required: true
+    description: Optional workflow run id preserved for compatibility with existing callers.
+    required: false
   repository:
     description: Repository slug in owner/name form.
     required: true

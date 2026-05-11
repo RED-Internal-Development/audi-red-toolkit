@@ -280,6 +280,9 @@ jobs:
     if: ${{ always() && inputs.enable_doc_sync }}
     needs: [detect_project]
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Checkout toolkit config
         uses: actions/checkout@v6
         with:
@@ -347,9 +350,6 @@ jobs:
           echo "app_name=$app_name" >> "$GITHUB_OUTPUT"
           echo "docs_branch=$docs_branch" >> "$GITHUB_OUTPUT"
           echo "docs_destination_team_folder=$docs_destination_team_folder" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout
-        uses: actions/checkout@v6
 
       - name: Eslint check for Docusaurus build compatibility
         run: |
@@ -637,6 +637,14 @@ jobs:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
+
+      - name: Restore toolkit config after doc repo checkout
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
 
       - name: Download metadata artifact
         uses: actions/download-artifact@v5

@@ -31203,7 +31203,7 @@ function readRepoMetadataCollectInputs() {
 }
 function parseRepoMetadataCollectInputsFromRecord(inputs) {
     const githubToken = requireInput(inputs, "github_token");
-    const workflowRunId = requireInput(inputs, "workflow_run_id");
+    const workflowRunId = readOptionalInput(inputs, "workflow_run_id");
     const repository = requireInput(inputs, "repository");
     if (!repository.includes("/")) {
         throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", "repository must be in owner/name form.");
@@ -31220,6 +31220,10 @@ function requireInput(inputs, name) {
         throw new ActionError("METADATA_INVALID_INPUT", "validate_inputs", `${name} is required.`);
     }
     return value;
+}
+function readOptionalInput(inputs, name) {
+    const value = inputs[name]?.trim();
+    return value || undefined;
 }
 
 ;// CONCATENATED MODULE: ./actions/repo-metadata-collect/src/index.ts
