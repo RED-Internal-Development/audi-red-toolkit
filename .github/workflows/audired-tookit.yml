@@ -638,6 +638,14 @@ jobs:
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
 
+      - name: Restore toolkit config after doc repo checkout
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
+
       - name: Download metadata artifact
         uses: actions/download-artifact@v5
         with:
