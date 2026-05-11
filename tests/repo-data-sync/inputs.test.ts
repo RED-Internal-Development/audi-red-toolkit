@@ -9,6 +9,7 @@ describe("repo-data-sync input parsing", () => {
         metadata_file: "metadata-report/metadata-report.json",
         collection_report_file: "collection-report/report.json",
         cypress_report_file: "audired-cypress-report/report.json",
+        lighthouse_report_file: "audired-lighthouse-report/report.json",
         jest_report_file: "audired-jest-report/report.json",
         data_dir: "data",
         collection_output_dir: "collection-report",
@@ -17,12 +18,15 @@ describe("repo-data-sync input parsing", () => {
         docs_branch: "main",
         app_type: "feature_app",
         profile_key: "feature_app",
+        test_collection_policy:
+          '{"unit_test":{"enabled":true,"status_key":"unitTest","source_fields":["unit_test_coverage"]}}',
         prod_support_enabled: "true",
       }),
     ).toEqual({
       metadataFile: "metadata-report/metadata-report.json",
       collectionReportFile: "collection-report/report.json",
       cypressReportFile: "audired-cypress-report/report.json",
+      lighthouseReportFile: "audired-lighthouse-report/report.json",
       jestReportFile: "audired-jest-report/report.json",
       dataDir: "data",
       collectionOutputDir: "collection-report",
@@ -31,6 +35,8 @@ describe("repo-data-sync input parsing", () => {
       docsBranch: "main",
       appType: "feature_app",
       profileKey: "feature_app",
+      testCollectionPolicy:
+        '{"unit_test":{"enabled":true,"status_key":"unitTest","source_fields":["unit_test_coverage"]}}',
       prodSupportEnabled: true,
     });
   });

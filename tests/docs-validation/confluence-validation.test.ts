@@ -7,6 +7,7 @@ import {
   iterMarkdownFiles,
   validateMarkdownText,
   validatePath,
+  validateRenderedHtml,
 } from "../../packages/docs-validation/src/confluence-validation.js";
 
 describe("Confluence markdown validation", () => {
@@ -89,6 +90,38 @@ describe("Confluence markdown validation", () => {
     ]);
   });
 
+  test("detects malformed rendered self-closing void tags", () => {
+    const issues = validateRenderedHtml(
+      "<p>Alpha<br / />Beta</p>",
+      "rendered.html",
+    );
+
+    expect(issues).toEqual([
+      {
+        ruleId: "confluence.rendered_malformed_void_tag",
+        filePath: "rendered.html",
+        message:
+          "Rendered HTML contains malformed self-closing void tags such as '<br / />', which MSI Confluence rejects as invalid XHTML.",
+      },
+    ]);
+  });
+
+  test("detects rendered attribute values with unescaped ampersands", () => {
+    const issues = validateRenderedHtml(
+      '<p><a href="http://localhost:3000?market=us&vehicleId=123">link</a></p>',
+      "rendered.html",
+    );
+
+    expect(issues).toEqual([
+      {
+        ruleId: "confluence.rendered_attribute_unescaped_ampersand",
+        filePath: "rendered.html",
+        message:
+          "Rendered HTML contains an attribute value with an unescaped '&'. MSI Confluence requires '&amp;' inside XHTML attribute values such as href or src.",
+      },
+    ]);
+  });
+
   test("ignores examples inside inline and fenced code", () => {
     const issues = validateMarkdownText(
       [
@@ -103,6 +136,15 @@ describe("Confluence markdown validation", () => {
         "```",
       ].join("\n"),
       "clean.md",
+    );
+
+    expect(issues).toEqual([]);
+  });
+
+  test("does not flag markdown links with query-string ampersands after render normalization", () => {
+    const issues = validateMarkdownText(
+      "Tier 1: http://localhost:3000?market=us&vehicleId=1234567890",
+      "guide.md",
     );
 
     expect(issues).toEqual([]);

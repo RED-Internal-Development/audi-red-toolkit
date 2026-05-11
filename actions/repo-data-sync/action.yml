@@ -12,6 +12,10 @@ inputs:
     description: Optional path to the Cypress report artifact.
     required: false
     default: ""
+  lighthouse_report_file:
+    description: Optional path to the Lighthouse report artifact.
+    required: false
+    default: ""
   jest_report_file:
     description: Optional path to the Jest report artifact.
     required: false
@@ -39,6 +43,10 @@ inputs:
     default: ""
   profile_key:
     description: Optional resolved profile key for the new profile dashboard dataset.
+    required: false
+    default: ""
+  test_collection_policy:
+    description: Optional JSON object describing profile-driven test collection expectations.
     required: false
     default: ""
   prod_support_enabled:

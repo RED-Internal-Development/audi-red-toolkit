@@ -30966,12 +30966,16 @@ function readRepoDataSyncInputs() {
         metadata_file: getInput("metadata_file"),
         collection_report_file: getInput("collection_report_file"),
         cypress_report_file: getInput("cypress_report_file"),
+        lighthouse_report_file: getInput("lighthouse_report_file"),
         jest_report_file: getInput("jest_report_file"),
         data_dir: getInput("data_dir"),
         collection_output_dir: getInput("collection_output_dir"),
         docs_destination_team_folder: getInput("docs_destination_team_folder"),
         docs_destination_app_folder: getInput("docs_destination_app_folder"),
         docs_branch: getInput("docs_branch"),
+        app_type: getInput("app_type"),
+        profile_key: getInput("profile_key"),
+        test_collection_policy: getInput("test_collection_policy"),
         prod_support_enabled: getInput("prod_support_enabled"),
     });
 }
@@ -30980,12 +30984,16 @@ function parseRepoDataSyncInputsFromRecord(inputs) {
         metadataFile: requireInput(inputs, "metadata_file"),
         collectionReportFile: optionalInput(inputs, "collection_report_file"),
         cypressReportFile: optionalInput(inputs, "cypress_report_file"),
+        lighthouseReportFile: optionalInput(inputs, "lighthouse_report_file"),
         jestReportFile: optionalInput(inputs, "jest_report_file"),
         dataDir: optionalInput(inputs, "data_dir") ?? "data",
         collectionOutputDir: optionalInput(inputs, "collection_output_dir") ?? "collection-report",
         docsDestinationTeamFolder: requireInput(inputs, "docs_destination_team_folder"),
         docsDestinationAppFolder: requireInput(inputs, "docs_destination_app_folder"),
         docsBranch: requireInput(inputs, "docs_branch"),
+        appType: optionalInput(inputs, "app_type"),
+        profileKey: optionalInput(inputs, "profile_key"),
+        testCollectionPolicy: optionalInput(inputs, "test_collection_policy"),
         prodSupportEnabled: parseBoolean(optionalInput(inputs, "prod_support_enabled") ?? "false", "prod_support_enabled"),
     };
 }
@@ -31014,7 +31022,111 @@ function parseBoolean(value, name) {
 const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
+;// CONCATENATED MODULE: ./actions/repo-test-data-collect/src/report.ts
+function buildCollectionReport(metrics) {
+    const entry = {};
+    if (metrics.lighthouseScore !== undefined) {
+        entry.lighthouse_score = metrics.lighthouseScore;
+    }
+    if (metrics.unitTestCoverage !== undefined) {
+        entry.unit_test_coverage = metrics.unitTestCoverage;
+    }
+    if (metrics.unitTestCoverageData !== undefined) {
+        entry.unit_test_coverage_data = metrics.unitTestCoverageData;
+    }
+    if (metrics.e2eTestCoverage !== undefined) {
+        entry.e2e_test_coverage = metrics.e2eTestCoverage;
+    }
+    if (metrics.e2eTestCoverageBreakdown !== undefined) {
+        entry.e2e_test_coverage_breakdown = metrics.e2eTestCoverageBreakdown;
+    }
+    return {
+        [metrics.repoName]: entry,
+    };
+}
+function calculateAverageCoverage(values) {
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+function buildProfileDashboardReportV1(input) {
+    return {
+        schemaVersion: "1.0",
+        generatedAt: input.generatedAt,
+        repositories: input.repositories,
+    };
+}
+function buildFeatureAppProfileDashboardEntryV1(input) {
+    return {
+        repository: buildRepositoryRefV1(input.repoName),
+        appType: "feature_app",
+        profileKey: input.profileKey ?? "feature_app",
+        generatedAt: input.generatedAt,
+        metadata: input.metadata ?? {},
+        metrics: {
+            unitTest: buildUnitTestMetricsV1(input.unitTestCoverage, input.unitTestCoverageData),
+            e2eCoverage: input.e2eTestCoverage !== undefined ||
+                input.e2eTestCoverageBreakdown !== undefined
+                ? buildE2eCoverageMetricsV1(input.e2eTestCoverage, input.e2eTestCoverageBreakdown)
+                : undefined,
+            lighthouse: input.lighthouseScore !== undefined
+                ? { overallScore: input.lighthouseScore ?? null }
+                : undefined,
+        },
+        collectionStatus: input.collectionStatus,
+        dashboardSections: input.dashboardSections,
+    };
+}
+function buildBackendServiceProfileDashboardEntryV1(input) {
+    return {
+        repository: buildRepositoryRefV1(input.repoName),
+        appType: "backend_service",
+        profileKey: input.profileKey ?? "backend_service",
+        generatedAt: input.generatedAt,
+        metadata: input.metadata ?? {},
+        metrics: {
+            unitTest: buildUnitTestMetricsV1(input.unitTestCoverage, input.unitTestCoverageData),
+        },
+        collectionStatus: input.collectionStatus,
+        dashboardSections: input.dashboardSections,
+    };
+}
+function buildRepositoryRefV1(repoName) {
+    const [owner = repoName, name = repoName] = repoName.split("/");
+    return {
+        owner,
+        name,
+        fullName: repoName,
+        displayName: name,
+    };
+}
+function buildUnitTestMetricsV1(unitTestCoverage, unitTestCoverageData) {
+    return {
+        overallCoverage: unitTestCoverage ?? null,
+        breakdown: unitTestCoverageData
+            ? {
+                lines: unitTestCoverageData.line_coverage,
+                statements: unitTestCoverageData.statement_coverage,
+                functions: unitTestCoverageData.function_coverage,
+                branches: unitTestCoverageData.branch_coverage,
+            }
+            : undefined,
+    };
+}
+function buildE2eCoverageMetricsV1(e2eTestCoverage, e2eTestCoverageBreakdown) {
+    return {
+        overallCoverage: e2eTestCoverage ?? null,
+        breakdown: e2eTestCoverageBreakdown
+            ? {
+                lines: e2eTestCoverageBreakdown.e2e_test_coverage_lines,
+                statements: e2eTestCoverageBreakdown.e2e_test_coverage_statements,
+                functions: e2eTestCoverageBreakdown.e2e_test_coverage_functions,
+                branches: e2eTestCoverageBreakdown.e2e_test_coverage_branches,
+            }
+            : undefined,
+    };
+}
+
 ;// CONCATENATED MODULE: ./actions/repo-data-sync/src/sync.ts
+
 
 
 
@@ -31025,6 +31137,7 @@ async function executeRepoDataSync(inputs, options = {}) {
     let repoEntry = readRepoEntry(metadataReport, repoName);
     repoEntry = await mergeOptionalReport(repoEntry, repoName, inputs.collectionReportFile, "collection_report_file");
     repoEntry = await mergeOptionalReport(repoEntry, repoName, inputs.cypressReportFile, "cypress_report_file");
+    repoEntry = await mergeOptionalReport(repoEntry, repoName, inputs.lighthouseReportFile, "lighthouse_report_file");
     repoEntry = await mergeOptionalReport(repoEntry, repoName, inputs.jestReportFile, "jest_report_file");
     const timestamp = (options.now?.() ?? new Date()).toISOString();
     const finalRepoEntry = {
@@ -31050,7 +31163,17 @@ async function executeRepoDataSync(inputs, options = {}) {
     await writeJsonFile(sharedReportFile, sharedReport);
     const perRepoFile = (0,external_node_path_namespaceObject.resolve)(perRepoDir, `${toSafeRepoFileName(repoName)}.json`);
     await writeJsonFile(perRepoFile, finalRepoEntry);
-    return { reportFile, perRepoFile, repoName };
+    const profileDashboardDir = (0,external_node_path_namespaceObject.resolve)(dataDir, "profile-dashboard");
+    await (0,promises_namespaceObject.mkdir)(profileDashboardDir, { recursive: true });
+    const profileDashboardFile = (0,external_node_path_namespaceObject.resolve)(profileDashboardDir, "report.json");
+    const profileDashboardEntries = await readProfileDashboardEntries(profileDashboardFile);
+    const profileDashboardEntry = buildProfileDashboardEntry(finalRepoEntry, repoName, timestamp, inputs);
+    const nextProfileDashboardEntries = upsertProfileDashboardEntry(profileDashboardEntries, profileDashboardEntry);
+    await writeJsonFile(profileDashboardFile, buildProfileDashboardReportV1({
+        generatedAt: timestamp,
+        repositories: nextProfileDashboardEntries,
+    }));
+    return { reportFile, perRepoFile, profileDashboardFile, repoName };
 }
 async function mergeOptionalReport(repoEntry, repoName, reportFilePath, inputName) {
     if (!reportFilePath) {
@@ -31118,6 +31241,196 @@ async function pathExists(filePath) {
 function toSafeRepoFileName(repoName) {
     return repoName.replace(/[/@ ]/g, "_");
 }
+async function readProfileDashboardEntries(filePath) {
+    if (!(await pathExists(filePath))) {
+        return [];
+    }
+    const parsed = JSON.parse(await (0,promises_namespaceObject.readFile)(filePath, "utf8"));
+    const report = readObject(parsed, "profile-dashboard/report.json must contain a JSON object.");
+    const repositories = report.repositories;
+    if (!Array.isArray(repositories)) {
+        return [];
+    }
+    return repositories.filter((entry) => Boolean(entry) && typeof entry === "object" && !Array.isArray(entry));
+}
+function buildProfileDashboardEntry(finalRepoEntry, repoName, timestamp, inputs) {
+    const appType = normalizeProfileDashboardAppType(inputs.appType);
+    const profileKey = inputs.profileKey?.trim() || appType;
+    const testCollectionPolicy = parseTestCollectionPolicy(inputs.testCollectionPolicy, appType);
+    const metadata = buildProfileDashboardMetadata(finalRepoEntry);
+    const collectionStatus = buildCollectionStatus(finalRepoEntry, testCollectionPolicy);
+    const unitTestCoverage = readOptionalNumber(finalRepoEntry.unit_test_coverage);
+    const unitTestCoverageData = readOptionalUnitTestCoverageData(finalRepoEntry.unit_test_coverage_data);
+    if (appType === "backend_service") {
+        return buildBackendServiceProfileDashboardEntryV1({
+            repoName,
+            generatedAt: timestamp,
+            profileKey,
+            metadata,
+            unitTestCoverage,
+            unitTestCoverageData,
+            collectionStatus,
+        });
+    }
+    return buildFeatureAppProfileDashboardEntryV1({
+        repoName,
+        generatedAt: timestamp,
+        profileKey,
+        metadata,
+        unitTestCoverage,
+        unitTestCoverageData,
+        e2eTestCoverage: readOptionalNumber(finalRepoEntry.e2e_test_coverage),
+        e2eTestCoverageBreakdown: readOptionalE2eCoverageBreakdown(finalRepoEntry.e2e_test_coverage_breakdown),
+        lighthouseScore: readOptionalNumber(finalRepoEntry.lighthouse_score),
+        collectionStatus,
+    });
+}
+function normalizeProfileDashboardAppType(appType) {
+    return appType === "backend_service" ? "backend_service" : "feature_app";
+}
+function buildProfileDashboardMetadata(finalRepoEntry) {
+    const { lighthouse_score: _lighthouseScore, unit_test_coverage: _unitTestCoverage, unit_test_coverage_data: _unitTestCoverageData, e2e_test_coverage: _e2eTestCoverage, e2e_test_coverage_breakdown: _e2eTestCoverageBreakdown, timestamp: _timestamp, ...metadata } = finalRepoEntry;
+    return metadata;
+}
+function buildCollectionStatus(finalRepoEntry, testCollectionPolicy) {
+    const status = {};
+    for (const [metricName, metricPolicy] of Object.entries(testCollectionPolicy)) {
+        const statusKey = metricPolicy.statusKey?.trim() || toStatusKey(metricName);
+        const sourceFields = metricPolicy.sourceFields ?? [];
+        if (!metricPolicy.enabled) {
+            status[statusKey] = { status: "not_configured" };
+            continue;
+        }
+        const metricFound = hasAnyMetric(...sourceFields.map((fieldName) => finalRepoEntry[fieldName]));
+        status[statusKey] = metricFound
+            ? { status: "found" }
+            : { status: "missing" };
+    }
+    return Object.keys(status).length > 0 ? status : undefined;
+}
+function parseTestCollectionPolicy(rawPolicy, appType) {
+    if (!rawPolicy) {
+        return buildLegacyTestCollectionPolicy(appType);
+    }
+    try {
+        const parsed = JSON.parse(rawPolicy);
+        const record = readObject(parsed, "test_collection_policy must contain a JSON object.");
+        const policy = {};
+        for (const [metricName, metricValue] of Object.entries(record)) {
+            const metricPolicyRecord = readObject(metricValue, `test_collection_policy.${metricName} must be a JSON object.`);
+            const enabled = metricPolicyRecord.enabled === true;
+            const collector = readOptionalString(metricPolicyRecord.collector);
+            const required = typeof metricPolicyRecord.required === "boolean"
+                ? metricPolicyRecord.required
+                : undefined;
+            const statusKey = readOptionalString(metricPolicyRecord.status_key);
+            const sourceFields = readOptionalStringArray(metricPolicyRecord.source_fields);
+            policy[metricName] = {
+                enabled,
+                collector,
+                required,
+                statusKey,
+                sourceFields,
+            };
+        }
+        return policy;
+    }
+    catch (error) {
+        if (error instanceof ActionError) {
+            throw error;
+        }
+        throw new ActionError("REPORT_SYNC_INVALID_INPUT", "validate_inputs", "test_collection_policy must reference valid JSON.");
+    }
+}
+function buildLegacyTestCollectionPolicy(appType) {
+    const policy = {
+        unit_test: {
+            enabled: true,
+            statusKey: "unitTest",
+            sourceFields: ["unit_test_coverage", "unit_test_coverage_data"],
+        },
+    };
+    if (appType === "feature_app") {
+        policy.e2e_coverage = {
+            enabled: true,
+            statusKey: "e2eCoverage",
+            sourceFields: ["e2e_test_coverage", "e2e_test_coverage_breakdown"],
+        };
+        policy.lighthouse = {
+            enabled: true,
+            statusKey: "lighthouse",
+            sourceFields: ["lighthouse_score"],
+        };
+    }
+    return policy;
+}
+function readOptionalString(value) {
+    return typeof value === "string" && value.trim() ? value : undefined;
+}
+function readOptionalStringArray(value) {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+    const items = value.filter((item) => typeof item === "string" && item.trim().length > 0);
+    return items.length > 0 ? items : undefined;
+}
+function toStatusKey(metricName) {
+    return metricName.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+function hasAnyMetric(...values) {
+    return values.some((value) => value !== undefined);
+}
+function upsertProfileDashboardEntry(entries, nextEntry) {
+    const nextEntries = [...entries];
+    const entryIndex = nextEntries.findIndex((entry) => entry.repository.fullName === nextEntry.repository.fullName);
+    if (entryIndex >= 0) {
+        nextEntries[entryIndex] = nextEntry;
+        return nextEntries;
+    }
+    nextEntries.push(nextEntry);
+    return nextEntries;
+}
+function readOptionalNumber(value) {
+    return typeof value === "number" ? value : undefined;
+}
+function readOptionalUnitTestCoverageData(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return undefined;
+    }
+    const record = value;
+    if (typeof record.line_coverage !== "number" ||
+        typeof record.statement_coverage !== "number" ||
+        typeof record.function_coverage !== "number" ||
+        typeof record.branch_coverage !== "number" ||
+        typeof record.average_coverage !== "number") {
+        return undefined;
+    }
+    return {
+        line_coverage: record.line_coverage,
+        statement_coverage: record.statement_coverage,
+        function_coverage: record.function_coverage,
+        branch_coverage: record.branch_coverage,
+        average_coverage: record.average_coverage,
+    };
+}
+function readOptionalE2eCoverageBreakdown(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return undefined;
+    }
+    const record = value;
+    if (typeof record.e2e_test_coverage_statements !== "number" ||
+        typeof record.e2e_test_coverage_branches !== "number" ||
+        typeof record.e2e_test_coverage_functions !== "number" ||
+        typeof record.e2e_test_coverage_lines !== "number") {
+        return undefined;
+    }
+    return {
+        e2e_test_coverage_statements: record.e2e_test_coverage_statements,
+        e2e_test_coverage_branches: record.e2e_test_coverage_branches,
+        e2e_test_coverage_functions: record.e2e_test_coverage_functions,
+        e2e_test_coverage_lines: record.e2e_test_coverage_lines,
+    };
+}
 
 ;// CONCATENATED MODULE: ./actions/repo-data-sync/src/index.ts
 
@@ -31129,6 +31442,7 @@ async function run() {
     const result = await executeRepoDataSync(inputs);
     setOutput("report_file", result.reportFile);
     setOutput("per_repo_file", result.perRepoFile);
+    setOutput("profile_dashboard_file", result.profileDashboardFile);
     setOutput("repo_name", result.repoName);
     notice(`Report sync wrote ${result.reportFile}.`);
 }

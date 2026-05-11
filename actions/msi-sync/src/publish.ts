@@ -91,6 +91,9 @@ async function publishTypedPage(
       page.title,
       pageResult.statusCode,
       extractReferralId(pageResult.body),
+      {
+        responseBody: pageResult.body,
+      },
     );
     return undefined;
   }
@@ -158,7 +161,9 @@ async function publishAttachments(
   let hasFailure = false;
 
   for (const attachment of attachments) {
-    const existing = existingAttachmentsByTitle.get(attachment.filename.toLowerCase());
+    const existing = existingAttachmentsByTitle.get(
+      attachment.filename.toLowerCase(),
+    );
     const uploadResult = existing
       ? await client.updateAttachment({
           pageId,
@@ -184,6 +189,7 @@ async function publishAttachments(
         {
           targetType: "attachment",
           parentTitle: pageTitle,
+          responseBody: uploadResult.body,
         },
       );
       continue;
@@ -212,7 +218,10 @@ function recordRequestFailure(
       title,
       error.statusCode,
       extractReferralId(error.body),
-      context,
+      {
+        ...context,
+        responseBody: error.body,
+      },
     );
     return;
   }

@@ -14,6 +14,7 @@ import {
 import {
   extractReferralId,
   PublishStats,
+  summarizeResponseBody,
 } from "../../actions/msi-sync/src/summary.js";
 
 afterEach(() => {
@@ -31,12 +32,24 @@ describe("msi-sync publish summary", () => {
     expect(extractReferralId('{"referralId":"ref-123"}')).toBe("ref-123");
   });
 
+  test("normalizes and truncates response bodies for summaries", () => {
+    expect(summarizeResponseBody('  {\n  "message": "bad request"\n}  ')).toBe(
+      '{ "message": "bad request" }',
+    );
+
+    expect(summarizeResponseBody("x".repeat(220))).toHaveLength(180);
+    expect(summarizeResponseBody("x".repeat(220))).toMatch(/\.\.\.$/);
+  });
+
   test("renders attachment failures alongside page failures", () => {
     const stats = new PublishStats();
-    stats.recordFailure("create", "Deployment (my-service)", "500", "ref-500");
+    stats.recordFailure("create", "Deployment (my-service)", "500", "ref-500", {
+      responseBody: '{"message":"page create failed"}',
+    });
     stats.recordFailure("upload", "diagram.png", "409", "ref-409", {
       targetType: "attachment",
       parentTitle: "Deployment (my-service)",
+      responseBody: '{"message":"attachment conflict"}',
     });
 
     expect(stats.hasFailures()).toBe(true);
@@ -44,6 +57,12 @@ describe("msi-sync publish summary", () => {
     expect(stats.renderSummary()).toContain("page:create=1");
     expect(stats.renderSummary()).toContain("attachment:upload=1");
     expect(stats.renderSummary()).toContain("diagram.png");
+    expect(stats.renderSummary()).toContain(
+      'body={"message":"page create failed"}',
+    );
+    expect(stats.renderSummary()).toContain(
+      'body={"message":"attachment conflict"}',
+    );
     expect(stats.renderSummary()).toContain("page=Deployment (my-service)");
   });
 
@@ -286,6 +305,7 @@ describe("msi-sync publish summary", () => {
     expect(result).toBeUndefined();
     expect(stats.renderSummary()).toContain("attachment | upload");
     expect(stats.renderSummary()).toContain("ref-att");
+    expect(stats.renderSummary()).toContain('body={"referralId":"ref-att"}');
   });
 
   test("fails before Confluence writes when validation finds invalid content", async () => {

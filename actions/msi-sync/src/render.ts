@@ -1,7 +1,9 @@
 import { marked } from "marked";
 
 const VOID_ELEMENT_RE =
-  /<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^<>]*?)?>/gi;
+  /<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)\b([^<>]*?)\/?>/gi;
+const UNESCAPED_AMP_RE = /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)/g;
+const ATTRIBUTE_VALUE_RE = /(=\s*")([^"]*)(")|(=\s*')([^']*)(')/g;
 
 export function stripFrontmatter(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
@@ -13,7 +15,10 @@ export function stripFrontmatter(markdown: string): string {
   for (let index = 1; index < lines.length; index += 1) {
     const line = lines[index]?.trim();
     if (line === "---" || line === "...") {
-      return lines.slice(index + 1).join("\n").replace(/^\n+/, "");
+      return lines
+        .slice(index + 1)
+        .join("\n")
+        .replace(/^\n+/, "");
     }
   }
 
@@ -26,7 +31,7 @@ export async function renderMarkdownToHtml(markdown: string): Promise<string> {
     gfm: true,
   });
 
-  return normalizeVoidElements(html);
+  return escapeHtmlAttributeAmpersands(normalizeVoidElements(html));
 }
 
 export function renderDirectoryTitleHtml(title: string): string {
@@ -43,18 +48,27 @@ function escapeHtml(value: string): string {
 }
 
 function normalizeVoidElements(html: string): string {
-  return html.replace(VOID_ELEMENT_RE, (fullMatch, tagName, attributes = "") => {
-    const normalizedTagName = String(tagName).toLowerCase();
-    const normalizedAttributes = normalizedTagName === "img"
-      ? ensureConfluenceImageWidth(attributes)
-      : attributes;
+  return html.replace(
+    VOID_ELEMENT_RE,
+    (fullMatch, tagName, attributes = "") => {
+      const normalizedTagName = String(tagName).toLowerCase();
+      const normalizedAttributes = escapeAttributeAmpersands(
+        normalizeAttributeSpacing(
+          normalizedTagName === "img"
+            ? ensureConfluenceImageWidth(
+                stripTrailingSelfClosingSlash(attributes),
+              )
+            : stripTrailingSelfClosingSlash(attributes),
+        ),
+      );
 
-    if (fullMatch.endsWith("/>")) {
+      if (fullMatch.endsWith("/>")) {
+        return `<${normalizedTagName}${normalizedAttributes} />`;
+      }
+
       return `<${normalizedTagName}${normalizedAttributes} />`;
-    }
-
-    return `<${normalizedTagName}${normalizedAttributes} />`;
-  });
+    },
+  );
 }
 
 function ensureConfluenceImageWidth(attributes: string): string {
@@ -63,4 +77,38 @@ function ensureConfluenceImageWidth(attributes: string): string {
   }
 
   return `${attributes} width="100%"`;
+}
+
+function stripTrailingSelfClosingSlash(attributes: string): string {
+  return attributes.replace(/\s*\/\s*$/, "");
+}
+
+function normalizeAttributeSpacing(attributes: string): string {
+  const trimmed = attributes.trim();
+  return trimmed.length > 0 ? ` ${trimmed}` : "";
+}
+
+function escapeAttributeAmpersands(attributes: string): string {
+  return escapeHtmlAttributeAmpersands(attributes);
+}
+
+function escapeHtmlAttributeAmpersands(html: string): string {
+  return html.replace(
+    ATTRIBUTE_VALUE_RE,
+    (
+      fullMatch,
+      doublePrefix,
+      doubleValue,
+      doubleSuffix,
+      singlePrefix,
+      singleValue,
+      singleSuffix,
+    ) => {
+      if (doublePrefix) {
+        return `${doublePrefix}${String(doubleValue).replace(UNESCAPED_AMP_RE, "&amp;")}${doubleSuffix}`;
+      }
+
+      return `${singlePrefix}${String(singleValue).replace(UNESCAPED_AMP_RE, "&amp;")}${singleSuffix}`;
+    },
+  );
 }
