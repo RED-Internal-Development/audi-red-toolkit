@@ -4,7 +4,7 @@ import { ActionError } from "../../../packages/action-common/src/errors.js";
 
 export interface MetadataSyncInputs {
   githubToken: string;
-  workflowRunId: string;
+  workflowRunId?: string;
   repository: string;
 }
 
@@ -25,7 +25,7 @@ export function parseRepoMetadataCollectInputsFromRecord(
   inputs: InputRecord,
 ): MetadataSyncInputs {
   const githubToken = requireInput(inputs, "github_token");
-  const workflowRunId = requireInput(inputs, "workflow_run_id");
+  const workflowRunId = readOptionalInput(inputs, "workflow_run_id");
   const repository = requireInput(inputs, "repository");
 
   if (!repository.includes("/")) {
@@ -54,4 +54,12 @@ function requireInput(inputs: InputRecord, name: string): string {
   }
 
   return value;
+}
+
+function readOptionalInput(
+  inputs: InputRecord,
+  name: string,
+): string | undefined {
+  const value = inputs[name]?.trim();
+  return value || undefined;
 }
