@@ -580,7 +580,7 @@ jobs:
           echo "Using source path: $SOURCE"
 
       - name: Push documentation to Audi RED Portal for syndication
-        uses: RED-Internal-Development/audi-red-toolkit/actions/docs-sync@main
+        uses: ./toolkit-config/actions/docs-sync
         env:
           API_TOKEN_GITHUB: ${{ secrets.DOC_SYNC_KEY }}
         with:
@@ -607,9 +607,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
+      - name: Checkout toolkit config
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
+
       - name: Collection of metadata from repository
         id: metadata_collection
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-metadata-collect@main
+        uses: ./toolkit-config/actions/repo-metadata-collect
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
@@ -629,14 +637,6 @@ jobs:
           repository: ${{ inputs.destination_repo }}
           token: ${{ secrets.DOC_SYNC_KEY }}
           ref: doc-sync-queue
-
-      - name: Checkout toolkit config
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: toolkit-config
 
       - name: Download metadata artifact
         uses: actions/download-artifact@v5
@@ -755,7 +755,7 @@ jobs:
 
       - name: Assemble report.json data
         id: report_sync
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-data-sync@main
+        uses: ./toolkit-config/actions/repo-data-sync
         with:
           metadata_file: metadata-report/metadata-report.json
           collection_report_file: collection-report/report.json
@@ -943,6 +943,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
+      - name: Checkout toolkit config
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: toolkit-config
+
       - name: Determine enabled collectors
         id: collector_flags
         shell: bash
@@ -1023,7 +1031,7 @@ jobs:
       - name: Collect Jest Coverage using Toolkit Action
         if: steps.collector_flags.outputs.jest_run == 'true'
         id: collect_jest
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        uses: ./toolkit-config/actions/repo-test-data-collect
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
@@ -1045,7 +1053,7 @@ jobs:
       - name: Collect Cypress Coverage using Toolkit Action
         if: steps.collector_flags.outputs.cypress_run == 'true'
         id: collect_cypress
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        uses: ./toolkit-config/actions/repo-test-data-collect
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           cypress_coverage_temp_dir: .nyc_output
@@ -1070,7 +1078,7 @@ jobs:
       - name: Collect Lighthouse Coverage using Toolkit Action
         if: steps.collector_flags.outputs.lighthouse_run == 'true'
         id: collect_lighthouse
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        uses: ./toolkit-config/actions/repo-test-data-collect
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           lighthouse_coverage_file_path: .lighthouseci/assertion-results.json
@@ -1086,7 +1094,7 @@ jobs:
       - name: Build Combined Collection Report
         if: steps.collector_flags.outputs.install_required == 'true'
         id: collect_combined
-        uses: RED-Internal-Development/audi-red-toolkit/actions/repo-test-data-collect@main
+        uses: ./toolkit-config/actions/repo-test-data-collect
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           jest_coverage_file_path: coverage/coverage-summary.json
