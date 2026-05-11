@@ -2,6 +2,30 @@ feature_app:
   red_docs:
     base_path: "docs/feature_apps_v2/{app}"
     branch: "docs-sync/feature-apps"
+  test_collection:
+    unit_test:
+      enabled: true
+      collector: "jest"
+      required: true
+      status_key: "unitTest"
+      source_fields:
+        - "unit_test_coverage"
+        - "unit_test_coverage_data"
+    e2e_coverage:
+      enabled: true
+      collector: "cypress"
+      required: false
+      status_key: "e2eCoverage"
+      source_fields:
+        - "e2e_test_coverage"
+        - "e2e_test_coverage_breakdown"
+    lighthouse:
+      enabled: true
+      collector: "lighthouse"
+      required: false
+      status_key: "lighthouse"
+      source_fields:
+        - "lighthouse_score"
   msi:
     parent_page_id: "1838482057"
   vwgoa:
@@ -11,6 +35,15 @@ backend_service:
   red_docs:
     base_path: "docs/backend_services_v2/{app}"
     branch: "docs-sync/backend-services"
+  test_collection:
+    unit_test:
+      enabled: true
+      collector: "jest"
+      required: true
+      status_key: "unitTest"
+      source_fields:
+        - "unit_test_coverage"
+        - "unit_test_coverage_data"
   msi:
     parent_page_id: "1838482076"
 
@@ -18,6 +51,15 @@ mobile_app:
   red_docs:
     base_path: "docs/mobile_apps_v2/{app}"
     branch: "docs-sync/mobile-apps"
+  test_collection:
+    unit_test:
+      enabled: true
+      collector: "jest"
+      required: true
+      status_key: "unitTest"
+      source_fields:
+        - "unit_test_coverage"
+        - "unit_test_coverage_data"
   msi:
     parent_page_id: "1852703992"
 
@@ -25,6 +67,15 @@ audired_service:
   red_docs:
     base_path: "docs/audired_services/{app}"
     branch: "docs-sync/audired-services"
+  test_collection:
+    unit_test:
+      enabled: true
+      collector: "jest"
+      required: true
+      status_key: "unitTest"
+      source_fields:
+        - "unit_test_coverage"
+        - "unit_test_coverage_data"
   msi:
     parent_page_id: "1882393087"
 
@@ -32,3 +83,12 @@ special_app:
   red_docs:
     base_path: "docs/special_apps_v2/{app}"
     branch: "docs-sync/special-apps"
+  test_collection:
+    unit_test:
+      enabled: true
+      collector: "jest"
+      required: true
+      status_key: "unitTest"
+      source_fields:
+        - "unit_test_coverage"
+        - "unit_test_coverage_data"

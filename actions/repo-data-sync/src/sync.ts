@@ -16,6 +16,16 @@ import type { ReportSyncInputs } from "./inputs.js";
 
 type JsonRecord = Record<string, unknown>;
 
+interface TestCollectionMetricPolicy {
+  enabled: boolean;
+  collector?: string;
+  required?: boolean;
+  statusKey?: string;
+  sourceFields?: string[];
+}
+
+type TestCollectionPolicy = Record<string, TestCollectionMetricPolicy>;
+
 interface SyncRuntimeOptions {
   now?: () => Date;
 }
@@ -47,6 +57,12 @@ export async function executeRepoDataSync(
     repoName,
     inputs.cypressReportFile,
     "cypress_report_file",
+  );
+  repoEntry = await mergeOptionalReport(
+    repoEntry,
+    repoName,
+    inputs.lighthouseReportFile,
+    "lighthouse_report_file",
   );
   repoEntry = await mergeOptionalReport(
     repoEntry,
@@ -247,8 +263,15 @@ function buildProfileDashboardEntry(
 ): ProfileDashboardEntryV1 {
   const appType = normalizeProfileDashboardAppType(inputs.appType);
   const profileKey = inputs.profileKey?.trim() || appType;
+  const testCollectionPolicy = parseTestCollectionPolicy(
+    inputs.testCollectionPolicy,
+    appType,
+  );
   const metadata = buildProfileDashboardMetadata(finalRepoEntry);
-  const collectionStatus = buildCollectionStatus(finalRepoEntry, appType);
+  const collectionStatus = buildCollectionStatus(
+    finalRepoEntry,
+    testCollectionPolicy,
+  );
   const unitTestCoverage = readOptionalNumber(
     finalRepoEntry.unit_test_coverage,
   );
@@ -306,30 +329,136 @@ function buildProfileDashboardMetadata(finalRepoEntry: JsonRecord): JsonRecord {
 
 function buildCollectionStatus(
   finalRepoEntry: JsonRecord,
-  appType: "feature_app" | "backend_service",
+  testCollectionPolicy: TestCollectionPolicy,
 ): Record<string, ProfileDashboardCollectionStatusV1> | undefined {
-  const status: Record<string, ProfileDashboardCollectionStatusV1> = {
-    unitTest: hasAnyMetric(
-      finalRepoEntry.unit_test_coverage,
-      finalRepoEntry.unit_test_coverage_data,
-    )
-      ? { status: "found" }
-      : { status: "missing" },
-  };
+  const status: Record<string, ProfileDashboardCollectionStatusV1> = {};
 
-  if (appType === "feature_app") {
-    status.e2eCoverage = hasAnyMetric(
-      finalRepoEntry.e2e_test_coverage,
-      finalRepoEntry.e2e_test_coverage_breakdown,
-    )
+  for (const [metricName, metricPolicy] of Object.entries(
+    testCollectionPolicy,
+  )) {
+    const statusKey = metricPolicy.statusKey?.trim() || toStatusKey(metricName);
+    const sourceFields = metricPolicy.sourceFields ?? [];
+
+    if (!metricPolicy.enabled) {
+      status[statusKey] = { status: "not_configured" };
+      continue;
+    }
+
+    const metricFound = hasAnyMetric(
+      ...sourceFields.map((fieldName) => finalRepoEntry[fieldName]),
+    );
+
+    status[statusKey] = metricFound
       ? { status: "found" }
-      : { status: "not_configured" };
-    status.lighthouse = hasAnyMetric(finalRepoEntry.lighthouse_score)
-      ? { status: "found" }
-      : { status: "not_configured" };
+      : { status: "missing" };
   }
 
   return Object.keys(status).length > 0 ? status : undefined;
+}
+
+function parseTestCollectionPolicy(
+  rawPolicy: string | undefined,
+  appType: "feature_app" | "backend_service",
+): TestCollectionPolicy {
+  if (!rawPolicy) {
+    return buildLegacyTestCollectionPolicy(appType);
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(rawPolicy);
+    const record = readObject(
+      parsed,
+      "test_collection_policy must contain a JSON object.",
+    );
+    const policy: TestCollectionPolicy = {};
+
+    for (const [metricName, metricValue] of Object.entries(record)) {
+      const metricPolicyRecord = readObject(
+        metricValue,
+        `test_collection_policy.${metricName} must be a JSON object.`,
+      );
+      const enabled = metricPolicyRecord.enabled === true;
+      const collector = readOptionalString(metricPolicyRecord.collector);
+      const required =
+        typeof metricPolicyRecord.required === "boolean"
+          ? metricPolicyRecord.required
+          : undefined;
+      const statusKey = readOptionalString(metricPolicyRecord.status_key);
+      const sourceFields = readOptionalStringArray(
+        metricPolicyRecord.source_fields,
+      );
+
+      policy[metricName] = {
+        enabled,
+        collector,
+        required,
+        statusKey,
+        sourceFields,
+      };
+    }
+
+    return policy;
+  } catch (error) {
+    if (error instanceof ActionError) {
+      throw error;
+    }
+
+    throw new ActionError(
+      "REPORT_SYNC_INVALID_INPUT",
+      "validate_inputs",
+      "test_collection_policy must reference valid JSON.",
+    );
+  }
+}
+
+function buildLegacyTestCollectionPolicy(
+  appType: "feature_app" | "backend_service",
+): TestCollectionPolicy {
+  const policy: TestCollectionPolicy = {
+    unit_test: {
+      enabled: true,
+      statusKey: "unitTest",
+      sourceFields: ["unit_test_coverage", "unit_test_coverage_data"],
+    },
+  };
+
+  if (appType === "feature_app") {
+    policy.e2e_coverage = {
+      enabled: true,
+      statusKey: "e2eCoverage",
+      sourceFields: ["e2e_test_coverage", "e2e_test_coverage_breakdown"],
+    };
+    policy.lighthouse = {
+      enabled: true,
+      statusKey: "lighthouse",
+      sourceFields: ["lighthouse_score"],
+    };
+  }
+
+  return policy;
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function readOptionalStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const items = value.filter(
+    (item): item is string =>
+      typeof item === "string" && item.trim().length > 0,
+  );
+
+  return items.length > 0 ? items : undefined;
+}
+
+function toStatusKey(metricName: string): string {
+  return metricName.replace(/_([a-z])/g, (_, letter: string) =>
+    letter.toUpperCase(),
+  );
 }
 
 function hasAnyMetric(...values: unknown[]): boolean {

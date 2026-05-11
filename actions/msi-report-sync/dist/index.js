@@ -31149,6 +31149,7 @@ function isDirectoryFileCollision(directoryName, filename) {
 
 ;// CONCATENATED MODULE: ./actions/msi-sync/src/summary.ts
 const REFERRAL_ID_RE = /"referralId"\s*:\s*"([^"]+)"/;
+const MAX_RESPONSE_SNIPPET_LENGTH = 180;
 class PublishStats {
     failures = [];
     recordFailure(operation, title, statusCode, referralId, context) {
@@ -31157,6 +31158,7 @@ class PublishStats {
             title,
             statusCode,
             referralId,
+            responseSnippet: summarizeResponseBody(context?.responseBody),
             targetType: context?.targetType ?? "page",
             parentTitle: context?.parentTitle,
         });
@@ -31181,6 +31183,9 @@ class PublishStats {
                 failure.title,
                 failure.statusCode,
                 failure.referralId,
+                failure.responseSnippet
+                    ? `body=${failure.responseSnippet}`
+                    : undefined,
                 failure.parentTitle ? `page=${failure.parentTitle}` : undefined,
             ]
                 .filter(Boolean)
@@ -31190,6 +31195,19 @@ class PublishStats {
 }
 function extractReferralId(responseText) {
     return REFERRAL_ID_RE.exec(responseText)?.[1];
+}
+function summarizeResponseBody(responseText) {
+    if (!responseText) {
+        return undefined;
+    }
+    const normalized = responseText.replace(/\s+/g, " ").trim();
+    if (normalized.length === 0) {
+        return undefined;
+    }
+    if (normalized.length <= MAX_RESPONSE_SNIPPET_LENGTH) {
+        return normalized;
+    }
+    return `${normalized.slice(0, MAX_RESPONSE_SNIPPET_LENGTH - 3)}...`;
 }
 
 ;// CONCATENATED MODULE: ./actions/msi-sync/src/publish.ts
@@ -31226,7 +31244,9 @@ async function publishTypedPage(client, stats, pageKind, page) {
         : await client.createPage(page);
     const pageOperation = existing ? "updated" : "created";
     if (!pageResult.ok) {
-        stats.recordFailure(existing ? "update" : "create", page.title, pageResult.statusCode, extractReferralId(pageResult.body));
+        stats.recordFailure(existing ? "update" : "create", page.title, pageResult.statusCode, extractReferralId(pageResult.body), {
+            responseBody: pageResult.body,
+        });
         return undefined;
     }
     const attachmentResults = await publishAttachments(client, stats, pageResult.id, page.title, pageOperation, page.attachments ?? []);
@@ -31290,6 +31310,7 @@ async function publishAttachments(client, stats, pageId, pageTitle, pageOperatio
             stats.recordFailure("upload", attachment.filename, uploadResult.statusCode, extractReferralId(uploadResult.body), {
                 targetType: "attachment",
                 parentTitle: pageTitle,
+                responseBody: uploadResult.body,
             });
             continue;
         }
@@ -31303,7 +31324,10 @@ async function publishAttachments(client, stats, pageId, pageTitle, pageOperatio
 }
 function recordRequestFailure(stats, operation, title, error, context) {
     if (error instanceof ConfluenceRequestError) {
-        stats.recordFailure(operation, title, error.statusCode, extractReferralId(error.body), context);
+        stats.recordFailure(operation, title, error.statusCode, extractReferralId(error.body), {
+            ...context,
+            responseBody: error.body,
+        });
         return;
     }
     stats.recordFailure(operation, title, "ERROR", undefined, context);
