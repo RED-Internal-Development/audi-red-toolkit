@@ -1,0 +1,33 @@
+name: Publish markdown/MDX docs to Confluence Cloud
+description: Validates, stages, and publishes a markdown or MDX directory tree to Atlassian Confluence Cloud.
+inputs:
+  from:
+    description: Directory to publish, relative to the repository root.
+    required: true
+  parentPageId:
+    description: Parent Confluence page ID for the published hierarchy.
+    required: true
+  deploymentConfig:
+    description: Optional JSON file describing extra folder-to-parent mappings.
+    required: false
+  baseUrl:
+    description: Base URL of the Confluence Cloud instance (e.g. https://yourorg.atlassian.net/).
+    required: true
+  spaceKey:
+    description: Confluence space key.
+    required: true
+  username:
+    description: Atlassian account email used for Basic authentication.
+    required: true
+  token:
+    description: Atlassian API token for the account (used with username for Basic auth).
+    required: true
+  diagrams_source:
+    description: Optional compatibility input for pre-staged diagrams and images.
+    required: false
+runs:
+  using: node24
+  main: dist/index.js
+branding:
+  icon: upload-cloud
+  color: blue
