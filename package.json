@@ -6,13 +6,14 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build": "npm run build:docs-sync && npm run build:repo-metadata-collect && npm run build:repo-test-data-collect && npm run build:repo-data-sync && npm run build:msi-sync && npm run build:msi-report-sync",
+    "build": "npm run build:docs-sync && npm run build:repo-metadata-collect && npm run build:repo-test-data-collect && npm run build:repo-data-sync && npm run build:msi-sync && npm run build:msi-report-sync && npm run build:confluence-cloud-sync",
     "build:docs-sync": "ncc build actions/docs-sync/src/index.ts --out actions/docs-sync/dist --source-map --license licenses.txt",
     "build:repo-metadata-collect": "ncc build actions/repo-metadata-collect/src/index.ts --out actions/repo-metadata-collect/dist --source-map --license licenses.txt",
     "build:repo-test-data-collect": "ncc build actions/repo-test-data-collect/src/index.ts --out actions/repo-test-data-collect/dist --source-map --license licenses.txt",
     "build:repo-data-sync": "ncc build actions/repo-data-sync/src/index.ts --out actions/repo-data-sync/dist --source-map --license licenses.txt",
     "build:msi-sync": "ncc build actions/msi-sync/src/index.ts --out actions/msi-sync/dist --source-map --license licenses.txt",
-    "build:msi-report-sync": "ncc build actions/msi-report-sync/src/index.ts --out actions/msi-report-sync/dist --source-map --license licenses.txt"
+    "build:msi-report-sync": "ncc build actions/msi-report-sync/src/index.ts --out actions/msi-report-sync/dist --source-map --license licenses.txt",
+    "build:confluence-cloud-sync": "ncc build actions/confluence-cloud-sync/src/index.ts --out actions/confluence-cloud-sync/dist --source-map --license licenses.txt"
   },
   "dependencies": {
     "@actions/core": "^3.0.1",
