@@ -107,11 +107,12 @@ jobs:
     outputs:
       app_type: ${{ steps.detect.outputs.app_type }}
       project_type: ${{ steps.detect.outputs.project_type }}
-      has_jest: ${{ steps.detect.outputs.has_jest }}
-      has_cypress: ${{ steps.detect.outputs.has_cypress }}
       collect_unit_test: ${{ steps.detect.outputs.collect_unit_test }}
       collect_e2e_coverage: ${{ steps.detect.outputs.collect_e2e_coverage }}
       collect_lighthouse: ${{ steps.detect.outputs.collect_lighthouse }}
+      fresh_unit_test: ${{ steps.detect.outputs.fresh_unit_test }}
+      fresh_e2e_coverage: ${{ steps.detect.outputs.fresh_e2e_coverage }}
+      fresh_lighthouse: ${{ steps.detect.outputs.fresh_lighthouse }}
       test_collection_policy: ${{ steps.detect.outputs.test_collection_policy }}
       docs_base_path: ${{ steps.detect.outputs.docs_base_path }}
     steps:
@@ -251,6 +252,10 @@ jobs:
           COLLECT_UNIT_TEST="$(read_policy_flag "test_collection.unit_test.enabled")"
           COLLECT_E2E_COVERAGE="$(read_policy_flag "test_collection.e2e_coverage.enabled")"
           COLLECT_LIGHTHOUSE="$(read_policy_flag "test_collection.lighthouse.enabled")"
+          # run_fresh is only effective when enabled is true — enabled is the primary gate
+          [[ "$COLLECT_UNIT_TEST" == "true" && "$(read_policy_flag "test_collection.unit_test.run_fresh")" == "true" ]] && FRESH_UNIT_TEST="true" || FRESH_UNIT_TEST="false"
+          [[ "$COLLECT_E2E_COVERAGE" == "true" && "$(read_policy_flag "test_collection.e2e_coverage.run_fresh")" == "true" ]] && FRESH_E2E_COVERAGE="true" || FRESH_E2E_COVERAGE="false"
+          [[ "$COLLECT_LIGHTHOUSE" == "true" && "$(read_policy_flag "test_collection.lighthouse.run_fresh")" == "true" ]] && FRESH_LIGHTHOUSE="true" || FRESH_LIGHTHOUSE="false"
           TEST_COLLECTION_POLICY="$(read_policy_json)"
 
           # Keep both outputs for backward compatibility; both carry normalized app_type.
@@ -260,6 +265,9 @@ jobs:
           echo "collect_unit_test=$COLLECT_UNIT_TEST" >> $GITHUB_OUTPUT
           echo "collect_e2e_coverage=$COLLECT_E2E_COVERAGE" >> $GITHUB_OUTPUT
           echo "collect_lighthouse=$COLLECT_LIGHTHOUSE" >> $GITHUB_OUTPUT
+          echo "fresh_unit_test=$FRESH_UNIT_TEST" >> $GITHUB_OUTPUT
+          echo "fresh_e2e_coverage=$FRESH_E2E_COVERAGE" >> $GITHUB_OUTPUT
+          echo "fresh_lighthouse=$FRESH_LIGHTHOUSE" >> $GITHUB_OUTPUT
           echo "test_collection_policy=$TEST_COLLECTION_POLICY" >> $GITHUB_OUTPUT
           
           # Always output test framework availability
@@ -273,6 +281,9 @@ jobs:
           echo "✅ Collect unit test: $COLLECT_UNIT_TEST"
           echo "✅ Collect e2e coverage: $COLLECT_E2E_COVERAGE"
           echo "✅ Collect lighthouse: $COLLECT_LIGHTHOUSE"
+          echo "✅ Fresh unit test run: $FRESH_UNIT_TEST"
+          echo "✅ Fresh e2e coverage run: $FRESH_E2E_COVERAGE"
+          echo "✅ Fresh lighthouse run: $FRESH_LIGHTHOUSE"
           echo "✅ Docs base path: $DOCS_PATH"
 
   doc_sync:
@@ -680,7 +691,9 @@ jobs:
           path: audired-jest-report
 
       - name: Download collection report artifact
-        if: github.event.workflow_run.id != ''
+        if: github.event_name == 'workflow_run'
+        id: download_collection_report
+        continue-on-error: true
         uses: actions/download-artifact@v5
         with:
           name: audired-collection-report
@@ -808,10 +821,16 @@ jobs:
               echo "No changes to push"
           fi
 
+      - name: Fail if workflow_run collection artifact was not found
+        if: always() && github.event_name == 'workflow_run' && steps.download_collection_report.outcome == 'failure'
+        run: |
+          echo "::error::Artifact 'audired-collection-report' not found for workflow_run id ${{ github.event.workflow_run.id }}. The caller CI/CD workflow must produce this artifact."
+          exit 1
+
   deployment_config_sync:
     runs-on: ubuntu-latest
     needs: [detect_project, doc_sync, data_sync]
-    if: ${{ always() && inputs.enable_doc_sync && needs.doc_sync.result == 'success' && (needs.data_sync.result == 'success' || needs.data_sync.result == 'skipped') }}
+    if: ${{ always() && inputs.enable_doc_sync && needs.doc_sync.result == 'success' && (needs.data_sync.result == 'success' || needs.data_sync.result == 'skipped' || needs.data_sync.result == 'failure') }}
     steps:
       - name: Checkout AudiRed Doc Sync repository
         uses: actions/checkout@v6
@@ -938,9 +957,9 @@ jobs:
     needs: detect_project
     if: |
       (
-        needs.detect_project.outputs.collect_unit_test == 'true' ||
-        needs.detect_project.outputs.collect_e2e_coverage == 'true' ||
-        needs.detect_project.outputs.collect_lighthouse == 'true'
+        needs.detect_project.outputs.fresh_unit_test == 'true' ||
+        needs.detect_project.outputs.fresh_e2e_coverage == 'true' ||
+        needs.detect_project.outputs.fresh_lighthouse == 'true'
       ) &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     outputs:
@@ -968,24 +987,33 @@ jobs:
           lighthouse_run=false
           install_required=false
 
-          if [[ "${{ needs.detect_project.outputs.collect_unit_test }}" == "true" && "${{ needs.detect_project.outputs.has_jest }}" == "true" ]]; then
+          if [[ "${{ needs.detect_project.outputs.fresh_unit_test }}" == "true" ]]; then
             if jq -e '.scripts["test"] or .scripts["test:unit"] or .scripts["test:coverage"]' package.json > /dev/null; then
               jest_run=true
               install_required=true
+            else
+              echo "::error::Profile requires unit_test run_fresh=true but no test/test:unit/test:coverage script found in package.json"
+              exit 1
             fi
           fi
 
-          if [[ "${{ needs.detect_project.outputs.collect_e2e_coverage }}" == "true" && "${{ needs.detect_project.outputs.has_cypress }}" == "true" ]]; then
+          if [[ "${{ needs.detect_project.outputs.fresh_e2e_coverage }}" == "true" ]]; then
             if jq -e '.scripts["test:e2e-run-dev"]' package.json > /dev/null; then
               cypress_run=true
               install_required=true
+            else
+              echo "::error::Profile requires e2e_coverage run_fresh=true but no test:e2e-run-dev script found in package.json"
+              exit 1
             fi
           fi
 
-          if [[ "${{ needs.detect_project.outputs.collect_lighthouse }}" == "true" ]]; then
+          if [[ "${{ needs.detect_project.outputs.fresh_lighthouse }}" == "true" ]]; then
             if jq -e '.scripts["lighthouse:ci"] or .scripts["lighthouse"]' package.json > /dev/null; then
               lighthouse_run=true
               install_required=true
+            else
+              echo "::error::Profile requires lighthouse run_fresh=true but no lighthouse:ci/lighthouse script found in package.json"
+              exit 1
             fi
           fi
 

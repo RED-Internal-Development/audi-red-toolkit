@@ -5,6 +5,7 @@ feature_app:
   test_collection:
     unit_test:
       enabled: true
+      run_fresh: false
       collector: "jest"
       required: true
       status_key: "unitTest"
@@ -13,6 +14,7 @@ feature_app:
         - "unit_test_coverage_data"
     e2e_coverage:
       enabled: true
+      run_fresh: false
       collector: "cypress"
       required: false
       status_key: "e2eCoverage"
@@ -21,6 +23,7 @@ feature_app:
         - "e2e_test_coverage_breakdown"
     lighthouse:
       enabled: true
+      run_fresh: false
       collector: "lighthouse"
       required: false
       status_key: "lighthouse"
@@ -38,6 +41,7 @@ backend_service:
   test_collection:
     unit_test:
       enabled: true
+      run_fresh: true
       collector: "jest"
       required: true
       status_key: "unitTest"
@@ -54,6 +58,7 @@ mobile_app:
   test_collection:
     unit_test:
       enabled: true
+      run_fresh: false
       collector: "jest"
       required: true
       status_key: "unitTest"
@@ -70,6 +75,7 @@ audired_service:
   test_collection:
     unit_test:
       enabled: true
+      run_fresh: false
       collector: "jest"
       required: true
       status_key: "unitTest"
@@ -86,6 +92,7 @@ special_app:
   test_collection:
     unit_test:
       enabled: true
+      run_fresh: false
       collector: "jest"
       required: true
       status_key: "unitTest"

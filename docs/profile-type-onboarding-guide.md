@@ -19,7 +19,7 @@ roles:
 systems:
   - toolkit-service
   - red-toolkit
-last_reviewed: "2026-03-17"
+last_reviewed: "2026-05-14"
 tags:
   - "discipline:development"
   - "stage:build"
@@ -80,7 +80,66 @@ Used by:
 - `audi-red-toolkit/.github/workflows/audired-tookit.yml` (deployment config generation)
 - `audi-red-documentation/.github/workflows/vwgoa_sync.yml`
 
-## How to add a new app profile type
+### `test_collection` section (optional)
+
+Controls what test data the toolkit collects and reports for this app type.
+
+Each test type entry supports two independent flags:
+
+- `enabled`: whether this test type's results are expected to be collected and included in the RED data report. This is the primary gate — if `false`, the test type is ignored entirely regardless of other settings.
+- `run_fresh`: whether the toolkit should actively execute the tests itself during a `workflow_dispatch` or `schedule` trigger. Only takes effect when `enabled: true`. When the toolkit is triggered by a `workflow_run` event (i.e. promoted by a caller CI/CD workflow), fresh test runs are **never** performed regardless of this flag — the toolkit always expects the caller workflow to have produced the artifact.
+
+Additional fields per test type:
+
+- `collector`: test tool used (`jest`, `cypress`, `lighthouse`)
+- `required`: whether missing results should be treated as an error
+- `status_key`: key used to report collection status in the profile dashboard
+- `source_fields`: fields merged from the collected report into the data report
+
+Supported test types: `unit_test`, `e2e_coverage`, `lighthouse`.
+
+Example:
+
+```yaml
+test_collection:
+  unit_test:
+    enabled: true
+    run_fresh: true      # toolkit will run Jest on workflow_dispatch / schedule
+    collector: "jest"
+    required: true
+    status_key: "unitTest"
+    source_fields:
+      - "unit_test_coverage"
+      - "unit_test_coverage_data"
+  e2e_coverage:
+    enabled: true
+    run_fresh: false     # rely on artifact from caller CI/CD workflow_run
+    collector: "cypress"
+    required: false
+    status_key: "e2eCoverage"
+    source_fields:
+      - "e2e_test_coverage"
+      - "e2e_test_coverage_breakdown"
+  lighthouse:
+    enabled: true
+    run_fresh: false
+    collector: "lighthouse"
+    required: false
+    status_key: "lighthouse"
+    source_fields:
+      - "lighthouse_score"
+```
+
+#### `run_fresh` behaviour by trigger type
+
+| Trigger | `run_fresh: false` | `run_fresh: true` |
+|---|---|---|
+| `workflow_run` (promoted by CI/CD) | artifact downloaded from caller run | **ignored** — artifact downloaded from caller run |
+| `workflow_dispatch` / `schedule` | test step skipped | test executed fresh inside toolkit workflow |
+
+Used by:
+
+- `audi-red-toolkit/.github/workflows/audired-tookit.yml` (`test_sync` and `data_sync` jobs)
 
 ### 1. Add the new profile in toolkit config
 
@@ -95,6 +154,7 @@ Optional:
 
 - `msi.parent_page_id`
 - `vwgoa.parent_page_id`
+- `test_collection.*` — add one entry per test type you want to collect for this profile
 
 Example:
 
@@ -105,7 +165,19 @@ audired_service:
     branch: "docs-sync/audired-services"
   msi:
     parent_page_id: "1882393087"
+  test_collection:
+    unit_test:
+      enabled: true
+      run_fresh: false
+      collector: "jest"
+      required: true
+      status_key: "unitTest"
+      source_fields:
+        - "unit_test_coverage"
+        - "unit_test_coverage_data"
 ```
+
+See the [`test_collection` section](#test_collection-section-optional) above for the full field reference and `run_fresh` behaviour rules.
 
 ### 2. Register the app type in toolkit workflow resolution
 
