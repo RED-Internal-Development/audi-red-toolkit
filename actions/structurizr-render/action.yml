@@ -1,0 +1,64 @@
+name: Render Structurizr DSL to PNG images
+description: Converts Structurizr DSL files to PNG diagram images using extenda/structurizr-to-png.
+inputs:
+  docs_folder:
+    description: "Source folder containing .dsl files (default: docs)"
+    required: false
+    default: "docs"
+  image_output_folder:
+    description: "Output folder for generated PNG images (must exist)"
+    required: false
+outputs:
+  images_generated:
+    description: "Whether any PNG images were generated"
+    value: ${{ steps.dsl_check.outputs.has_dsl_files }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check for .dsl files
+      shell: bash
+      id: dsl_check
+      run: |
+        docs_folder="${{ inputs.docs_folder }}"
+        if find "$docs_folder" -type f -name "*.dsl" 2>/dev/null | grep -q .; then
+          echo "has_dsl_files=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_dsl_files=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Skipping Structurizr DSL rendering
+      if: steps.dsl_check.outputs.has_dsl_files == 'false'
+      shell: bash
+      run: |
+        echo "ℹ️  Skipping Structurizr rendering: no .dsl files found in ${{ inputs.docs_folder }}"
+
+    - name: Set up Java
+      if: steps.dsl_check.outputs.has_dsl_files == 'true'
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Render Structurizr DSL to PNG
+      if: steps.dsl_check.outputs.has_dsl_files == 'true'
+      shell: bash
+      run: |
+        output_str=""
+        if [ -n "${{ inputs.image_output_folder }}" ]; then
+          output_str="--output ${{ inputs.image_output_folder }}"
+        fi
+        
+        docs_folder="${{ inputs.docs_folder }}"
+        
+        echo "🔄 Pulling structurizr-to-png Docker image..."
+        docker pull --quiet extenda/structurizr-to-png
+        
+        echo "🎨 Converting Structurizr DSL files to PNG..."
+        docker run --rm \
+          -v "${PWD}/${docs_folder}:/${docs_folder}" \
+          extenda/structurizr-to-png \
+          --input "/${docs_folder}" \
+          $output_str
+        
+        echo "✅ Structurizr DSL rendering completed"

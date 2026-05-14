@@ -414,7 +414,9 @@ jobs:
           echo "✅ All Mermaid blocks are valid!"
 
       - name: Create images from structurizr dsl files
-        uses: RED-Internal-Development/audired_structurizr_action@main
+        uses: ./actions/structurizr-render
+        with:
+          docs_folder: ${{ inputs.source_file }}
 
       - name: Check if referenced images exist
         run: |
