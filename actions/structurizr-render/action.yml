@@ -44,21 +44,21 @@ runs:
       if: steps.dsl_check.outputs.has_dsl_files == 'true'
       shell: bash
       run: |
-        output_str=""
-        if [ -n "${{ inputs.image_output_folder }}" ]; then
-          output_str="--output ${{ inputs.image_output_folder }}"
-        fi
-        
         docs_folder="${{ inputs.docs_folder }}"
-        
+
         echo "🔄 Pulling structurizr-to-png Docker image..."
         docker pull --quiet extenda/structurizr-to-png
-        
+
         echo "🎨 Converting Structurizr DSL files to PNG..."
-        docker run --rm \
-          -v "${PWD}/${docs_folder}:/${docs_folder}" \
-          extenda/structurizr-to-png \
-          --input "/${docs_folder}" \
-          $output_str
-        
+        if [ -n "${{ inputs.image_output_folder }}" ]; then
+          docker run --rm \
+            -v "${PWD}/${docs_folder}:/docs" \
+            extenda/structurizr-to-png \
+            --output "${{ inputs.image_output_folder }}"
+        else
+          docker run --rm \
+            -v "${PWD}/${docs_folder}:/docs" \
+            extenda/structurizr-to-png
+        fi
+
         echo "✅ Structurizr DSL rendering completed"
